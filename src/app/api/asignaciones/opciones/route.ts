@@ -33,13 +33,34 @@ export async function GET(req: Request) {
     where: { activo: true },
     select: { cliente_id: true },
   });
-  const excludeIds = activas
-    .map((o) => o.cliente_id)
-    .filter((id): id is number => id !== null);
+  const excludeIds = new Set(
+    activas.map((o) => o.cliente_id).filter((id): id is number => id !== null)
+  );
 
-  // Base where para excluir activos (usada en todas las queries de opciones
-  // para que muestren solo valores que realmente tienen registros disponibles)
-  const baseExclude = excludeIds.length > 0 ? { id: { notIn: excludeIds } } : {};
+  // Cooldown: excluir clientes que este promotor ya trabajó en los últimos N meses
+  const cooldownConfig = await prisma.configuracion.findUnique({
+    where: { clave: "cooldown_meses" },
+  });
+  const cooldownMeses = parseInt(cooldownConfig?.valor || "3");
+  const cooldownDate = new Date();
+  cooldownDate.setMonth(cooldownDate.getMonth() - cooldownMeses);
+
+  const cooldownOps = await prisma.oportunidades.findMany({
+    where: {
+      usuario_id: userId,
+      cliente_id: { not: null },
+      created_at: { gte: cooldownDate },
+    },
+    select: { cliente_id: true },
+  });
+  for (const op of cooldownOps) {
+    if (op.cliente_id !== null) excludeIds.add(op.cliente_id);
+  }
+
+  const excludeArray = Array.from(excludeIds);
+
+  // Base where para excluir activos + cooldown
+  const baseExclude = excludeArray.length > 0 ? { id: { notIn: excludeArray } } : {};
 
   // Cupo restante del día
   const config = await prisma.configuracion.findUnique({

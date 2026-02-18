@@ -134,17 +134,41 @@ export async function POST(request: Request) {
       where: { activo: true },
       select: { cliente_id: true },
     });
-    const excludeIds = activas.map((o) => o.cliente_id).filter((id): id is number => id !== null);
+    const excludeIds = new Set(
+      activas.map((o) => o.cliente_id).filter((id): id is number => id !== null)
+    );
+
+    // 2b. Cooldown: excluir clientes que este promotor ya trabajó en los últimos N meses
+    const cooldownConfig = await prisma.configuracion.findUnique({
+      where: { clave: "cooldown_meses" },
+    });
+    const cooldownMeses = parseInt(cooldownConfig?.valor || "3");
+    const cooldownDate = new Date();
+    cooldownDate.setMonth(cooldownDate.getMonth() - cooldownMeses);
+
+    const cooldownOps = await prisma.oportunidades.findMany({
+      where: {
+        usuario_id: userId,
+        cliente_id: { not: null },
+        created_at: { gte: cooldownDate },
+      },
+      select: { cliente_id: true },
+    });
+    for (const op of cooldownOps) {
+      if (op.cliente_id !== null) excludeIds.add(op.cliente_id);
+    }
+
+    const excludeArray = Array.from(excludeIds);
 
     // 3. Construir SQL con parámetros posicionales explícitos ($1, $2, ...)
     const params: unknown[] = [];
     const clauses: string[] = [];
 
-    if (excludeIds.length > 0) {
+    if (excludeArray.length > 0) {
       const start = params.length + 1;
-      const placeholders = excludeIds.map((_, i) => `$${start + i}`).join(", ");
+      const placeholders = excludeArray.map((_, i) => `$${start + i}`).join(", ");
       clauses.push(`id NOT IN (${placeholders})`);
-      params.push(...excludeIds);
+      params.push(...excludeArray);
     }
     if (tipo_cliente) { params.push(tipo_cliente); clauses.push(`tipo_cliente = $${params.length}`); }
     if (convenio)     { params.push(convenio);     clauses.push(`convenio = $${params.length}`); }

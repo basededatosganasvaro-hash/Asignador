@@ -60,6 +60,7 @@ export async function GET() {
         etapa: op.etapa,
         timer_vence: op.timer_vence,
         origen: op.origen,
+        num_operacion: op.num_operacion ?? null,
         created_at: op.created_at,
       };
     } else {
@@ -80,6 +81,7 @@ export async function GET() {
         etapa: op.etapa,
         timer_vence: op.timer_vence,
         origen: op.origen,
+        num_operacion: op.num_operacion ?? null,
         created_at: op.created_at,
       };
     }

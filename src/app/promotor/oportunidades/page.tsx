@@ -6,14 +6,17 @@ import {
   FormControlLabel, IconButton, Tooltip, Collapse, Button,
   Card, CardContent, Dialog, DialogTitle, DialogContent,
   DialogActions, TextField, Snackbar, Paper, Divider, Grid,
+  Tabs, Tab,
 } from "@mui/material";
-import { DataGrid, GridColDef } from "@mui/x-data-grid";
+import { DataGrid, GridColDef, GridRenderCellParams, GridToolbarColumnsButton } from "@mui/x-data-grid";
 import FilterListIcon from "@mui/icons-material/FilterList";
 import FilterListOffIcon from "@mui/icons-material/FilterListOff";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import PhoneIcon from "@mui/icons-material/Phone";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import UploadFileIcon from "@mui/icons-material/UploadFile";
+import ImportCaptacionDialog from "@/components/ImportCaptacionDialog";
 
 // ════════════════════════════════════════════
 // TIPOS
@@ -31,6 +34,7 @@ interface Oportunidad {
   etapa: { id: number; nombre: string; tipo: string; color: string } | null;
   timer_vence: string | null;
   origen: string;
+  num_operacion: string | null;
   created_at: string;
 }
 
@@ -57,6 +61,7 @@ interface OportunidadDetalle {
   etapa: { id: number; nombre: string; tipo: string; color: string } | null;
   timer_vence: string | null;
   activo: boolean;
+  num_operacion: string | null;
   cliente: Record<string, string | null | undefined>;
   transiciones: Transicion[];
   historial: HistorialEntry[];
@@ -137,6 +142,7 @@ export default function OportunidadesPage() {
   const [rows, setRows] = useState<Oportunidad[]>([]);
   const [etapas, setEtapas] = useState<Etapa[]>([]);
   const [loading, setLoading] = useState(true);
+  const [tab, setTab] = useState<"ASIGNADOS" | "CAPTURADOS">("ASIGNADOS");
   const [etapaFiltro, setEtapaFiltro] = useState("");
   const [filtros, setFiltros] = useState(FILTROS_VACIOS);
   const [showFiltros, setShowFiltros] = useState(false);
@@ -144,6 +150,8 @@ export default function OportunidadesPage() {
   const [transitioning, setTransitioning] = useState<number | null>(null);
   const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" as "success" | "error" });
   const [confetti, setConfetti] = useState(false);
+  const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>({});
+  const [importOpen, setImportOpen] = useState(false);
 
   // Modal Ver detalle
   const [verDialog, setVerDialog] = useState<{ open: boolean; loading: boolean; data: OportunidadDetalle | null }>({
@@ -177,27 +185,33 @@ export default function OportunidadesPage() {
     return map;
   }, [etapas]);
 
-  // Conteo por etapa
+  // Filtrar por tab (Asignados vs Capturados)
+  const rowsByTab = useMemo(() => rows.filter((r) => {
+    if (tab === "ASIGNADOS") return r.origen === "POOL" || r.origen === "REASIGNACION";
+    return r.origen === "CAPTACION";
+  }), [rows, tab]);
+
+  // Conteo por etapa (sobre el tab activo)
   const conteoPorEtapa = useMemo(() => {
     const map: Record<string, number> = {};
-    rows.forEach((r) => { map[r.etapa?.nombre ?? ""] = (map[r.etapa?.nombre ?? ""] || 0) + 1; });
+    rowsByTab.forEach((r) => { map[r.etapa?.nombre ?? ""] = (map[r.etapa?.nombre ?? ""] || 0) + 1; });
     return map;
-  }, [rows]);
+  }, [rowsByTab]);
 
+  // Solo etapas de avance + Venta (sin salidas)
   const etapasAvance = useMemo(() => etapas.filter((e) => e.tipo === "AVANCE" || (e.tipo === "FINAL" && e.nombre === "Venta")), [etapas]);
-  const etapasSalida = useMemo(() => etapas.filter((e) => e.tipo === "SALIDA" || (e.tipo === "FINAL" && e.nombre !== "Venta")), [etapas]);
 
   const opts = useMemo(() => ({
-    tiposCliente: Array.from(new Set(rows.map((r) => r.tipo_cliente).filter((v) => v && v !== "—"))).sort(),
-    convenios: Array.from(new Set(rows.map((r) => r.convenio).filter((v) => v && v !== "—"))).sort(),
-    estados: Array.from(new Set(rows.map((r) => r.estado).filter((v) => v && v !== "—"))).sort(),
+    tiposCliente: Array.from(new Set(rowsByTab.map((r) => r.tipo_cliente).filter((v) => v && v !== "—"))).sort(),
+    convenios: Array.from(new Set(rowsByTab.map((r) => r.convenio).filter((v) => v && v !== "—"))).sort(),
+    estados: Array.from(new Set(rowsByTab.map((r) => r.estado).filter((v) => v && v !== "—"))).sort(),
     municipios: Array.from(new Set(
-      rows.filter((r) => !filtros.estado || r.estado === filtros.estado)
+      rowsByTab.filter((r) => !filtros.estado || r.estado === filtros.estado)
         .map((r) => r.municipio).filter((v) => v && v !== "—")
     )).sort(),
-  }), [rows, filtros.estado]);
+  }), [rowsByTab, filtros.estado]);
 
-  const filtered = useMemo(() => rows.filter((r) => {
+  const filtered = useMemo(() => rowsByTab.filter((r) => {
     if (etapaFiltro && r.etapa?.nombre !== etapaFiltro) return false;
     if (filtros.tipoCliente && r.tipo_cliente !== filtros.tipoCliente) return false;
     if (filtros.convenio && r.convenio !== filtros.convenio) return false;
@@ -205,9 +219,12 @@ export default function OportunidadesPage() {
     if (filtros.municipio && r.municipio !== filtros.municipio) return false;
     if (filtros.soloConTel && !r.tel_1) return false;
     return true;
-  }), [rows, etapaFiltro, filtros]);
+  }), [rowsByTab, etapaFiltro, filtros]);
 
   const hayFiltros = Object.values(filtros).some((v) => v !== "" && v !== false);
+
+  const countAsignados = useMemo(() => rows.filter((r) => r.origen === "POOL" || r.origen === "REASIGNACION").length, [rows]);
+  const countCapturados = useMemo(() => rows.filter((r) => r.origen === "CAPTACION").length, [rows]);
 
   // ─── Cambiar etapa inline ───
   const handleTransicion = async (opId: number, transicionId: number) => {
@@ -242,7 +259,7 @@ export default function OportunidadesPage() {
         setConfetti(true);
         setSnackbar({ open: true, message: "¡Venta registrada!", severity: "success" });
       } else if (result.devuelta_al_pool) {
-        setSnackbar({ open: true, message: "Oportunidad devuelta al pool", severity: "success" });
+        setSnackbar({ open: true, message: "Cliente devuelto al pool", severity: "success" });
       } else {
         setSnackbar({ open: true, message: "Etapa actualizada", severity: "success" });
       }
@@ -274,7 +291,7 @@ export default function OportunidadesPage() {
   };
 
   // ─── Columnas DataGrid ───
-  const columns: GridColDef[] = [
+  const columns: GridColDef[] = useMemo(() => [
     {
       field: "nombres", headerName: "Cliente", flex: 1.3, minWidth: 160,
       renderCell: (p) => (
@@ -359,6 +376,15 @@ export default function OportunidadesPage() {
         );
       },
     },
+    // Columna num_operacion: solo visible cuando filtramos por Venta
+    ...(etapaFiltro === "Venta" ? [{
+      field: "num_operacion",
+      headerName: "No. Operación",
+      width: 150,
+      renderCell: (p: GridRenderCellParams) => (
+        <Typography variant="body2" fontWeight={500}>{p.value || "—"}</Typography>
+      ),
+    } satisfies GridColDef] : []),
     {
       field: "__obs", headerName: "Observaciones", flex: 1, minWidth: 150, sortable: false,
       renderCell: (p) => (
@@ -389,7 +415,8 @@ export default function OportunidadesPage() {
         </Tooltip>
       ),
     },
-  ];
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  ], [transMap, transitioning, observaciones, etapaFiltro]);
 
   if (loading) return (
     <Box sx={{ display: "flex", justifyContent: "center", mt: 8 }}><CircularProgress /></Box>
@@ -400,16 +427,39 @@ export default function OportunidadesPage() {
       {confetti && <ConfettiEffect onDone={() => setConfetti(false)} />}
 
       {/* Header */}
-      <Box sx={{ mb: 3 }}>
+      <Box sx={{ mb: 2 }}>
         <Typography variant="h4" fontWeight={700}>Mi Asignación</Typography>
         <Typography variant="body2" color="text.secondary">
           {rows.length} oportunidades activas
         </Typography>
       </Box>
 
-      {rows.length === 0 ? (
-        <Alert severity="info">
-          No tienes oportunidades activas. Solicita una asignación desde el Dashboard.
+      {/* Tabs: Asignados / Capturados */}
+      <Tabs
+        value={tab}
+        onChange={(_, v) => { setTab(v); setEtapaFiltro(""); setFiltros(FILTROS_VACIOS); }}
+        sx={{ mb: 2, "& .MuiTab-root": { fontWeight: 600, textTransform: "none", fontSize: 14 } }}
+      >
+        <Tab value="ASIGNADOS" label={`Asignados (${countAsignados})`} />
+        <Tab value="CAPTURADOS" label={`Capturados (${countCapturados})`} />
+      </Tabs>
+
+      {rowsByTab.length === 0 ? (
+        <Alert severity="info" sx={{ borderRadius: 2 }}>
+          {tab === "ASIGNADOS"
+            ? "No tienes oportunidades asignadas activas. Solicita una asignación desde el Dashboard."
+            : "No tienes clientes capturados activos. Capta clientes desde la sección correspondiente."
+          }
+          {tab === "CAPTURADOS" && (
+            <Button
+              size="small"
+              startIcon={<UploadFileIcon />}
+              onClick={() => setImportOpen(true)}
+              sx={{ mt: 1, display: "block" }}
+            >
+              Importar desde Excel
+            </Button>
+          )}
         </Alert>
       ) : (
         <>
@@ -422,10 +472,20 @@ export default function OportunidadesPage() {
               background: "linear-gradient(135deg, #fafbfc 0%, #f0f4f8 100%)",
             }}
           >
-            <Box sx={{ px: 3, pt: 2.5, pb: 1 }}>
+            <Box sx={{ px: 3, pt: 2.5, pb: 1, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <Typography variant="overline" color="text.secondary" fontWeight={700} letterSpacing={1.5}>
                 Embudo de ventas
               </Typography>
+              {tab === "CAPTURADOS" && (
+                <Button
+                  size="small"
+                  startIcon={<UploadFileIcon />}
+                  onClick={() => setImportOpen(true)}
+                  sx={{ textTransform: "none" }}
+                >
+                  Importar Excel
+                </Button>
+              )}
             </Box>
 
             {/* Pipeline AVANCE + Venta */}
@@ -468,54 +528,23 @@ export default function OportunidadesPage() {
                 );
               })}
             </Box>
-
-            {/* Salidas */}
-            {etapasSalida.length > 0 && (
-              <Box sx={{ display: "flex", gap: 1, px: 3, pb: 2, pt: 0.5, flexWrap: "wrap", borderTop: "1px solid", borderColor: "divider", bgcolor: "rgba(0,0,0,0.015)" }}>
-                <Typography variant="caption" color="text.disabled" sx={{ alignSelf: "center", mr: 0.5 }}>Salidas:</Typography>
-                {etapasSalida.map((e) => {
-                  const count = conteoPorEtapa[e.nombre] || 0;
-                  const isSelected = etapaFiltro === e.nombre;
-                  return (
-                    <Chip
-                      key={e.id}
-                      label={`${e.nombre} (${count})`}
-                      size="small"
-                      onClick={() => setEtapaFiltro(isSelected ? "" : e.nombre)}
-                      sx={{
-                        fontWeight: 600, fontSize: 11, cursor: "pointer",
-                        bgcolor: isSelected ? e.color : "transparent",
-                        color: isSelected ? "white" : count > 0 ? e.color : "text.disabled",
-                        border: "1px solid", borderColor: isSelected ? e.color : count > 0 ? e.color : "grey.300",
-                        "&:hover": { bgcolor: isSelected ? e.color : `${e.color}20`, borderColor: e.color },
-                        transition: "all 0.15s",
-                      }}
-                    />
-                  );
-                })}
-              </Box>
-            )}
           </Card>
 
           {/* ═══════ FILTROS + GRID ═══════ */}
           <Card elevation={0} sx={{ border: "1px solid", borderColor: "divider", borderRadius: 3, overflow: "hidden" }}>
             {/* Barra de filtros */}
             <Box sx={{ display: "flex", alignItems: "center", gap: 2, flexWrap: "wrap", px: 2.5, py: 1.5, bgcolor: "grey.50", borderBottom: "1px solid", borderColor: "divider" }}>
-              <FormControl size="small" sx={{ minWidth: 200 }}>
-                <InputLabel shrink>Etapa</InputLabel>
-                <Select value={etapaFiltro} label="Etapa" notched displayEmpty onChange={(e) => setEtapaFiltro(e.target.value)}>
-                  <MenuItem value=""><em>Todas las etapas ({rows.length})</em></MenuItem>
-                  {etapas.map((e) => (
-                    <MenuItem key={e.id} value={e.nombre}>
-                      <Box sx={{ display: "flex", alignItems: "center", gap: 1, width: "100%" }}>
-                        <Box sx={{ width: 10, height: 10, borderRadius: "50%", bgcolor: e.color, flexShrink: 0 }} />
-                        <Typography variant="body2">{e.nombre}</Typography>
-                        <Typography variant="caption" color="text.secondary" sx={{ ml: "auto" }}>{conteoPorEtapa[e.nombre] || 0}</Typography>
-                      </Box>
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+              {/* Chip de etapa activa (reemplaza el dropdown) */}
+              {etapaFiltro && (
+                <Chip
+                  label={etapaFiltro}
+                  onDelete={() => setEtapaFiltro("")}
+                  size="small"
+                  color="primary"
+                  variant="outlined"
+                  sx={{ fontWeight: 600 }}
+                />
+              )}
 
               <Typography variant="body2" color="text.secondary" sx={{ flex: 1 }}>
                 {filtered.length} resultado{filtered.length !== 1 ? "s" : ""}
@@ -569,7 +598,7 @@ export default function OportunidadesPage() {
             {/* DataGrid */}
             {filtered.length === 0 ? (
               <Box sx={{ textAlign: "center", py: 8, color: "text.secondary" }}>
-                <Typography>Sin oportunidades en esta etapa</Typography>
+                <Typography>Sin oportunidades en esta vista</Typography>
               </Box>
             ) : (
               <DataGrid
@@ -580,6 +609,15 @@ export default function OportunidadesPage() {
                 disableRowSelectionOnClick
                 autoHeight
                 rowHeight={56}
+                columnVisibilityModel={columnVisibility}
+                onColumnVisibilityModelChange={setColumnVisibility}
+                slots={{
+                  toolbar: () => (
+                    <Box sx={{ px: 1, py: 0.5, borderBottom: "1px solid", borderColor: "grey.100" }}>
+                      <GridToolbarColumnsButton />
+                    </Box>
+                  ),
+                }}
                 sx={{
                   border: "none",
                   "& .MuiDataGrid-columnHeader": {
@@ -667,6 +705,12 @@ export default function OportunidadesPage() {
                       <DetailRow label="RFC" value={verDialog.data.cliente.rfc} />
                       <DetailRow label="NSS" value={verDialog.data.cliente.nss} />
                       <DetailRow label="Num. Empleado" value={verDialog.data.cliente.num_empleado} />
+                      {verDialog.data.num_operacion && (
+                        <>
+                          <Divider />
+                          <DetailRow label="No. Operación" value={verDialog.data.num_operacion} />
+                        </>
+                      )}
                     </Stack>
                   </CardContent>
                 </Card>
@@ -724,6 +768,13 @@ export default function OportunidadesPage() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* ═══════ DIALOG: IMPORTAR CAPTURADOS ═══════ */}
+      <ImportCaptacionDialog
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        onSuccess={() => { setImportOpen(false); fetchData(); }}
+      />
 
       <Snackbar open={snackbar.open} autoHideDuration={3000} onClose={() => setSnackbar((p) => ({ ...p, open: false }))}>
         <Alert severity={snackbar.severity} variant="filled">{snackbar.message}</Alert>

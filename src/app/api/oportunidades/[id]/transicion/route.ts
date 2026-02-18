@@ -60,6 +60,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ error: "Debes ingresar el numero de operacion para registrar una venta" }, { status: 400 });
   }
 
+  // Salidas auto-regresan al pool (el promotor ya no las ve, pero el historial se preserva)
+  const esSalidaAutoPool =
+    (transicion.etapa_destino?.tipo === "SALIDA") ||
+    (transicion.etapa_destino?.tipo === "FINAL" && transicion.etapa_destino?.nombre !== "Venta");
+
   // Calcular nuevo timer_vence
   let timerVence: Date | null = null;
   if (transicion.etapa_destino?.timer_horas) {
@@ -68,12 +73,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   // Ejecutar en transacción
   const [opActualizada] = await prisma.$transaction(async (tx) => {
+    const deactivate = transicion.devuelve_al_pool || esSalidaAutoPool;
     const updated = await tx.oportunidades.update({
       where: { id: Number(id) },
       data: {
-        etapa_id: transicion.devuelve_al_pool ? null : transicion.etapa_destino_id,
-        activo: !transicion.devuelve_al_pool,
-        timer_vence: timerVence,
+        etapa_id: deactivate ? null : transicion.etapa_destino_id,
+        activo: !deactivate,
+        timer_vence: deactivate ? null : timerVence,
         ...(esVenta && num_operacion && { num_operacion }),
         ...(esVenta && { venta_validada: false }),
       },
@@ -86,6 +92,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         usuario_id: userId,
         tipo: canal ? canal : "CAMBIO_ETAPA",
         etapa_anterior_id: op.etapa_id,
+        // Para salidas auto-pool: preservar la etapa destino en historial como razón de salida
         etapa_nueva_id: transicion.devuelve_al_pool ? null : transicion.etapa_destino_id,
         canal: canal ?? null,
         nota: nota ?? null,
@@ -109,6 +116,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   return NextResponse.json({
     oportunidad: opActualizada,
     confetti: esVenta,
-    devuelta_al_pool: transicion.devuelve_al_pool,
+    devuelta_al_pool: transicion.devuelve_al_pool || esSalidaAutoPool,
   });
 }
