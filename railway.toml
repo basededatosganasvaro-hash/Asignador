@@ -3,7 +3,7 @@ builder = "NIXPACKS"
 buildCommand = "npm run build"
 
 [deploy]
-startCommand = "node .next/standalone/server.js"
+startCommand = "cp -r .next/static .next/standalone/.next/static && cp -r public .next/standalone/public && HOSTNAME=0.0.0.0 node .next/standalone/server.js"
 healthcheckPath = "/login"
 healthcheckTimeout = 60
 restartPolicyType = "ON_FAILURE"
