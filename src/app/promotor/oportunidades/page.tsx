@@ -5,14 +5,15 @@ import {
   Box, Typography, Chip, CircularProgress, Alert, Stack,
   MenuItem, Select, FormControl, InputLabel, Switch,
   FormControlLabel, IconButton, Tooltip, Collapse, Button,
-  Tabs, Tab, Card, Dialog, DialogTitle, DialogContent,
-  DialogActions, TextField, Snackbar,
+  Card, Dialog, DialogTitle, DialogContent, DialogActions,
+  TextField, Snackbar, Paper,
 } from "@mui/material";
 import { DataGrid, GridColDef } from "@mui/x-data-grid";
 import FilterListIcon from "@mui/icons-material/FilterList";
 import FilterListOffIcon from "@mui/icons-material/FilterListOff";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import PhoneIcon from "@mui/icons-material/Phone";
+import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 
 interface Oportunidad {
   id: number;
@@ -29,6 +30,14 @@ interface Oportunidad {
   created_at: string;
 }
 
+interface Etapa {
+  id: number;
+  nombre: string;
+  orden: number;
+  tipo: string;
+  color: string;
+}
+
 interface Transicion {
   id: number;
   nombre_accion: string;
@@ -37,8 +46,6 @@ interface Transicion {
   devuelve_al_pool: boolean;
   etapa_destino: { id: number; nombre: string; color: string; tipo: string } | null;
 }
-
-const TIPO_ORDER = ["INICIO", "SEGUIMIENTO", "SALIDA", "FINAL"];
 
 const FILTROS_VACIOS = {
   tipoCliente: "", convenio: "", estado: "", municipio: "", soloConTel: false,
@@ -55,16 +62,21 @@ const DIALOG_INIT = {
 export default function OportunidadesPage() {
   const router = useRouter();
   const [rows, setRows] = useState<Oportunidad[]>([]);
+  const [etapas, setEtapas] = useState<Etapa[]>([]);
   const [loading, setLoading] = useState(true);
-  const [tabActivo, setTabActivo] = useState<string>("__todas__");
+  const [etapaFiltro, setEtapaFiltro] = useState("");
   const [filtros, setFiltros] = useState(FILTROS_VACIOS);
   const [showFiltros, setShowFiltros] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" as "success" | "error" });
   const [td, setTd] = useState(DIALOG_INIT);
 
   const fetchData = useCallback(async () => {
-    const res = await fetch("/api/oportunidades");
-    setRows(await res.json());
+    const [resOps, resEtapas] = await Promise.all([
+      fetch("/api/oportunidades"),
+      fetch("/api/embudo/etapas"),
+    ]);
+    setRows(await resOps.json());
+    setEtapas(await resEtapas.json());
     setLoading(false);
   }, []);
 
@@ -73,19 +85,19 @@ export default function OportunidadesPage() {
   const setFiltro = (key: keyof typeof FILTROS_VACIOS, value: string | boolean) =>
     setFiltros((p) => ({ ...p, [key]: value }));
 
-  // Etapas únicas ordenadas por posición en el embudo
-  const etapasOrdenadas = useMemo(() => {
-    const map = new Map<string, { nombre: string; tipo: string; color: string; count: number }>();
+  // Conteo por etapa
+  const conteoPorEtapa = useMemo(() => {
+    const map: Record<string, number> = {};
     rows.forEach((r) => {
-      if (!r.etapa) return;
-      const e = map.get(r.etapa.nombre);
-      if (!e) map.set(r.etapa.nombre, { ...r.etapa, count: 1 });
-      else e.count++;
+      const nombre = r.etapa?.nombre ?? "__sin_etapa__";
+      map[nombre] = (map[nombre] || 0) + 1;
     });
-    return Array.from(map.values()).sort(
-      (a, b) => TIPO_ORDER.indexOf(a.tipo) - TIPO_ORDER.indexOf(b.tipo) || a.nombre.localeCompare(b.nombre)
-    );
+    return map;
   }, [rows]);
+
+  // Separar etapas de avance y salida/final
+  const etapasAvance = useMemo(() => etapas.filter((e) => e.tipo === "AVANCE" || (e.tipo === "FINAL" && e.nombre === "Venta")), [etapas]);
+  const etapasSalida = useMemo(() => etapas.filter((e) => e.tipo === "SALIDA" || (e.tipo === "FINAL" && e.nombre !== "Venta")), [etapas]);
 
   const opts = useMemo(() => ({
     tiposCliente: Array.from(new Set(rows.map((r) => r.tipo_cliente).filter((v) => v && v !== "—"))).sort(),
@@ -98,18 +110,18 @@ export default function OportunidadesPage() {
   }), [rows, filtros.estado]);
 
   const filtered = useMemo(() => rows.filter((r) => {
-    if (tabActivo !== "__todas__" && r.etapa?.nombre !== tabActivo) return false;
+    if (etapaFiltro && r.etapa?.nombre !== etapaFiltro) return false;
     if (filtros.tipoCliente && r.tipo_cliente !== filtros.tipoCliente) return false;
     if (filtros.convenio && r.convenio !== filtros.convenio) return false;
     if (filtros.estado && r.estado !== filtros.estado) return false;
     if (filtros.municipio && r.municipio !== filtros.municipio) return false;
     if (filtros.soloConTel && !r.tel_1) return false;
     return true;
-  }), [rows, tabActivo, filtros]);
+  }), [rows, etapaFiltro, filtros]);
 
   const hayFiltros = Object.values(filtros).some((v) => v !== "" && v !== false);
 
-  // — Transición: abrir dialog —
+  // — Transiciones —
   const openTransDialog = async (opId: number) => {
     setTd({ ...DIALOG_INIT, open: true, opId, loadingTrans: true });
     const res = await fetch(`/api/oportunidades/${opId}`);
@@ -150,7 +162,7 @@ export default function OportunidadesPage() {
       fetchData();
     } else {
       const err = await res.json();
-      setSnackbar({ open: true, message: err.error || "Error al ejecutar", severity: "error" });
+      setSnackbar({ open: true, message: err.error || "Error", severity: "error" });
     }
   };
 
@@ -159,21 +171,20 @@ export default function OportunidadesPage() {
     || (!!td.selected?.requiere_nota && !td.nota.trim())
     || (esVenta && !td.numOp.trim());
 
+  // — Columnas del DataGrid —
   const columns: GridColDef[] = [
     {
-      field: "nombres", headerName: "Cliente", flex: 1.5, minWidth: 160,
+      field: "nombres", headerName: "Cliente", flex: 1.5, minWidth: 170,
       renderCell: (p) => (
         <Box sx={{ display: "flex", flexDirection: "column", justifyContent: "center", height: "100%" }}>
-          <Typography variant="body2" fontWeight={500} noWrap>{p.value}</Typography>
+          <Typography variant="body2" fontWeight={600} noWrap>{p.value}</Typography>
           <Typography variant="caption" color="text.secondary" noWrap>{p.row.tipo_cliente}</Typography>
         </Box>
       ),
     },
     {
       field: "convenio", headerName: "Convenio", flex: 1, minWidth: 130,
-      renderCell: (p) => (
-        <Typography variant="body2" noWrap sx={{ alignSelf: "center" }}>{p.value}</Typography>
-      ),
+      renderCell: (p) => <Typography variant="body2" noWrap>{p.value}</Typography>,
     },
     {
       field: "estado", headerName: "Ubicación", width: 165,
@@ -193,7 +204,7 @@ export default function OportunidadesPage() {
             <Typography variant="body2">{p.value}</Typography>
           </Box>
         )
-        : <Typography variant="body2" color="text.disabled" sx={{ alignSelf: "center" }}>Sin teléfono</Typography>,
+        : <Typography variant="body2" color="text.disabled">Sin teléfono</Typography>,
     },
     {
       field: "etapa", headerName: "Etapa", width: 155, sortable: false,
@@ -201,17 +212,14 @@ export default function OportunidadesPage() {
         const etapa = p.row.etapa;
         if (!etapa) return <Chip label="Sin etapa" size="small" />;
         return (
-          <Tooltip title="Clic para cambiar etapa" placement="top">
+          <Tooltip title="Cambiar etapa" placement="top">
             <Chip
               label={etapa.nombre}
               size="small"
               onClick={(e) => { e.stopPropagation(); openTransDialog(p.row.id); }}
               sx={{
-                bgcolor: etapa.color,
-                color: "white",
-                fontWeight: 600,
+                bgcolor: etapa.color, color: "white", fontWeight: 600,
                 cursor: "pointer",
-                alignSelf: "center",
                 "&:hover": { opacity: 0.82, transform: "scale(1.04)" },
                 transition: "all 0.15s ease",
               }}
@@ -228,7 +236,7 @@ export default function OportunidadesPage() {
           variant="outlined"
           startIcon={<VisibilityIcon sx={{ fontSize: "14px !important" }} />}
           onClick={(e) => { e.stopPropagation(); router.push(`/promotor/oportunidades/${p.row.id}`); }}
-          sx={{ minWidth: 0, px: 1.5, py: 0.5, fontSize: 12, alignSelf: "center" }}
+          sx={{ minWidth: 0, px: 1.5, py: 0.5, fontSize: 12 }}
         >
           Ver
         </Button>
@@ -237,33 +245,17 @@ export default function OportunidadesPage() {
   ];
 
   if (loading) return (
-    <Box sx={{ display: "flex", justifyContent: "center", mt: 8 }}>
-      <CircularProgress />
-    </Box>
+    <Box sx={{ display: "flex", justifyContent: "center", mt: 8 }}><CircularProgress /></Box>
   );
 
   return (
     <Box>
       {/* Header */}
-      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", mb: 3 }}>
-        <Box>
-          <Typography variant="h4">Mis Oportunidades</Typography>
-          <Typography variant="body2" color="text.secondary">
-            {rows.length} oportunidades activas
-          </Typography>
-        </Box>
-        <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
-          {hayFiltros && (
-            <Button size="small" onClick={() => setFiltros(FILTROS_VACIOS)} startIcon={<FilterListOffIcon />}>
-              Limpiar filtros
-            </Button>
-          )}
-          <Tooltip title="Filtros adicionales">
-            <IconButton onClick={() => setShowFiltros((p) => !p)} color={showFiltros ? "primary" : "default"}>
-              <FilterListIcon />
-            </IconButton>
-          </Tooltip>
-        </Box>
+      <Box sx={{ mb: 3 }}>
+        <Typography variant="h4" fontWeight={700}>Mis Oportunidades</Typography>
+        <Typography variant="body2" color="text.secondary">
+          {rows.length} oportunidades activas
+        </Typography>
       </Box>
 
       {rows.length === 0 ? (
@@ -271,140 +263,270 @@ export default function OportunidadesPage() {
           No tienes oportunidades activas. Solicita una asignación desde el Dashboard.
         </Alert>
       ) : (
-        <Card elevation={0} sx={{ border: "1px solid", borderColor: "divider", borderRadius: 3, overflow: "hidden" }}>
-
-          {/* Filtros adicionales (colapsables) */}
-          <Collapse in={showFiltros}>
-            <Box sx={{
-              display: "flex", flexWrap: "wrap", gap: 1.5, p: 2,
-              bgcolor: "grey.50", borderBottom: "1px solid", borderColor: "divider",
-            }}>
-              <FormControl size="small" sx={{ minWidth: 160 }}>
-                <InputLabel shrink>Tipo de cliente</InputLabel>
-                <Select value={filtros.tipoCliente} label="Tipo de cliente" notched displayEmpty
-                  onChange={(e) => setFiltro("tipoCliente", e.target.value)}>
-                  <MenuItem value=""><em>Todos</em></MenuItem>
-                  {opts.tiposCliente.map((v) => <MenuItem key={v} value={v}>{v}</MenuItem>)}
-                </Select>
-              </FormControl>
-
-              <FormControl size="small" sx={{ minWidth: 190 }}>
-                <InputLabel shrink>Convenio</InputLabel>
-                <Select value={filtros.convenio} label="Convenio" notched displayEmpty
-                  onChange={(e) => setFiltro("convenio", e.target.value)}>
-                  <MenuItem value=""><em>Todos</em></MenuItem>
-                  {opts.convenios.map((v) => <MenuItem key={v} value={v}>{v}</MenuItem>)}
-                </Select>
-              </FormControl>
-
-              <FormControl size="small" sx={{ minWidth: 140 }}>
-                <InputLabel shrink>Estado</InputLabel>
-                <Select value={filtros.estado} label="Estado" notched displayEmpty
-                  onChange={(e) => { setFiltro("estado", e.target.value); setFiltro("municipio", ""); }}>
-                  <MenuItem value=""><em>Todos</em></MenuItem>
-                  {opts.estados.map((v) => <MenuItem key={v} value={v}>{v}</MenuItem>)}
-                </Select>
-              </FormControl>
-
-              <FormControl size="small" sx={{ minWidth: 150 }} disabled={!filtros.estado}>
-                <InputLabel shrink>Municipio</InputLabel>
-                <Select value={filtros.municipio} label="Municipio" notched displayEmpty
-                  onChange={(e) => setFiltro("municipio", e.target.value)}>
-                  <MenuItem value=""><em>Todos</em></MenuItem>
-                  {opts.municipios.map((v) => <MenuItem key={v} value={v}>{v}</MenuItem>)}
-                </Select>
-              </FormControl>
-
-              <FormControlLabel
-                control={<Switch checked={filtros.soloConTel} onChange={(e) => setFiltro("soloConTel", e.target.checked)} size="small" />}
-                label="Solo con teléfono"
-                sx={{ ml: 0.5 }}
-              />
+        <>
+          {/* ═══════ EMBUDO VISUAL ═══════ */}
+          <Card
+            elevation={0}
+            sx={{
+              mb: 3, borderRadius: 3, overflow: "hidden",
+              border: "1px solid", borderColor: "divider",
+              background: "linear-gradient(135deg, #fafbfc 0%, #f0f4f8 100%)",
+            }}
+          >
+            <Box sx={{ px: 3, pt: 2.5, pb: 1 }}>
+              <Typography variant="overline" color="text.secondary" fontWeight={700} letterSpacing={1.5}>
+                Embudo de ventas
+              </Typography>
             </Box>
-          </Collapse>
 
-          {/* Tabs del embudo */}
-          <Box sx={{ borderBottom: "1px solid", borderColor: "divider", bgcolor: "background.paper" }}>
-            <Tabs
-              value={tabActivo}
-              onChange={(_, v) => setTabActivo(v)}
-              variant="scrollable"
-              scrollButtons="auto"
-              sx={{ px: 2, minHeight: 48 }}
-            >
-              <Tab
-                value="__todas__"
-                label={
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                    <span>Todas</span>
-                    <Chip
-                      label={rows.length}
-                      size="small"
-                      sx={{ height: 18, minWidth: 24, fontSize: 11, bgcolor: "grey.200", color: "text.primary" }}
-                    />
-                  </Box>
-                }
-                sx={{ minHeight: 48, textTransform: "none", fontSize: 14 }}
-              />
-              {etapasOrdenadas.map((e) => (
-                <Tab
-                  key={e.nombre}
-                  value={e.nombre}
-                  label={
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                      <span>{e.nombre}</span>
-                      <Chip
-                        label={e.count}
-                        size="small"
-                        sx={{ height: 18, minWidth: 24, fontSize: 11, bgcolor: e.color, color: "white" }}
-                      />
-                    </Box>
-                  }
-                  sx={{ minHeight: 48, textTransform: "none", fontSize: 14 }}
-                />
-              ))}
-            </Tabs>
-          </Box>
-
-          {/* Contenido de la tab activa */}
-          {filtered.length === 0 ? (
-            <Box sx={{ textAlign: "center", py: 8, color: "text.secondary" }}>
-              <Typography variant="body1">Sin oportunidades en esta etapa</Typography>
-            </Box>
-          ) : (
-            <DataGrid
-              rows={filtered}
-              columns={columns}
-              pageSizeOptions={[25, 50, 100]}
-              initialState={{ pagination: { paginationModel: { pageSize: 25 } } }}
-              disableRowSelectionOnClick
-              autoHeight
-              rowHeight={56}
+            {/* Pipeline principal (AVANCE + Venta) */}
+            <Box
               sx={{
-                border: "none",
-                "& .MuiDataGrid-columnHeader": {
-                  bgcolor: "grey.50",
-                  fontSize: 11,
-                  fontWeight: 700,
-                  color: "text.secondary",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.05em",
-                },
-                "& .MuiDataGrid-row:hover": { bgcolor: "action.hover" },
-                "& .MuiDataGrid-cell": {
-                  borderColor: "grey.100",
-                  display: "flex",
-                  alignItems: "center",
-                },
-                "& .MuiDataGrid-footerContainer": { borderColor: "grey.100" },
-                "& .MuiDataGrid-columnSeparator": { color: "grey.200" },
+                display: "flex", alignItems: "center", gap: 0.5,
+                px: 3, pb: 2, overflowX: "auto",
+                "&::-webkit-scrollbar": { height: 4 },
+                "&::-webkit-scrollbar-thumb": { bgcolor: "grey.300", borderRadius: 2 },
               }}
-            />
-          )}
-        </Card>
+            >
+              {etapasAvance.map((e, i) => {
+                const count = conteoPorEtapa[e.nombre] || 0;
+                const isSelected = etapaFiltro === e.nombre;
+                return (
+                  <Box key={e.id} sx={{ display: "flex", alignItems: "center" }}>
+                    {i > 0 && (
+                      <ChevronRightIcon sx={{ color: "grey.400", fontSize: 20, mx: 0.3, flexShrink: 0 }} />
+                    )}
+                    <Paper
+                      elevation={isSelected ? 4 : 0}
+                      onClick={() => setEtapaFiltro(isSelected ? "" : e.nombre)}
+                      sx={{
+                        px: 2.5, py: 1.5, textAlign: "center", cursor: "pointer",
+                        minWidth: 110, borderRadius: 2.5,
+                        bgcolor: isSelected ? e.color : "background.paper",
+                        color: isSelected ? "white" : "text.primary",
+                        border: "2px solid",
+                        borderColor: isSelected ? e.color : count > 0 ? e.color : "grey.200",
+                        "&:hover": {
+                          bgcolor: isSelected ? e.color : `${e.color}15`,
+                          borderColor: e.color,
+                          transform: "translateY(-2px)",
+                          boxShadow: 3,
+                        },
+                        transition: "all 0.2s ease",
+                        position: "relative",
+                      }}
+                    >
+                      <Typography
+                        variant="h4"
+                        fontWeight={800}
+                        sx={{ lineHeight: 1.1, color: isSelected ? "white" : e.color }}
+                      >
+                        {count}
+                      </Typography>
+                      <Typography
+                        variant="caption"
+                        fontWeight={600}
+                        sx={{
+                          mt: 0.3,
+                          display: "block",
+                          color: isSelected ? "rgba(255,255,255,0.9)" : "text.secondary",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {e.nombre}
+                      </Typography>
+                    </Paper>
+                  </Box>
+                );
+              })}
+            </Box>
+
+            {/* Etapas de salida */}
+            {etapasSalida.length > 0 && (
+              <Box
+                sx={{
+                  display: "flex", gap: 1, px: 3, pb: 2, pt: 0.5,
+                  flexWrap: "wrap", borderTop: "1px solid", borderColor: "divider",
+                  bgcolor: "rgba(0,0,0,0.015)",
+                }}
+              >
+                <Typography variant="caption" color="text.disabled" sx={{ alignSelf: "center", mr: 0.5 }}>
+                  Salidas:
+                </Typography>
+                {etapasSalida.map((e) => {
+                  const count = conteoPorEtapa[e.nombre] || 0;
+                  const isSelected = etapaFiltro === e.nombre;
+                  return (
+                    <Chip
+                      key={e.id}
+                      label={`${e.nombre} (${count})`}
+                      size="small"
+                      onClick={() => setEtapaFiltro(isSelected ? "" : e.nombre)}
+                      sx={{
+                        fontWeight: 600, fontSize: 11, cursor: "pointer",
+                        bgcolor: isSelected ? e.color : "transparent",
+                        color: isSelected ? "white" : count > 0 ? e.color : "text.disabled",
+                        border: "1px solid",
+                        borderColor: isSelected ? e.color : count > 0 ? e.color : "grey.300",
+                        "&:hover": {
+                          bgcolor: isSelected ? e.color : `${e.color}20`,
+                          borderColor: e.color,
+                        },
+                        transition: "all 0.15s",
+                      }}
+                    />
+                  );
+                })}
+              </Box>
+            )}
+          </Card>
+
+          {/* ═══════ FILTROS + GRID ═══════ */}
+          <Card elevation={0} sx={{ border: "1px solid", borderColor: "divider", borderRadius: 3, overflow: "hidden" }}>
+
+            {/* Barra de filtros */}
+            <Box
+              sx={{
+                display: "flex", alignItems: "center", gap: 2, flexWrap: "wrap",
+                px: 2.5, py: 1.5, bgcolor: "grey.50",
+                borderBottom: "1px solid", borderColor: "divider",
+              }}
+            >
+              <FormControl size="small" sx={{ minWidth: 200 }}>
+                <InputLabel shrink>Etapa</InputLabel>
+                <Select
+                  value={etapaFiltro}
+                  label="Etapa"
+                  notched
+                  displayEmpty
+                  onChange={(e) => setEtapaFiltro(e.target.value)}
+                >
+                  <MenuItem value="">
+                    <em>Todas las etapas ({rows.length})</em>
+                  </MenuItem>
+                  {etapas.map((e) => (
+                    <MenuItem key={e.id} value={e.nombre}>
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 1, width: "100%" }}>
+                        <Box sx={{ width: 10, height: 10, borderRadius: "50%", bgcolor: e.color, flexShrink: 0 }} />
+                        <Typography variant="body2">{e.nombre}</Typography>
+                        <Typography variant="caption" color="text.secondary" sx={{ ml: "auto" }}>
+                          {conteoPorEtapa[e.nombre] || 0}
+                        </Typography>
+                      </Box>
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
+              <Typography variant="body2" color="text.secondary" sx={{ flex: 1 }}>
+                {filtered.length} resultado{filtered.length !== 1 ? "s" : ""}
+              </Typography>
+
+              {hayFiltros && (
+                <Button size="small" onClick={() => setFiltros(FILTROS_VACIOS)} startIcon={<FilterListOffIcon />}>
+                  Limpiar
+                </Button>
+              )}
+              <Tooltip title="Más filtros">
+                <IconButton
+                  size="small"
+                  onClick={() => setShowFiltros((p) => !p)}
+                  color={showFiltros ? "primary" : "default"}
+                >
+                  <FilterListIcon />
+                </IconButton>
+              </Tooltip>
+            </Box>
+
+            {/* Filtros avanzados (colapsables) */}
+            <Collapse in={showFiltros}>
+              <Box sx={{
+                display: "flex", flexWrap: "wrap", gap: 1.5,
+                p: 2, bgcolor: "grey.50",
+                borderBottom: "1px solid", borderColor: "divider",
+              }}>
+                <FormControl size="small" sx={{ minWidth: 160 }}>
+                  <InputLabel shrink>Tipo de cliente</InputLabel>
+                  <Select value={filtros.tipoCliente} label="Tipo de cliente" notched displayEmpty
+                    onChange={(e) => setFiltro("tipoCliente", e.target.value)}>
+                    <MenuItem value=""><em>Todos</em></MenuItem>
+                    {opts.tiposCliente.map((v) => <MenuItem key={v} value={v}>{v}</MenuItem>)}
+                  </Select>
+                </FormControl>
+
+                <FormControl size="small" sx={{ minWidth: 190 }}>
+                  <InputLabel shrink>Convenio</InputLabel>
+                  <Select value={filtros.convenio} label="Convenio" notched displayEmpty
+                    onChange={(e) => setFiltro("convenio", e.target.value)}>
+                    <MenuItem value=""><em>Todos</em></MenuItem>
+                    {opts.convenios.map((v) => <MenuItem key={v} value={v}>{v}</MenuItem>)}
+                  </Select>
+                </FormControl>
+
+                <FormControl size="small" sx={{ minWidth: 140 }}>
+                  <InputLabel shrink>Estado</InputLabel>
+                  <Select value={filtros.estado} label="Estado" notched displayEmpty
+                    onChange={(e) => { setFiltro("estado", e.target.value); setFiltro("municipio", ""); }}>
+                    <MenuItem value=""><em>Todos</em></MenuItem>
+                    {opts.estados.map((v) => <MenuItem key={v} value={v}>{v}</MenuItem>)}
+                  </Select>
+                </FormControl>
+
+                <FormControl size="small" sx={{ minWidth: 150 }} disabled={!filtros.estado}>
+                  <InputLabel shrink>Municipio</InputLabel>
+                  <Select value={filtros.municipio} label="Municipio" notched displayEmpty
+                    onChange={(e) => setFiltro("municipio", e.target.value)}>
+                    <MenuItem value=""><em>Todos</em></MenuItem>
+                    {opts.municipios.map((v) => <MenuItem key={v} value={v}>{v}</MenuItem>)}
+                  </Select>
+                </FormControl>
+
+                <FormControlLabel
+                  control={<Switch checked={filtros.soloConTel} onChange={(e) => setFiltro("soloConTel", e.target.checked)} size="small" />}
+                  label="Solo con teléfono"
+                  sx={{ ml: 0.5 }}
+                />
+              </Box>
+            </Collapse>
+
+            {/* DataGrid */}
+            {filtered.length === 0 ? (
+              <Box sx={{ textAlign: "center", py: 8, color: "text.secondary" }}>
+                <Typography>Sin oportunidades en esta etapa</Typography>
+              </Box>
+            ) : (
+              <DataGrid
+                rows={filtered}
+                columns={columns}
+                pageSizeOptions={[25, 50, 100]}
+                initialState={{ pagination: { paginationModel: { pageSize: 25 } } }}
+                disableRowSelectionOnClick
+                autoHeight
+                rowHeight={56}
+                sx={{
+                  border: "none",
+                  "& .MuiDataGrid-columnHeader": {
+                    bgcolor: "background.paper",
+                    fontSize: 11, fontWeight: 700,
+                    color: "text.secondary",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.05em",
+                  },
+                  "& .MuiDataGrid-row:hover": { bgcolor: "action.hover" },
+                  "& .MuiDataGrid-cell": {
+                    borderColor: "grey.100",
+                    display: "flex", alignItems: "center",
+                  },
+                  "& .MuiDataGrid-footerContainer": { borderColor: "grey.100" },
+                  "& .MuiDataGrid-columnSeparator": { color: "grey.200" },
+                }}
+              />
+            )}
+          </Card>
+        </>
       )}
 
-      {/* Dialog: cambiar etapa */}
+      {/* ═══════ DIALOG TRANSICIONES ═══════ */}
       <Dialog
         open={td.open}
         onClose={() => setTd(DIALOG_INIT)}
@@ -435,11 +557,8 @@ export default function OportunidadesPage() {
                       onClick={() => selectTransicion(t)}
                       color={t.devuelve_al_pool ? "error" : t.etapa_destino?.tipo === "FINAL" ? "success" : "primary"}
                       sx={{
-                        justifyContent: "flex-start",
-                        textTransform: "none",
-                        py: 1.2,
-                        px: 2,
-                        borderRadius: 2,
+                        justifyContent: "flex-start", textTransform: "none",
+                        py: 1.2, px: 2, borderRadius: 2,
                       }}
                     >
                       <Box sx={{ flex: 1, textAlign: "left" }}>
@@ -518,11 +637,7 @@ export default function OportunidadesPage() {
         )}
       </Dialog>
 
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={3000}
-        onClose={() => setSnackbar((p) => ({ ...p, open: false }))}
-      >
+      <Snackbar open={snackbar.open} autoHideDuration={3000} onClose={() => setSnackbar((p) => ({ ...p, open: false }))}>
         <Alert severity={snackbar.severity} variant="filled">{snackbar.message}</Alert>
       </Snackbar>
     </Box>
