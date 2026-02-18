@@ -11,6 +11,9 @@ const ORIGENES = [
   { value: "CAMBACEO", label: "Cambaceo" },
   { value: "REFERIDO", label: "Referido" },
   { value: "REDES_SOCIALES", label: "Redes sociales" },
+  { value: "MMP_PROSPECCION", label: "MMP Prospección" },
+  { value: "CCC", label: "CCC" },
+  { value: "EXCEL", label: "Excel" },
   { value: "OTRO", label: "Otro" },
 ];
 

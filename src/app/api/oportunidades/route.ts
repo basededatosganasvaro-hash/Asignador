@@ -23,12 +23,12 @@ export async function GET() {
   // Fetch client names from BD Clientes (solo para los que tienen cliente_id)
   const clienteIds = oportunidades.map((o) => o.cliente_id).filter((id): id is number => id !== null);
 
-  const clienteMap: Record<number, { id: number; nombres: string | null; convenio: string | null; estado: string | null; municipio: string | null }> = {};
+  const clienteMap: Record<number, { id: number; nombres: string | null; convenio: string | null; estado: string | null; municipio: string | null; tipo_cliente: string | null }> = {};
 
   if (clienteIds.length > 0) {
     const clientes = await prismaClientes.clientes.findMany({
       where: { id: { in: clienteIds } },
-      select: { id: true, nombres: true, convenio: true, estado: true, municipio: true },
+      select: { id: true, nombres: true, convenio: true, estado: true, municipio: true, tipo_cliente: true },
     });
     for (const c of clientes) clienteMap[c.id] = c;
   }
@@ -55,6 +55,7 @@ export async function GET() {
         convenio: cliente?.convenio ?? "—",
         estado: cliente?.estado ?? "—",
         municipio: cliente?.municipio ?? "—",
+        tipo_cliente: cliente?.tipo_cliente ?? "—",
         tel_1: tel1Map[op.cliente_id] ?? null,
         etapa: op.etapa,
         timer_vence: op.timer_vence,
@@ -74,6 +75,7 @@ export async function GET() {
         convenio: op.captacion?.convenio ?? "—",
         estado: datos.estado ?? "—",
         municipio: datos.municipio ?? "—",
+        tipo_cliente: "Captado",
         tel_1: datos.tel_1 ?? null,
         etapa: op.etapa,
         timer_vence: op.timer_vence,
