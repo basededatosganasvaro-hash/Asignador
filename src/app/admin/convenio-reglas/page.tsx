@@ -152,12 +152,13 @@ export default function ConvenioReglasPage() {
 
       <Box sx={{ mb: 2, maxWidth: 400 }}>
         <FormControl fullWidth size="small">
-          <InputLabel>Filtrar por convenio</InputLabel>
+          <InputLabel shrink>Filtrar por convenio</InputLabel>
           <Select
             value={filtroConvenio}
             label="Filtrar por convenio"
             onChange={(e) => setFiltroConvenio(e.target.value)}
             displayEmpty
+            notched
           >
             <MenuItem value=""><em>Todos los convenios</em></MenuItem>
             {convenios.map((c) => (
