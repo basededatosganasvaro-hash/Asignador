@@ -12,6 +12,9 @@
     "prisma:push": "prisma db push --schema=prisma/schema.prisma",
     "prisma:push-clientes": "prisma db push --schema=prisma/schema-clientes.prisma"
   },
+  "engines": {
+    "node": ">=20.9.0"
+  },
   "prisma": {
     "seed": "npx tsx prisma/seed.ts"
   },
