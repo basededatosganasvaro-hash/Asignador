@@ -19,6 +19,28 @@ export async function requireAdmin() {
   return { session: session!, error: null };
 }
 
+export async function requireSupervisorOrAdmin() {
+  const { session, error } = await getSessionOrError();
+  if (error) return { session: null, error };
+  const rol = session!.user.rol;
+  if (rol !== "admin" && rol !== "supervisor") {
+    return { session: null, error: NextResponse.json({ error: "Acceso denegado" }, { status: 403 }) };
+  }
+  return { session: session!, error: null };
+}
+
+export async function requireGestion() {
+  // Roles que pueden gestionar: admin, gerente_regional, gerente_sucursal, supervisor
+  const { session, error } = await getSessionOrError();
+  if (error) return { session: null, error };
+  const rol = session!.user.rol;
+  const rolesGestion = ["admin", "gerente_regional", "gerente_sucursal", "supervisor"];
+  if (!rolesGestion.includes(rol)) {
+    return { session: null, error: NextResponse.json({ error: "Acceso denegado" }, { status: 403 }) };
+  }
+  return { session: session!, error: null };
+}
+
 export async function requirePromotor() {
   const { session, error } = await getSessionOrError();
   if (error) return { session: null, error };

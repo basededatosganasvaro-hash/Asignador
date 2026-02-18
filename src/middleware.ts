@@ -2,23 +2,28 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
 
+const ROLES_ADMIN_AREA = ["admin", "gerente_regional", "gerente_sucursal", "supervisor"];
+const ROLES_PROMOTOR_AREA = ["promotor"];
+
 export async function middleware(request: NextRequest) {
   const token = await getToken({ req: request });
   const { pathname } = request.nextUrl;
 
-  // Si no hay token, redirigir a login
   if (!token) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("callbackUrl", pathname);
     return NextResponse.redirect(loginUrl);
   }
 
-  // Verificar acceso por rol
-  if (pathname.startsWith("/admin") && token.rol !== "admin") {
+  const rol = token.rol as string;
+
+  // Area admin: acceso para roles de gestion
+  if (pathname.startsWith("/admin") && !ROLES_ADMIN_AREA.includes(rol)) {
     return NextResponse.redirect(new URL("/promotor", request.url));
   }
 
-  if (pathname.startsWith("/promotor") && token.rol !== "promotor") {
+  // Area promotor: acceso solo para promotores
+  if (pathname.startsWith("/promotor") && !ROLES_PROMOTOR_AREA.includes(rol)) {
     return NextResponse.redirect(new URL("/admin", request.url));
   }
 
@@ -32,5 +37,6 @@ export const config = {
     "/api/admin/:path*",
     "/api/asignaciones/:path*",
     "/api/clientes/:path*",
+    "/api/organizacion/:path*",
   ],
 };

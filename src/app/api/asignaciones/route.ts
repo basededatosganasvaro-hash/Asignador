@@ -1,48 +1,80 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { prismaClientes } from "@/lib/prisma-clientes";
 import { requireAuth } from "@/lib/auth-utils";
 import { Prisma } from "@prisma/client";
 
-// GET: Listar asignaciones del usuario autenticado
+// GET: Listar lotes del usuario autenticado
 export async function GET() {
   const { session, error } = await requireAuth();
   if (error) return error;
 
   const userId = parseInt(session.user.id);
 
-  const asignaciones = await prisma.asignaciones.findMany({
+  const lotes = await prisma.lotes.findMany({
     where: { usuario_id: userId },
     include: {
-      registros: {
-        include: {
-          cliente: {
-            select: { tel_1: true },
-          },
-        },
+      oportunidades: {
+        where: { activo: true },
+        select: { cliente_id: true },
       },
     },
     orderBy: { created_at: "desc" },
   });
 
-  const result = asignaciones.map((a) => {
-    const registrosConTel1 = a.registros.filter(
-      (r) => r.cliente.tel_1 && r.cliente.tel_1.trim() !== ""
-    ).length;
+  // Para cada lote, obtener cuantos clientes tienen tel_1 en datos_contacto o en clientes original
+  const result = await Promise.all(
+    lotes.map(async (lote) => {
+      const clienteIds = lote.oportunidades.map((o) => o.cliente_id);
+      const cantidad = clienteIds.length;
 
-    return {
-      id: a.id,
-      fecha_asignacion: a.fecha_asignacion,
-      cantidad_registros: a.cantidad_registros,
-      estado: a.estado,
-      registros_con_tel1: registrosConTel1,
-      puede_descargar: registrosConTel1 === a.cantidad_registros && a.cantidad_registros > 0,
-    };
-  });
+      if (cantidad === 0) {
+        return {
+          id: lote.id,
+          fecha: lote.fecha,
+          cantidad: lote.cantidad,
+          oportunidades_activas: 0,
+          registros_con_tel1: 0,
+          puede_descargar: false,
+        };
+      }
+
+      // Ediciones de tel_1 en BD Sistema
+      const ediciones = await prisma.datos_contacto.findMany({
+        where: { cliente_id: { in: clienteIds }, campo: "tel_1" },
+        orderBy: { created_at: "desc" },
+      });
+      const tel1Editados = new Set(ediciones.map((e) => e.cliente_id));
+
+      // Clientes con tel_1 original en BD Clientes (los que no tienen edicion)
+      const sinEdicion = clienteIds.filter((id) => !tel1Editados.has(id));
+      let conTel1Original = 0;
+      if (sinEdicion.length > 0) {
+        conTel1Original = await prismaClientes.clientes.count({
+          where: {
+            id: { in: sinEdicion },
+            tel_1: { not: null },
+          },
+        });
+      }
+
+      const registros_con_tel1 = tel1Editados.size + conTel1Original;
+
+      return {
+        id: lote.id,
+        fecha: lote.fecha,
+        cantidad: lote.cantidad,
+        oportunidades_activas: cantidad,
+        registros_con_tel1,
+        puede_descargar: registros_con_tel1 === cantidad && cantidad > 0,
+      };
+    })
+  );
 
   return NextResponse.json(result);
 }
 
-// POST: Solicitar nueva asignacion (lote)
+// POST: Solicitar nuevo lote de asignacion
 export async function POST(request: Request) {
   const { session, error } = await requireAuth();
   if (error) return error;
@@ -54,84 +86,93 @@ export async function POST(request: Request) {
     const body = await request.json();
     cantidad = body.cantidad;
   } catch {
-    // Si no hay body, usamos el maximo
+    // Sin body: usar el maximo disponible
   }
 
   try {
+    // 1. Leer configuracion y calcular cupo restante (BD Sistema)
+    const config = await prisma.configuracion.findUnique({
+      where: { clave: "max_registros_por_dia" },
+    });
+    const maxPerDay = parseInt(config?.valor || "300");
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const lotesHoy = await prisma.lotes.findMany({
+      where: { usuario_id: userId, fecha: { gte: today, lt: tomorrow } },
+      select: { cantidad: true },
+    });
+
+    const asignadosHoy = lotesHoy.reduce((sum, l) => sum + l.cantidad, 0);
+    const remaining = maxPerDay - asignadosHoy;
+
+    if (remaining <= 0) {
+      return NextResponse.json(
+        { error: "Has alcanzado el limite diario de asignaciones" },
+        { status: 409 }
+      );
+    }
+
+    const requested = Math.min(cantidad || remaining, remaining);
+
+    // 2. Obtener cliente_ids ya asignados activamente (BD Sistema)
+    const activas = await prisma.oportunidades.findMany({
+      where: { activo: true },
+      select: { cliente_id: true },
+    });
+    const excludeIds = activas.map((o) => o.cliente_id);
+
+    // 3. Seleccionar clientes del pool en BD Clientes (con lock para concurrencia)
+    let records: { id: number }[];
+    if (excludeIds.length > 0) {
+      records = await prismaClientes.$queryRaw<{ id: number }[]>`
+        SELECT id FROM clientes
+        WHERE id NOT IN (${Prisma.join(excludeIds)})
+        ORDER BY id ASC
+        LIMIT ${requested}
+        FOR UPDATE SKIP LOCKED
+      `;
+    } else {
+      records = await prismaClientes.$queryRaw<{ id: number }[]>`
+        SELECT id FROM clientes
+        ORDER BY id ASC
+        LIMIT ${requested}
+        FOR UPDATE SKIP LOCKED
+      `;
+    }
+
+    if (records.length === 0) {
+      return NextResponse.json(
+        { error: "No hay registros disponibles para asignar" },
+        { status: 404 }
+      );
+    }
+
+    // 4. Crear lote + oportunidades en BD Sistema (transaccion)
     const result = await prisma.$transaction(
       async (tx) => {
-        // 1. Leer configuracion de max registros por dia
-        const config = await tx.configuracion.findUnique({
-          where: { clave: "max_registros_por_dia" },
-        });
-        const maxPerDay = parseInt(config?.valor || "300");
-
-        // 2. Calcular cuantos registros ya se asignaron hoy
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const tomorrow = new Date(today);
-        tomorrow.setDate(tomorrow.getDate() + 1);
-
-        const asignacionesHoy = await tx.asignaciones.findMany({
-          where: {
-            usuario_id: userId,
-            fecha_asignacion: {
-              gte: today,
-              lt: tomorrow,
-            },
-          },
-        });
-
-        const asignadosHoy = asignacionesHoy.reduce(
-          (sum, a) => sum + a.cantidad_registros,
-          0
-        );
-
-        const remaining = maxPerDay - asignadosHoy;
-        if (remaining <= 0) {
-          throw new Error("DAILY_LIMIT_REACHED");
-        }
-
-        const requested = Math.min(cantidad || remaining, remaining);
-
-        // 3. Seleccionar registros no asignados con lock para concurrencia
-        const records: { id: number }[] = await tx.$queryRaw`
-          SELECT c.id FROM clientes c
-          LEFT JOIN asignacion_registros ar ON ar.cliente_id = c.id
-          WHERE ar.id IS NULL
-          ORDER BY c.id ASC
-          LIMIT ${requested}
-          FOR UPDATE OF c SKIP LOCKED
-        `;
-
-        if (records.length === 0) {
-          throw new Error("NO_RECORDS_AVAILABLE");
-        }
-
-        // 4. Crear la asignacion
-        const asignacion = await tx.asignaciones.create({
+        const lote = await tx.lotes.create({
           data: {
             usuario_id: userId,
-            fecha_asignacion: today,
-            cantidad_registros: records.length,
-            estado: "activa",
+            fecha: today,
+            cantidad: records.length,
           },
         });
 
-        // 5. Vincular registros al lote
-        await tx.asignacion_registros.createMany({
+        await tx.oportunidades.createMany({
           data: records.map((r) => ({
-            asignacion_id: asignacion.id,
             cliente_id: r.id,
+            usuario_id: userId,
+            origen: "POOL",
+            lote_id: lote.id,
+            activo: true,
           })),
         });
 
-        return {
-          id: asignacion.id,
-          fecha_asignacion: asignacion.fecha_asignacion,
-          cantidad_registros: records.length,
-          estado: asignacion.estado,
-        };
+        return lote;
       },
       {
         isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
@@ -139,25 +180,12 @@ export async function POST(request: Request) {
       }
     );
 
-    return NextResponse.json(result, { status: 201 });
+    return NextResponse.json(
+      { id: result.id, fecha: result.fecha, cantidad: records.length },
+      { status: 201 }
+    );
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Error desconocido";
-
-    if (message === "DAILY_LIMIT_REACHED") {
-      return NextResponse.json(
-        { error: "Has alcanzado el limite diario de asignaciones" },
-        { status: 409 }
-      );
-    }
-
-    if (message === "NO_RECORDS_AVAILABLE") {
-      return NextResponse.json(
-        { error: "No hay registros disponibles para asignar" },
-        { status: 404 }
-      );
-    }
-
-    console.error("Error al crear asignacion:", err);
+    console.error("Error al crear lote:", err);
     return NextResponse.json(
       { error: "Error al crear la asignacion" },
       { status: 500 }

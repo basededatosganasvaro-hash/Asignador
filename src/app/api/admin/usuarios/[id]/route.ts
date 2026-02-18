@@ -21,6 +21,12 @@ export async function GET(
       rol: true,
       activo: true,
       created_at: true,
+      equipo_id: true,
+      sucursal_id: true,
+      region_id: true,
+      equipo: { select: { id: true, nombre: true } },
+      sucursal: { select: { id: true, nombre: true } },
+      region: { select: { id: true, nombre: true } },
     },
   });
 
@@ -50,10 +56,13 @@ export async function PUT(
   }
 
   const data: Record<string, unknown> = {};
-  if (parsed.data.nombre) data.nombre = parsed.data.nombre;
-  if (parsed.data.email) data.email = parsed.data.email;
-  if (parsed.data.rol) data.rol = parsed.data.rol;
+  if (parsed.data.nombre !== undefined) data.nombre = parsed.data.nombre;
+  if (parsed.data.email !== undefined) data.email = parsed.data.email;
+  if (parsed.data.rol !== undefined) data.rol = parsed.data.rol;
   if (parsed.data.activo !== undefined) data.activo = parsed.data.activo;
+  if (parsed.data.equipo_id !== undefined) data.equipo_id = parsed.data.equipo_id;
+  if (parsed.data.sucursal_id !== undefined) data.sucursal_id = parsed.data.sucursal_id;
+  if (parsed.data.region_id !== undefined) data.region_id = parsed.data.region_id;
   if (parsed.data.password) {
     data.password_hash = await bcrypt.hash(parsed.data.password, 10);
   }
@@ -68,6 +77,9 @@ export async function PUT(
       rol: true,
       activo: true,
       created_at: true,
+      equipo_id: true,
+      sucursal_id: true,
+      region_id: true,
     },
   });
 

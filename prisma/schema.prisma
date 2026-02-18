@@ -4,151 +4,174 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+  url      = env("DATABASE_SISTEMA_URL")
 }
 
 // =============================================
-// TABLAS EXISTENTES (introspectadas de Railway)
+// ORGANIZACION
 // =============================================
 
-model clientes {
-  id                    Int       @id @default(autoincrement())
-  tipo_cliente          String    @db.VarChar(100)
-  fecha_carga           DateTime? @db.Timestamp()
-  archivo_origen        String?   @db.VarChar(500)
+model regiones {
+  id         Int        @id @default(autoincrement())
+  nombre     String     @db.VarChar(200)
+  activo     Boolean    @default(true)
+  created_at DateTime   @default(now())
 
-  // Identificacion
-  nss                   String?
-  a_paterno             String?
-  a_materno             String?
-  nombres               String?
-  curp                  String?
-  rfc                   String?
-
-  // Datos personales
-  edad                  String?
-  genero                String?
-  tipo_pension          String?
-  mes_pension           String?
-  anio_pension          String?
-
-  // Ubicacion
-  umf_delegacion        String?
-  calle_num             String?
-  colonia               String?
-  domicilio_pensionados String?
-  region                String?
-  estado                String?
-  municipio             String?
-  cp                    String?
-
-  // Contacto
-  tel_1                 String?
-  tipo_1                String?
-  tel_2                 String?
-  tipo_2                String?
-  tel_3                 String?
-  tipo_3                String?
-  tel_4                 String?
-  tipo_4                String?
-  tel_5                 String?
-  tipo_5                String?
-  direccion_email       String?
-
-  // Financieras
-  creditos_actuales     String?
-  tipo_mercado          String?
-  tipo_cliente_original String?
-  tipo_cliente_csp      String?
-  capacidad             String?
-  plazo_oferta          String?
-  oferta                String?
-  cotizador             String?
-  tasa                  String?
-  cat                   String?
-  financiera            String?
-  plazo                 String?
-  monto_solicitado      String?
-  descuento_actual      String?
-  plazo_transcurrido    String?
-  plazo_restante        String?
-  cat_actual            String?
-  tasa_actual           String?
-
-  // Cartera y maletin
-  convenio              String?
-  monto_comisionable    String?
-  dependencia           String?
-  estatus               String?
-  monto                 String?
-
-  // NUEVO: numero de empleado (agregado por sistema de asignacion)
-  num_empleado          String?
-
-  // Relacion con asignaciones
-  asignacion_registro   asignacion_registros?
-
-  @@unique([nss, rfc, tipo_cliente], map: "idx_clientes_dedup")
+  zonas    zonas[]
+  usuarios usuarios[]
 }
 
-model catalogo_estados {
-  id          Int     @id @default(autoincrement())
-  nombre      String  @unique @db.VarChar(100)
-  abreviatura String? @db.VarChar(10)
-  region      String? @db.VarChar(50)
-  activo      Boolean @default(true)
+model zonas {
+  id        Int    @id @default(autoincrement())
+  region_id Int
+  nombre    String @db.VarChar(200)
+  activo    Boolean @default(true)
+
+  region     regiones     @relation(fields: [region_id], references: [id])
+  sucursales sucursales[]
+
+  @@index([region_id])
 }
 
-model catalogo_convenios {
-  id              Int     @id @default(autoincrement())
-  nombre          String  @unique @db.VarChar(300)
-  tipo_cliente    String? @db.VarChar(100)
-  total_registros Int     @default(0)
-  activo          Boolean @default(true)
+model sucursales {
+  id        Int     @id @default(autoincrement())
+  zona_id   Int
+  nombre    String  @db.VarChar(200)
+  direccion String?
+  activo    Boolean @default(true)
+
+  zona           zonas            @relation(fields: [zona_id], references: [id])
+  equipos        equipos[]
+  usuarios       usuarios[]
+  planes_trabajo planes_trabajo[]
+
+  @@index([zona_id])
+}
+
+model equipos {
+  id            Int     @id @default(autoincrement())
+  sucursal_id   Int
+  nombre        String  @db.VarChar(200)
+  supervisor_id Int?
+  activo        Boolean @default(true)
+
+  sucursal   sucursales @relation(fields: [sucursal_id], references: [id])
+  miembros   usuarios[] @relation("EquipoMiembros")
+  supervisor usuarios?  @relation("EquipoSupervisor", fields: [supervisor_id], references: [id])
+
+  @@index([sucursal_id])
 }
 
 // =============================================
-// TABLAS NUEVAS (sistema de asignacion)
+// USUARIOS
 // =============================================
 
 model usuarios {
-  id            Int            @id @default(autoincrement())
-  nombre        String         @db.VarChar(200)
-  email         String         @unique @db.VarChar(300)
+  id            Int      @id @default(autoincrement())
+  nombre        String   @db.VarChar(200)
+  email         String   @unique @db.VarChar(300)
   password_hash String
-  rol           String         @default("promotor") @db.VarChar(20)
-  activo        Boolean        @default(true)
-  created_at    DateTime       @default(now())
-  updated_at    DateTime       @default(now()) @updatedAt
-  asignaciones  asignaciones[]
+  rol           String   @default("promotor") @db.VarChar(30)
+  // admin | gerente_regional | gerente_sucursal | supervisor | promotor
+
+  equipo_id   Int?
+  sucursal_id Int?
+  region_id   Int?
+
+  activo     Boolean  @default(true)
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now()) @updatedAt
+
+  equipo                  equipos?   @relation("EquipoMiembros", fields: [equipo_id], references: [id])
+  sucursal                sucursales? @relation(fields: [sucursal_id], references: [id])
+  region                  regiones?  @relation(fields: [region_id], references: [id])
+  equipos_supervisados    equipos[]  @relation("EquipoSupervisor")
+
+  lotes                   lotes[]
+  oportunidades           oportunidades[]
+  datos_contacto_editados datos_contacto[]
+  planes_trabajo_creados  planes_trabajo[]
 
   @@index([email])
   @@index([rol])
 }
 
-model asignaciones {
-  id                 Int                    @id @default(autoincrement())
-  usuario_id         Int
-  fecha_asignacion   DateTime               @default(now()) @db.Date
-  cantidad_registros Int                    @default(0)
-  estado             String                 @default("activa") @db.VarChar(30)
-  created_at         DateTime               @default(now())
-  usuario            usuarios               @relation(fields: [usuario_id], references: [id])
-  registros          asignacion_registros[]
+// =============================================
+// PLAN DE TRABAJO
+// =============================================
+
+model planes_trabajo {
+  id          Int      @id @default(autoincrement())
+  sucursal_id Int
+  convenio    String   @db.VarChar(300)
+  creado_por  Int
+  activo      Boolean  @default(true)
+  created_at  DateTime @default(now())
+
+  sucursal sucursales @relation(fields: [sucursal_id], references: [id])
+  creador  usuarios   @relation(fields: [creado_por], references: [id])
+
+  @@index([sucursal_id, activo])
+}
+
+// =============================================
+// OPORTUNIDADES (centro del sistema)
+// =============================================
+
+model lotes {
+  id         Int      @id @default(autoincrement())
+  usuario_id Int
+  fecha      DateTime @default(now()) @db.Date
+  cantidad   Int
+  created_at DateTime @default(now())
+
+  usuario       usuarios        @relation(fields: [usuario_id], references: [id])
+  oportunidades oportunidades[]
 
   @@index([usuario_id])
-  @@index([usuario_id, fecha_asignacion])
+  @@index([usuario_id, fecha])
 }
 
-model asignacion_registros {
-  id            Int          @id @default(autoincrement())
-  asignacion_id Int
-  cliente_id    Int          @unique
-  asignacion    asignaciones @relation(fields: [asignacion_id], references: [id], onDelete: Cascade)
-  cliente       clientes     @relation(fields: [cliente_id], references: [id])
+model oportunidades {
+  id         Int      @id @default(autoincrement())
+  cliente_id Int
+  // Referencia a clientes.id en BD Clientes (sin FK constraint — DBs separadas)
+  usuario_id Int
+  origen     String   @db.VarChar(20)
+  // POOL | CAPTACION | REASIGNACION
+  lote_id    Int?
+  activo     Boolean  @default(true)
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now()) @updatedAt
 
-  @@index([asignacion_id])
+  usuario usuarios @relation(fields: [usuario_id], references: [id])
+  lote    lotes?   @relation(fields: [lote_id], references: [id])
+
+  @@index([usuario_id, activo])
+  @@index([cliente_id, activo])
 }
+
+// =============================================
+// DATOS DE CONTACTO EDITADOS
+// =============================================
+
+model datos_contacto {
+  id          Int      @id @default(autoincrement())
+  cliente_id  Int
+  // Referencia a clientes.id en BD Clientes (sin FK constraint — DBs separadas)
+  campo       String   @db.VarChar(50)
+  valor       String
+  editado_por Int
+  created_at  DateTime @default(now())
+
+  editor usuarios @relation(fields: [editado_por], references: [id])
+
+  @@index([cliente_id, campo])
+}
+
+// =============================================
+// CONFIGURACION GENERAL
+// =============================================
 
 model configuracion {
   id    Int    @id @default(autoincrement())

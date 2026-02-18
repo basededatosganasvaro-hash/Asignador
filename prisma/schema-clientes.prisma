@@ -1,0 +1,104 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma-clientes"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_CLIENTES_URL")
+}
+
+// =============================================
+// BD CLIENTES — SOLO LECTURA DESDE EL SISTEMA
+// No modificar estos modelos sin coordinacion
+// =============================================
+
+model clientes {
+  id                    Int       @id @default(autoincrement())
+  tipo_cliente          String    @db.VarChar(100)
+  fecha_carga           DateTime? @db.Timestamp()
+  archivo_origen        String?   @db.VarChar(500)
+
+  // Identificacion
+  nss                   String?
+  a_paterno             String?
+  a_materno             String?
+  nombres               String?
+  curp                  String?
+  rfc                   String?
+
+  // Datos personales
+  edad                  String?
+  genero                String?
+  tipo_pension          String?
+  mes_pension           String?
+  anio_pension          String?
+
+  // Ubicacion
+  umf_delegacion        String?
+  calle_num             String?
+  colonia               String?
+  domicilio_pensionados String?
+  region                String?
+  estado                String?
+  municipio             String?
+  cp                    String?
+
+  // Contacto
+  tel_1                 String?
+  tipo_1                String?
+  tel_2                 String?
+  tipo_2                String?
+  tel_3                 String?
+  tipo_3                String?
+  tel_4                 String?
+  tipo_4                String?
+  tel_5                 String?
+  tipo_5                String?
+  direccion_email       String?
+
+  // Financieras
+  creditos_actuales     String?
+  tipo_mercado          String?
+  tipo_cliente_original String?
+  tipo_cliente_csp      String?
+  capacidad             String?
+  plazo_oferta          String?
+  oferta                String?
+  cotizador             String?
+  tasa                  String?
+  cat                   String?
+  financiera            String?
+  plazo                 String?
+  monto_solicitado      String?
+  descuento_actual      String?
+  plazo_transcurrido    String?
+  plazo_restante        String?
+  cat_actual            String?
+  tasa_actual           String?
+
+  // Cartera y maletin
+  convenio              String?
+  monto_comisionable    String?
+  dependencia           String?
+  estatus               String?
+  monto                 String?
+
+  num_empleado          String?
+}
+
+model catalogo_estados {
+  id          Int     @id @default(autoincrement())
+  nombre      String  @unique @db.VarChar(100)
+  abreviatura String? @db.VarChar(10)
+  region      String? @db.VarChar(50)
+  activo      Boolean @default(true)
+}
+
+model catalogo_convenios {
+  id              Int     @id @default(autoincrement())
+  nombre          String  @unique @db.VarChar(300)
+  tipo_cliente    String? @db.VarChar(100)
+  total_registros Int     @default(0)
+  activo          Boolean @default(true)
+}

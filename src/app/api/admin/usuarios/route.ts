@@ -16,9 +16,13 @@ export async function GET() {
       rol: true,
       activo: true,
       created_at: true,
-      _count: {
-        select: { asignaciones: true },
-      },
+      equipo_id: true,
+      sucursal_id: true,
+      region_id: true,
+      equipo: { select: { id: true, nombre: true } },
+      sucursal: { select: { id: true, nombre: true } },
+      region: { select: { id: true, nombre: true } },
+      _count: { select: { lotes: true, oportunidades: true } },
     },
     orderBy: { created_at: "desc" },
   });
@@ -40,7 +44,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const { nombre, email, password, rol } = parsed.data;
+  const { nombre, email, password, rol, equipo_id, sucursal_id, region_id } = parsed.data;
 
   const existing = await prisma.usuarios.findUnique({ where: { email } });
   if (existing) {
@@ -53,7 +57,7 @@ export async function POST(request: Request) {
   const password_hash = await bcrypt.hash(password, 10);
 
   const usuario = await prisma.usuarios.create({
-    data: { nombre, email, password_hash, rol },
+    data: { nombre, email, password_hash, rol, equipo_id, sucursal_id, region_id },
     select: {
       id: true,
       nombre: true,
@@ -61,6 +65,9 @@ export async function POST(request: Request) {
       rol: true,
       activo: true,
       created_at: true,
+      equipo_id: true,
+      sucursal_id: true,
+      region_id: true,
     },
   });
 
