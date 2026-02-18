@@ -31,8 +31,32 @@ interface Usuario {
   rol: string;
   activo: boolean;
   created_at: string;
-  _count: { asignaciones: number };
+  region: { id: number; nombre: string } | null;
+  sucursal: { id: number; nombre: string } | null;
+  equipo: { id: number; nombre: string } | null;
+  _count: { lotes: number; oportunidades: number };
 }
+
+interface OrgItem {
+  id: number;
+  nombre: string;
+}
+
+const ROL_LABELS: Record<string, string> = {
+  admin: "Admin",
+  gerente_regional: "Gte. Regional",
+  gerente_sucursal: "Gte. Sucursal",
+  supervisor: "Supervisor",
+  promotor: "Promotor",
+};
+
+const ROL_COLORS: Record<string, "error" | "warning" | "info" | "secondary" | "primary"> = {
+  admin: "error",
+  gerente_regional: "warning",
+  gerente_sucursal: "info",
+  supervisor: "secondary",
+  promotor: "primary",
+};
 
 export default function UsuariosPage() {
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
@@ -41,11 +65,18 @@ export default function UsuariosPage() {
   const [editingUser, setEditingUser] = useState<Usuario | null>(null);
   const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" as "success" | "error" });
 
+  const [regiones, setRegiones] = useState<OrgItem[]>([]);
+  const [sucursales, setSucursales] = useState<OrgItem[]>([]);
+  const [equipos, setEquipos] = useState<OrgItem[]>([]);
+
   const [formData, setFormData] = useState({
     nombre: "",
     email: "",
     password: "",
-    rol: "promotor" as "admin" | "promotor",
+    rol: "promotor",
+    region_id: "",
+    sucursal_id: "",
+    equipo_id: "",
   });
 
   const fetchUsers = useCallback(async () => {
@@ -59,28 +90,50 @@ export default function UsuariosPage() {
     fetchUsers();
   }, [fetchUsers]);
 
-  const handleOpenCreate = () => {
+  const fetchOrgData = async () => {
+    const [r, s, e] = await Promise.all([
+      fetch("/api/admin/organizacion/regiones").then((res) => res.json()),
+      fetch("/api/admin/organizacion/sucursales").then((res) => res.json()),
+      fetch("/api/admin/organizacion/equipos").then((res) => res.json()),
+    ]);
+    setRegiones(r);
+    setSucursales(s);
+    setEquipos(e);
+  };
+
+  const handleOpenCreate = async () => {
     setEditingUser(null);
-    setFormData({ nombre: "", email: "", password: "", rol: "promotor" });
+    setFormData({ nombre: "", email: "", password: "", rol: "promotor", region_id: "", sucursal_id: "", equipo_id: "" });
+    await fetchOrgData();
     setDialogOpen(true);
   };
 
-  const handleOpenEdit = (user: Usuario) => {
+  const handleOpenEdit = async (user: Usuario) => {
     setEditingUser(user);
-    setFormData({ nombre: user.nombre, email: user.email, password: "", rol: user.rol as "admin" | "promotor" });
+    setFormData({
+      nombre: user.nombre,
+      email: user.email,
+      password: "",
+      rol: user.rol,
+      region_id: user.region?.id ? String(user.region.id) : "",
+      sucursal_id: user.sucursal?.id ? String(user.sucursal.id) : "",
+      equipo_id: user.equipo?.id ? String(user.equipo.id) : "",
+    });
+    await fetchOrgData();
     setDialogOpen(true);
   };
 
   const handleSave = async () => {
-    const url = editingUser
-      ? `/api/admin/usuarios/${editingUser.id}`
-      : "/api/admin/usuarios";
+    const url = editingUser ? `/api/admin/usuarios/${editingUser.id}` : "/api/admin/usuarios";
     const method = editingUser ? "PUT" : "POST";
 
-    const body: Record<string, string> = {
+    const body: Record<string, string | number | null> = {
       nombre: formData.nombre,
       email: formData.email,
       rol: formData.rol,
+      region_id: formData.region_id ? Number(formData.region_id) : null,
+      sucursal_id: formData.sucursal_id ? Number(formData.sucursal_id) : null,
+      equipo_id: formData.equipo_id ? Number(formData.equipo_id) : null,
     };
     if (formData.password) body.password = formData.password;
 
@@ -106,13 +159,8 @@ export default function UsuariosPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ activo: !user.activo }),
     });
-
     if (res.ok) {
-      setSnackbar({
-        open: true,
-        message: user.activo ? "Usuario desactivado" : "Usuario activado",
-        severity: "success",
-      });
+      setSnackbar({ open: true, message: user.activo ? "Usuario desactivado" : "Usuario activado", severity: "success" });
       fetchUsers();
     }
   };
@@ -123,40 +171,48 @@ export default function UsuariosPage() {
     {
       field: "rol",
       headerName: "Rol",
-      width: 120,
+      width: 140,
       renderCell: (params) => (
         <Chip
-          label={params.value === "admin" ? "Admin" : "Promotor"}
-          color={params.value === "admin" ? "error" : "primary"}
+          label={ROL_LABELS[params.value] ?? params.value}
+          color={ROL_COLORS[params.value] ?? "default"}
           size="small"
           variant="outlined"
         />
       ),
     },
     {
-      field: "activo",
-      headerName: "Estado",
-      width: 120,
-      renderCell: (params) => (
-        <Chip
-          label={params.value ? "Activo" : "Inactivo"}
-          color={params.value ? "success" : "default"}
-          size="small"
-        />
-      ),
+      field: "sucursal",
+      headerName: "Sucursal",
+      width: 140,
+      valueGetter: (_value: unknown, row: Usuario) => row.sucursal?.nombre ?? "—",
     },
     {
-      field: "_count",
-      headerName: "Asignaciones",
+      field: "equipo",
+      headerName: "Equipo",
       width: 120,
+      valueGetter: (_value: unknown, row: Usuario) => row.equipo?.nombre ?? "—",
+    },
+    {
+      field: "lotes",
+      headerName: "Lotes",
+      width: 80,
       align: "center",
       headerAlign: "center",
-      valueGetter: (_value: unknown, row: Usuario) => row._count?.asignaciones ?? 0,
+      valueGetter: (_value: unknown, row: Usuario) => row._count?.lotes ?? 0,
+    },
+    {
+      field: "activo",
+      headerName: "Estado",
+      width: 100,
+      renderCell: (params) => (
+        <Chip label={params.value ? "Activo" : "Inactivo"} color={params.value ? "success" : "default"} size="small" />
+      ),
     },
     {
       field: "actions",
       headerName: "Acciones",
-      width: 140,
+      width: 120,
       sortable: false,
       renderCell: (params) => (
         <Box>
@@ -191,15 +247,10 @@ export default function UsuariosPage() {
           columns={columns}
           loading={loading}
           pageSizeOptions={[10, 25]}
-          initialState={{
-            pagination: { paginationModel: { pageSize: 10 } },
-          }}
+          initialState={{ pagination: { paginationModel: { pageSize: 10 } } }}
           disableRowSelectionOnClick
           autoHeight
-          sx={{
-            border: "none",
-            "& .MuiDataGrid-columnHeaders": { bgcolor: "#f5f5f5" },
-          }}
+          sx={{ border: "none", "& .MuiDataGrid-columnHeaders": { bgcolor: "#f5f5f5" } }}
         />
       </Box>
 
@@ -207,59 +258,62 @@ export default function UsuariosPage() {
         <DialogTitle>{editingUser ? "Editar Usuario" : "Nuevo Usuario"}</DialogTitle>
         <DialogContent>
           <TextField
-            fullWidth
-            label="Nombre"
-            value={formData.nombre}
+            fullWidth label="Nombre" value={formData.nombre}
             onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-            margin="normal"
-            required
+            margin="normal" required
           />
           <TextField
-            fullWidth
-            label="Email"
-            type="email"
-            value={formData.email}
+            fullWidth label="Email" type="email" value={formData.email}
             onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-            margin="normal"
-            required
+            margin="normal" required
           />
           <TextField
             fullWidth
-            label={editingUser ? "Nueva contraseña (dejar vacio para no cambiar)" : "Contraseña"}
-            type="password"
-            value={formData.password}
+            label={editingUser ? "Nueva contraseña (dejar vacío para no cambiar)" : "Contraseña"}
+            type="password" value={formData.password}
             onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-            margin="normal"
-            required={!editingUser}
+            margin="normal" required={!editingUser}
           />
           <FormControl fullWidth margin="normal">
             <InputLabel>Rol</InputLabel>
-            <Select
-              value={formData.rol}
-              label="Rol"
-              onChange={(e) => setFormData({ ...formData, rol: e.target.value as "admin" | "promotor" })}
-            >
+            <Select value={formData.rol} label="Rol" onChange={(e) => setFormData({ ...formData, rol: e.target.value })}>
               <MenuItem value="promotor">Promotor</MenuItem>
+              <MenuItem value="supervisor">Supervisor</MenuItem>
+              <MenuItem value="gerente_sucursal">Gerente de Sucursal</MenuItem>
+              <MenuItem value="gerente_regional">Gerente Regional</MenuItem>
               <MenuItem value="admin">Admin</MenuItem>
+            </Select>
+          </FormControl>
+          <FormControl fullWidth margin="normal">
+            <InputLabel>Región (opcional)</InputLabel>
+            <Select value={formData.region_id} label="Región (opcional)" onChange={(e) => setFormData({ ...formData, region_id: e.target.value })}>
+              <MenuItem value="">Sin región</MenuItem>
+              {regiones.map((r) => <MenuItem key={r.id} value={String(r.id)}>{r.nombre}</MenuItem>)}
+            </Select>
+          </FormControl>
+          <FormControl fullWidth margin="normal">
+            <InputLabel>Sucursal (opcional)</InputLabel>
+            <Select value={formData.sucursal_id} label="Sucursal (opcional)" onChange={(e) => setFormData({ ...formData, sucursal_id: e.target.value })}>
+              <MenuItem value="">Sin sucursal</MenuItem>
+              {sucursales.map((s) => <MenuItem key={s.id} value={String(s.id)}>{s.nombre}</MenuItem>)}
+            </Select>
+          </FormControl>
+          <FormControl fullWidth margin="normal">
+            <InputLabel>Equipo (opcional)</InputLabel>
+            <Select value={formData.equipo_id} label="Equipo (opcional)" onChange={(e) => setFormData({ ...formData, equipo_id: e.target.value })}>
+              <MenuItem value="">Sin equipo</MenuItem>
+              {equipos.map((e) => <MenuItem key={e.id} value={String(e.id)}>{e.nombre}</MenuItem>)}
             </Select>
           </FormControl>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
           <Button onClick={() => setDialogOpen(false)}>Cancelar</Button>
-          <Button variant="contained" onClick={handleSave}>
-            {editingUser ? "Actualizar" : "Crear"}
-          </Button>
+          <Button variant="contained" onClick={handleSave}>{editingUser ? "Actualizar" : "Crear"}</Button>
         </DialogActions>
       </Dialog>
 
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={3000}
-        onClose={() => setSnackbar({ ...snackbar, open: false })}
-      >
-        <Alert severity={snackbar.severity} variant="filled">
-          {snackbar.message}
-        </Alert>
+      <Snackbar open={snackbar.open} autoHideDuration={3000} onClose={() => setSnackbar({ ...snackbar, open: false })}>
+        <Alert severity={snackbar.severity} variant="filled">{snackbar.message}</Alert>
       </Snackbar>
     </Box>
   );

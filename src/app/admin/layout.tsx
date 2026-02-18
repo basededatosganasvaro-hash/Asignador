@@ -13,7 +13,8 @@ export default async function AdminLayout({
 }) {
   const session = await getServerSession(authOptions);
 
-  if (!session || session.user.rol !== "admin") {
+  const rolesGestion = ["admin", "gerente_regional", "gerente_sucursal", "supervisor"];
+  if (!session || !rolesGestion.includes(session.user.rol)) {
     redirect("/login");
   }
 

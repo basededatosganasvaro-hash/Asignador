@@ -13,19 +13,21 @@ interface DashboardData {
   clientesAsignados: number;
   clientesDisponibles: number;
   totalPromotores: number;
-  asignacionesHoy: number;
-  asignacionesPorPromotor: {
+  lotesHoy: number;
+  porPromotor: {
     id: number;
     nombre: string;
-    total_asignaciones: number;
-    total_registros: number;
+    total_lotes: number;
+    total_asignados: number;
+    oportunidades_activas: number;
   }[];
 }
 
 const columns: GridColDef[] = [
   { field: "nombre", headerName: "Promotor", flex: 1 },
-  { field: "total_asignaciones", headerName: "Asignaciones", width: 130, align: "center", headerAlign: "center" },
-  { field: "total_registros", headerName: "Registros Totales", width: 150, align: "center", headerAlign: "center" },
+  { field: "total_lotes", headerName: "Lotes", width: 100, align: "center", headerAlign: "center" },
+  { field: "total_asignados", headerName: "Asignados", width: 120, align: "center", headerAlign: "center" },
+  { field: "oportunidades_activas", headerName: "Activas", width: 110, align: "center", headerAlign: "center" },
 ];
 
 export default function AdminDashboard() {
@@ -88,6 +90,14 @@ export default function AdminDashboard() {
             color="#9c27b0"
           />
         </Grid>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+          <StatCard
+            title="Lotes Hoy"
+            value={data?.lotesHoy ?? 0}
+            icon={<AssignmentIcon />}
+            color="#0288d1"
+          />
+        </Grid>
       </Grid>
 
       <Typography variant="h6" sx={{ mb: 2 }}>
@@ -95,7 +105,7 @@ export default function AdminDashboard() {
       </Typography>
       <Box sx={{ bgcolor: "white", borderRadius: 2 }}>
         <DataGrid
-          rows={data?.asignacionesPorPromotor ?? []}
+          rows={data?.porPromotor ?? []}
           columns={columns}
           pageSizeOptions={[10, 25]}
           initialState={{
