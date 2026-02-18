@@ -6,7 +6,7 @@ import {
   Box, Typography, Grid, Button, CircularProgress,
   Dialog, DialogTitle, DialogContent, DialogActions,
   Alert, Snackbar, Divider, FormControl, InputLabel,
-  Select, MenuItem, Switch, FormControlLabel, Chip, TextField, Slider,
+  Select, MenuItem, Switch, FormControlLabel, Chip, TextField,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import AssignmentIcon from "@mui/icons-material/Assignment";
@@ -201,7 +201,7 @@ export default function PromotorDashboard() {
             alignItems: "center", justifyContent: "center",
           }}>
             {loadingOpciones ? (
-              <CircularProgress size={32} />
+              <CircularProgress size={32} color="primary" />
             ) : (
               <>
                 <Typography variant="h3" fontWeight={700} color="primary.main">
@@ -238,7 +238,7 @@ export default function PromotorDashboard() {
               <InputLabel shrink>Tipo de cliente</InputLabel>
               <Select value={filtros.tipo_cliente} label="Tipo de cliente" notched displayEmpty
                 onChange={(e) => cambiar("tipo_cliente", e.target.value)}>
-                <MenuItem value=""><em>Todos ({opciones.tiposCliente.length} tipos)</em></MenuItem>
+                <MenuItem value=""><em>Todos</em></MenuItem>
                 {opciones.tiposCliente.map((v) => (
                   <MenuItem key={v} value={v}>{v}</MenuItem>
                 ))}
@@ -250,13 +250,7 @@ export default function PromotorDashboard() {
               <InputLabel shrink>Convenio</InputLabel>
               <Select value={filtros.convenio} label="Convenio" notched displayEmpty
                 onChange={(e) => cambiar("convenio", e.target.value)}>
-                <MenuItem value="">
-                  <em>
-                    {opciones.convenios.length > 0
-                      ? `Todos (${opciones.convenios.length} convenios)`
-                      : filtros.tipo_cliente ? "Sin convenios disponibles" : "Todos"}
-                  </em>
-                </MenuItem>
+                <MenuItem value=""><em>Todos</em></MenuItem>
                 {opciones.convenios.map((v) => (
                   <MenuItem key={v} value={v}>{v}</MenuItem>
                 ))}
@@ -269,13 +263,7 @@ export default function PromotorDashboard() {
                 <InputLabel shrink>Estado</InputLabel>
                 <Select value={filtros.estado} label="Estado" notched displayEmpty
                   onChange={(e) => cambiar("estado", e.target.value)}>
-                  <MenuItem value="">
-                    <em>
-                      {opciones.estados.length > 0
-                        ? `Todos (${opciones.estados.length})`
-                        : "Sin estados"}
-                    </em>
-                  </MenuItem>
+                  <MenuItem value=""><em>Todos</em></MenuItem>
                   {opciones.estados.map((v) => (
                     <MenuItem key={v} value={v}>{v}</MenuItem>
                   ))}
@@ -286,14 +274,7 @@ export default function PromotorDashboard() {
                 <InputLabel shrink>Municipio</InputLabel>
                 <Select value={filtros.municipio} label="Municipio" notched displayEmpty
                   onChange={(e) => cambiar("municipio", e.target.value)}>
-                  <MenuItem value="">
-                    <em>
-                      {!filtros.estado ? "Selecciona estado" :
-                        opciones.municipios.length > 0
-                          ? `Todos (${opciones.municipios.length})`
-                          : "Sin municipios"}
-                    </em>
-                  </MenuItem>
+                  <MenuItem value=""><em>Todos</em></MenuItem>
                   {opciones.municipios.map((v) => (
                     <MenuItem key={v} value={v}>{v}</MenuItem>
                   ))}
@@ -319,31 +300,19 @@ export default function PromotorDashboard() {
                   <Typography variant="caption" color="text.secondary">CANTIDAD</Typography>
                 </Divider>
                 <Box sx={{ px: 1 }}>
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 0.5 }}>
-                    <Slider
-                      value={cantidad}
-                      min={1}
-                      max={opciones.asignables}
-                      step={1}
-                      onChange={(_, v) => setCantidad(v as number)}
-                      sx={{ flex: 1 }}
-                      size="small"
-                    />
-                    <TextField
-                      type="number"
-                      value={cantidad}
-                      size="small"
-                      sx={{ width: 90 }}
-                      inputProps={{ min: 1, max: opciones.asignables }}
-                      onChange={(e) => {
-                        const v = Math.max(1, Math.min(opciones.asignables, Number(e.target.value)));
-                        setCantidad(isNaN(v) ? 1 : v);
-                      }}
-                    />
-                  </Box>
-                  <Typography variant="caption" color="text.secondary">
-                    Máximo disponible: {opciones.asignables.toLocaleString()} · Cupo restante hoy: {opciones.cupoRestante.toLocaleString()}
-                  </Typography>
+                  <TextField
+                    type="number"
+                    label="Cantidad a solicitar"
+                    value={cantidad}
+                    size="small"
+                    fullWidth
+                    inputProps={{ min: 1, max: opciones.asignables }}
+                    onChange={(e) => {
+                      const v = Math.max(1, Math.min(opciones.asignables, Number(e.target.value)));
+                      setCantidad(isNaN(v) ? 1 : v);
+                    }}
+                    helperText={`Máx: ${opciones.asignables.toLocaleString()} · Cupo hoy: ${opciones.cupoRestante.toLocaleString()}`}
+                  />
                 </Box>
               </>
             )}

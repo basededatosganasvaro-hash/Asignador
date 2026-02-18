@@ -55,12 +55,13 @@ export async function GET(req: Request) {
   const cupoRestante = Math.max(0, maxPerDay - lotesHoy.reduce((s, l) => s + l.cantidad, 0));
 
   // Queries en paralelo — cada una filtra por los upstream ya seleccionados
+  // NOTA: las queries de distinct NO usan baseExclude (sería lento con NOT IN miles de IDs)
+  // Solo el count final lo usa para dar el número real de disponibles
   const [tiposRaw, conveniosRaw, estadosRaw, municipiosRaw, disponibles] = await Promise.all([
-    // tipo_cliente: siempre independiente (muestra todos los que tienen stock)
+    // tipo_cliente: siempre independiente
     prismaClientes.clientes.findMany({
       select: { tipo_cliente: true },
       distinct: ["tipo_cliente"],
-      where: { ...baseExclude },
       orderBy: { tipo_cliente: "asc" },
     }),
 
@@ -69,7 +70,6 @@ export async function GET(req: Request) {
       select: { convenio: true },
       distinct: ["convenio"],
       where: {
-        ...baseExclude,
         ...(tipo_cliente ? { tipo_cliente } : {}),
       },
       orderBy: { convenio: "asc" },
@@ -80,7 +80,6 @@ export async function GET(req: Request) {
       select: { estado: true },
       distinct: ["estado"],
       where: {
-        ...baseExclude,
         ...(tipo_cliente ? { tipo_cliente } : {}),
         ...(convenio ? { convenio } : {}),
       },
@@ -93,7 +92,6 @@ export async function GET(req: Request) {
           select: { municipio: true },
           distinct: ["municipio"],
           where: {
-            ...baseExclude,
             ...(tipo_cliente ? { tipo_cliente } : {}),
             ...(convenio ? { convenio } : {}),
             estado,
