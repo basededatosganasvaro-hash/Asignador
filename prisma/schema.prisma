@@ -22,9 +22,9 @@ model regiones {
 }
 
 model zonas {
-  id        Int    @id @default(autoincrement())
+  id        Int     @id @default(autoincrement())
   region_id Int
-  nombre    String @db.VarChar(200)
+  nombre    String  @db.VarChar(200)
   activo    Boolean @default(true)
 
   region     regiones     @relation(fields: [region_id], references: [id])
@@ -82,15 +82,17 @@ model usuarios {
   created_at DateTime @default(now())
   updated_at DateTime @default(now()) @updatedAt
 
-  equipo                  equipos?   @relation("EquipoMiembros", fields: [equipo_id], references: [id])
+  equipo                  equipos?    @relation("EquipoMiembros", fields: [equipo_id], references: [id])
   sucursal                sucursales? @relation(fields: [sucursal_id], references: [id])
-  region                  regiones?  @relation(fields: [region_id], references: [id])
-  equipos_supervisados    equipos[]  @relation("EquipoSupervisor")
+  region                  regiones?   @relation(fields: [region_id], references: [id])
+  equipos_supervisados    equipos[]   @relation("EquipoSupervisor")
 
   lotes                   lotes[]
   oportunidades           oportunidades[]
   datos_contacto_editados datos_contacto[]
   planes_trabajo_creados  planes_trabajo[]
+  historial               historial[]
+  ventas                  ventas[]
 
   @@index([email])
   @@index([rol])
@@ -115,6 +117,46 @@ model planes_trabajo {
 }
 
 // =============================================
+// EMBUDO DE VENTAS
+// =============================================
+
+model embudo_etapas {
+  id          Int     @id @default(autoincrement())
+  nombre      String  @db.VarChar(100)
+  orden       Int
+  tipo        String  @db.VarChar(20)
+  // AVANCE | SALIDA | FINAL
+  timer_horas Int?
+  color       String  @db.VarChar(7)
+  activo      Boolean @default(true)
+
+  transiciones_origen  embudo_transiciones[] @relation("TransicionOrigen")
+  transiciones_destino embudo_transiciones[] @relation("TransicionDestino")
+  oportunidades        oportunidades[]
+  historial_anterior   historial[]           @relation("HistorialEtapaAnterior")
+  historial_nueva      historial[]           @relation("HistorialEtapaNueva")
+
+  @@index([orden])
+}
+
+model embudo_transiciones {
+  id                  Int     @id @default(autoincrement())
+  etapa_origen_id     Int
+  etapa_destino_id    Int?
+  // NULL = devuelve al pool
+  nombre_accion       String  @db.VarChar(100)
+  requiere_nota       Boolean @default(true)
+  requiere_supervisor Boolean @default(false)
+  devuelve_al_pool    Boolean @default(false)
+  activo              Boolean @default(true)
+
+  etapa_origen  embudo_etapas  @relation("TransicionOrigen", fields: [etapa_origen_id], references: [id])
+  etapa_destino embudo_etapas? @relation("TransicionDestino", fields: [etapa_destino_id], references: [id])
+
+  @@index([etapa_origen_id])
+}
+
+// =============================================
 // OPORTUNIDADES (centro del sistema)
 // =============================================
 
@@ -133,22 +175,31 @@ model lotes {
 }
 
 model oportunidades {
-  id         Int      @id @default(autoincrement())
-  cliente_id Int
+  id              Int      @id @default(autoincrement())
+  cliente_id      Int
   // Referencia a clientes.id en BD Clientes (sin FK constraint — DBs separadas)
-  usuario_id Int
-  origen     String   @db.VarChar(20)
+  usuario_id      Int
+  etapa_id        Int?
+  origen          String   @db.VarChar(20)
   // POOL | CAPTACION | REASIGNACION
-  lote_id    Int?
-  activo     Boolean  @default(true)
-  created_at DateTime @default(now())
-  updated_at DateTime @default(now()) @updatedAt
+  lote_id         Int?
+  timer_vence     DateTime?
+  num_operacion   String?  @db.VarChar(100)
+  venta_validada  Boolean  @default(false)
+  activo          Boolean  @default(true)
+  created_at      DateTime @default(now())
+  updated_at      DateTime @default(now()) @updatedAt
 
-  usuario usuarios @relation(fields: [usuario_id], references: [id])
-  lote    lotes?   @relation(fields: [lote_id], references: [id])
+  usuario  usuarios       @relation(fields: [usuario_id], references: [id])
+  lote     lotes?         @relation(fields: [lote_id], references: [id])
+  etapa    embudo_etapas? @relation(fields: [etapa_id], references: [id])
+  historial historial[]
+  venta    ventas?
 
   @@index([usuario_id, activo])
   @@index([cliente_id, activo])
+  @@index([etapa_id])
+  @@index([timer_vence, activo])
 }
 
 // =============================================
@@ -167,6 +218,48 @@ model datos_contacto {
   editor usuarios @relation(fields: [editado_por], references: [id])
 
   @@index([cliente_id, campo])
+}
+
+// =============================================
+// HISTORIAL DE INTERACCIONES
+// =============================================
+
+model historial {
+  id                Int      @id @default(autoincrement())
+  oportunidad_id    Int
+  usuario_id        Int
+  tipo              String   @db.VarChar(30)
+  // CAMBIO_ETAPA | NOTA | LLAMADA | WHATSAPP | SMS | ASIGNACION | TIMER_VENCIDO
+  etapa_anterior_id Int?
+  etapa_nueva_id    Int?
+  canal             String?  @db.VarChar(20)
+  // LLAMADA | WHATSAPP | SMS
+  nota              String?
+  created_at        DateTime @default(now())
+
+  oportunidad    oportunidades  @relation(fields: [oportunidad_id], references: [id])
+  usuario        usuarios       @relation(fields: [usuario_id], references: [id])
+  etapa_anterior embudo_etapas? @relation("HistorialEtapaAnterior", fields: [etapa_anterior_id], references: [id])
+  etapa_nueva    embudo_etapas? @relation("HistorialEtapaNueva", fields: [etapa_nueva_id], references: [id])
+
+  @@index([oportunidad_id])
+  @@index([usuario_id])
+}
+
+// =============================================
+// VENTAS
+// =============================================
+
+model ventas {
+  id             Int      @id @default(autoincrement())
+  oportunidad_id Int      @unique
+  usuario_id     Int
+  num_operacion  String   @db.VarChar(100)
+  validada       Boolean  @default(false)
+  created_at     DateTime @default(now())
+
+  oportunidad oportunidades @relation(fields: [oportunidad_id], references: [id])
+  usuario     usuarios      @relation(fields: [usuario_id], references: [id])
 }
 
 // =============================================

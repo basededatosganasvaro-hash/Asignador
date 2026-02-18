@@ -10,7 +10,8 @@
     "postinstall": "npm run prisma:generate",
     "prisma:generate": "prisma generate --schema=prisma/schema.prisma && prisma generate --schema=prisma/schema-clientes.prisma",
     "prisma:push": "prisma db push --schema=prisma/schema.prisma",
-    "prisma:push-clientes": "prisma db push --schema=prisma/schema-clientes.prisma"
+    "prisma:push-clientes": "prisma db push --schema=prisma/schema-clientes.prisma",
+    "seed:embudo": "npx tsx prisma/seed-embudo.ts"
   },
   "engines": {
     "node": ">=20.9.0"

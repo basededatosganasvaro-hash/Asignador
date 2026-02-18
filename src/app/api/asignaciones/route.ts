@@ -151,7 +151,15 @@ export async function POST(request: Request) {
       );
     }
 
-    // 4. Crear lote + oportunidades en BD Sistema (transaccion)
+    // 4. Obtener etapa "Asignado" para inicializar el embudo
+    const etapaAsignado = await prisma.embudo_etapas.findFirst({
+      where: { nombre: "Asignado", activo: true },
+    });
+    const timerVence = etapaAsignado?.timer_horas
+      ? new Date(Date.now() + etapaAsignado.timer_horas * 60 * 60 * 1000)
+      : null;
+
+    // 5. Crear lote + oportunidades en BD Sistema (transaccion)
     const result = await prisma.$transaction(
       async (tx) => {
         const lote = await tx.lotes.create({
@@ -166,9 +174,26 @@ export async function POST(request: Request) {
           data: records.map((r) => ({
             cliente_id: r.id,
             usuario_id: userId,
+            etapa_id: etapaAsignado?.id ?? null,
             origen: "POOL",
             lote_id: lote.id,
+            timer_vence: timerVence,
             activo: true,
+          })),
+        });
+
+        // Crear historial de asignacion para cada oportunidad
+        const oportunidadesCreadas = await tx.oportunidades.findMany({
+          where: { lote_id: lote.id },
+          select: { id: true },
+        });
+        await tx.historial.createMany({
+          data: oportunidadesCreadas.map((op) => ({
+            oportunidad_id: op.id,
+            usuario_id: userId,
+            tipo: "ASIGNACION",
+            etapa_nueva_id: etapaAsignado?.id ?? null,
+            nota: "Asignacion desde pool",
           })),
         });
 

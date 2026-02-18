@@ -21,6 +21,8 @@ import MapIcon from "@mui/icons-material/Map";
 import LocationCityIcon from "@mui/icons-material/LocationCity";
 import GroupsIcon from "@mui/icons-material/Groups";
 import WorkIcon from "@mui/icons-material/Work";
+import FunnelIcon from "@mui/icons-material/FilterAlt";
+import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 
 const DRAWER_WIDTH = 260;
 
@@ -48,6 +50,7 @@ export default function Sidebar({ rol }: { rol: string }) {
         <List sx={{ px: 1, pt: 1 }}>
           {[
             { label: "Dashboard", href: "/promotor", icon: <DashboardIcon /> },
+            { label: "Mis Oportunidades", href: "/promotor/oportunidades", icon: <TrendingUpIcon /> },
             { label: "Mis Asignaciones", href: "/promotor/asignaciones", icon: <AssignmentIcon /> },
           ].map((item) => (
             <ListItemButton
@@ -85,6 +88,7 @@ export default function Sidebar({ rol }: { rol: string }) {
       <List sx={{ px: 1, pt: 1 }}>
         <NavItem label="Dashboard" href="/admin" icon={<DashboardIcon />} exact pathname={pathname} />
         <NavItem label="Usuarios" href="/admin/usuarios" icon={<PeopleIcon />} exact pathname={pathname} />
+        <NavItem label="Embudo" href="/admin/embudo" icon={<FunnelIcon />} exact pathname={pathname} />
 
         <Divider sx={{ borderColor: "rgba(255,255,255,0.12)", my: 1 }} />
         <Typography sx={{ px: 1.5, py: 0.5, fontSize: "0.7rem", fontWeight: 700, color: "rgba(255,255,255,0.45)", letterSpacing: 1 }}>
