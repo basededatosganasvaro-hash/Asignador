@@ -6,7 +6,7 @@ import {
   Box, Typography, Grid, Button, CircularProgress,
   Dialog, DialogTitle, DialogContent, DialogActions,
   Alert, Snackbar, Divider, FormControl, InputLabel,
-  Select, MenuItem, Switch, FormControlLabel, Chip,
+  Select, MenuItem, Switch, FormControlLabel, Chip, TextField, Slider,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import AssignmentIcon from "@mui/icons-material/Assignment";
@@ -57,6 +57,7 @@ export default function PromotorDashboard() {
 
   const [filtros, setFiltros] = useState(FILTROS_INIT);
   const [opciones, setOpciones] = useState<OpcionesResp>(OPCIONES_INIT);
+  const [cantidad, setCantidad] = useState<number>(0);
   const [loadingOpciones, setLoadingOpciones] = useState(false);
   const [requesting, setRequesting] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
@@ -90,7 +91,10 @@ export default function PromotorDashboard() {
       const res = await fetch(`/api/asignaciones/opciones?${params}`, {
         signal: abortRef.current.signal,
       });
-      setOpciones(await res.json());
+      const data: OpcionesResp = await res.json();
+      setOpciones(data);
+      // Sincroniza cantidad al nuevo máximo (o mantiene el valor si ya es menor)
+      setCantidad((prev) => prev > 0 ? Math.min(prev, data.asignables) : data.asignables);
     } catch {
       // ignorar AbortError
     } finally {
@@ -102,6 +106,7 @@ export default function PromotorDashboard() {
     const f = FILTROS_INIT;
     setFiltros(f);
     setOpciones(OPCIONES_INIT);
+    setCantidad(0);
     setDialogOpen(true);
     fetchOpciones(f);
   };
@@ -125,6 +130,7 @@ export default function PromotorDashboard() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
+        cantidad:       cantidad > 0 ? cantidad : undefined,
         tipo_cliente:   filtros.tipo_cliente   || undefined,
         convenio:       filtros.convenio       || undefined,
         estado:         filtros.estado         || undefined,
@@ -305,6 +311,42 @@ export default function PromotorDashboard() {
               }
               label="Solo registros con teléfono"
             />
+
+            {/* Selector de cantidad */}
+            {opciones.asignables > 0 && !loadingOpciones && (
+              <>
+                <Divider sx={{ mt: 1 }}>
+                  <Typography variant="caption" color="text.secondary">CANTIDAD</Typography>
+                </Divider>
+                <Box sx={{ px: 1 }}>
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 0.5 }}>
+                    <Slider
+                      value={cantidad}
+                      min={1}
+                      max={opciones.asignables}
+                      step={1}
+                      onChange={(_, v) => setCantidad(v as number)}
+                      sx={{ flex: 1 }}
+                      size="small"
+                    />
+                    <TextField
+                      type="number"
+                      value={cantidad}
+                      size="small"
+                      sx={{ width: 90 }}
+                      inputProps={{ min: 1, max: opciones.asignables }}
+                      onChange={(e) => {
+                        const v = Math.max(1, Math.min(opciones.asignables, Number(e.target.value)));
+                        setCantidad(isNaN(v) ? 1 : v);
+                      }}
+                    />
+                  </Box>
+                  <Typography variant="caption" color="text.secondary">
+                    Máximo disponible: {opciones.asignables.toLocaleString()} · Cupo restante hoy: {opciones.cupoRestante.toLocaleString()}
+                  </Typography>
+                </Box>
+              </>
+            )}
           </Box>
         </DialogContent>
 
@@ -313,13 +355,13 @@ export default function PromotorDashboard() {
           <Button
             variant="contained"
             onClick={handleSolicitar}
-            disabled={requesting || loadingOpciones || opciones.asignables === 0}
+            disabled={requesting || loadingOpciones || cantidad === 0}
             startIcon={requesting ? <CircularProgress size={18} color="inherit" /> : undefined}
           >
             {requesting
               ? "Solicitando..."
-              : opciones.asignables > 0
-                ? `Solicitar ${opciones.asignables.toLocaleString()} registros`
+              : cantidad > 0
+                ? `Solicitar ${cantidad.toLocaleString()} registros`
                 : "Sin disponibles"}
           </Button>
         </DialogActions>
