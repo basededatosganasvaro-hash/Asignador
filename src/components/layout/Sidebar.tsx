@@ -23,6 +23,7 @@ import GroupsIcon from "@mui/icons-material/Groups";
 import WorkIcon from "@mui/icons-material/Work";
 import FunnelIcon from "@mui/icons-material/FilterAlt";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
+import InboxIcon from "@mui/icons-material/Inbox";
 
 const DRAWER_WIDTH = 260;
 
@@ -87,6 +88,7 @@ export default function Sidebar({ rol }: { rol: string }) {
       <Divider sx={{ borderColor: "rgba(255,255,255,0.12)" }} />
       <List sx={{ px: 1, pt: 1 }}>
         <NavItem label="Dashboard" href="/admin" icon={<DashboardIcon />} exact pathname={pathname} />
+        <NavItem label="Bandeja" href="/admin/bandeja" icon={<InboxIcon />} pathname={pathname} />
         <NavItem label="Usuarios" href="/admin/usuarios" icon={<PeopleIcon />} exact pathname={pathname} />
         <NavItem label="Embudo" href="/admin/embudo" icon={<FunnelIcon />} exact pathname={pathname} />
 
