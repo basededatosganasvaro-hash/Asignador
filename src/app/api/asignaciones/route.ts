@@ -82,11 +82,22 @@ export async function POST(request: Request) {
   const userId = parseInt(session.user.id);
 
   let cantidad: number | undefined;
+  let tipo_cliente: string | undefined;
+  let convenio: string | undefined;
+  let estado: string | undefined;
+  let municipio: string | undefined;
+  let tiene_telefono: boolean | undefined;
+
   try {
     const body = await request.json();
     cantidad = body.cantidad;
+    tipo_cliente = body.tipo_cliente || undefined;
+    convenio = body.convenio || undefined;
+    estado = body.estado || undefined;
+    municipio = body.municipio || undefined;
+    tiene_telefono = body.tiene_telefono || false;
   } catch {
-    // Sin body: usar el maximo disponible
+    // Sin body: usar el maximo disponible sin filtros
   }
 
   try {
@@ -123,26 +134,31 @@ export async function POST(request: Request) {
       where: { activo: true },
       select: { cliente_id: true },
     });
-    const excludeIds = activas.map((o) => o.cliente_id);
+    const excludeIds = activas.map((o) => o.cliente_id).filter((id): id is number => id !== null);
 
-    // 3. Seleccionar clientes del pool en BD Clientes (con lock para concurrencia)
-    let records: { id: number }[];
+    // 3. Construir condiciones para el filtro
+    const conditions: Prisma.Sql[] = [];
     if (excludeIds.length > 0) {
-      records = await prismaClientes.$queryRaw<{ id: number }[]>`
-        SELECT id FROM clientes
-        WHERE id NOT IN (${Prisma.join(excludeIds)})
-        ORDER BY id ASC
-        LIMIT ${requested}
-        FOR UPDATE SKIP LOCKED
-      `;
-    } else {
-      records = await prismaClientes.$queryRaw<{ id: number }[]>`
-        SELECT id FROM clientes
-        ORDER BY id ASC
-        LIMIT ${requested}
-        FOR UPDATE SKIP LOCKED
-      `;
+      conditions.push(Prisma.sql`id NOT IN (${Prisma.join(excludeIds)})`);
     }
+    if (tipo_cliente) conditions.push(Prisma.sql`tipo_cliente = ${tipo_cliente}`);
+    if (convenio) conditions.push(Prisma.sql`convenio = ${convenio}`);
+    if (estado) conditions.push(Prisma.sql`estado = ${estado}`);
+    if (municipio) conditions.push(Prisma.sql`municipio = ${municipio}`);
+    if (tiene_telefono) conditions.push(Prisma.sql`tel_1 IS NOT NULL AND TRIM(tel_1) != ''`);
+
+    const whereClause = conditions.length > 0
+      ? Prisma.sql`WHERE ${Prisma.join(conditions, " AND ")}`
+      : Prisma.empty;
+
+    // 4. Seleccionar clientes del pool en BD Clientes (con lock para concurrencia)
+    const records = await prismaClientes.$queryRaw<{ id: number }[]>`
+      SELECT id FROM clientes
+      ${whereClause}
+      ORDER BY id ASC
+      LIMIT ${requested}
+      FOR UPDATE SKIP LOCKED
+    `;
 
     if (records.length === 0) {
       return NextResponse.json(
