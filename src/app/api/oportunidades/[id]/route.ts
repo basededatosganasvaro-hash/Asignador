@@ -15,6 +15,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     where: { id: Number(id) },
     include: {
       etapa: true,
+      captacion: true,
       historial: {
         include: {
           usuario: { select: { id: true, nombre: true, rol: true } },
@@ -34,25 +35,33 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     return NextResponse.json({ error: "Sin acceso" }, { status: 403 });
   }
 
-  // Datos del cliente (BD Clientes)
-  const cliente = await prismaClientes.clientes.findUnique({
-    where: { id: op.cliente_id },
-  });
+  let clienteMerged: Record<string, unknown> = {};
 
-  // Ediciones en BD Sistema
-  const ediciones = await prisma.datos_contacto.findMany({
-    where: { cliente_id: op.cliente_id },
-    orderBy: { created_at: "desc" },
-  });
-  const editMap: Record<string, string> = {};
-  for (const edit of ediciones) {
-    if (!editMap[edit.campo]) editMap[edit.campo] = edit.valor;
+  if (op.cliente_id !== null) {
+    // Cliente de BD Clientes
+    const cliente = await prismaClientes.clientes.findUnique({
+      where: { id: op.cliente_id },
+    });
+
+    const ediciones = await prisma.datos_contacto.findMany({
+      where: { cliente_id: op.cliente_id },
+      orderBy: { created_at: "desc" },
+    });
+    const editMap: Record<string, string> = {};
+    for (const edit of ediciones) {
+      if (!editMap[edit.campo]) editMap[edit.campo] = edit.valor;
+    }
+
+    clienteMerged = { ...(cliente as object), ...editMap };
+  } else if (op.captacion) {
+    // Cliente captado — datos desde datos_json
+    const datos = op.captacion.datos_json as Record<string, string>;
+    clienteMerged = {
+      ...datos,
+      convenio: op.captacion.convenio,
+      _es_captacion_nueva: true,
+    };
   }
-
-  const clienteMerged = {
-    ...(cliente as object),
-    ...editMap,
-  };
 
   // Transiciones disponibles desde la etapa actual
   let transiciones: unknown[] = [];

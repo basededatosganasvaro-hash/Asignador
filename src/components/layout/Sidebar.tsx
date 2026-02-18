@@ -24,6 +24,8 @@ import WorkIcon from "@mui/icons-material/Work";
 import FunnelIcon from "@mui/icons-material/FilterAlt";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import InboxIcon from "@mui/icons-material/Inbox";
+import PersonAddIcon from "@mui/icons-material/PersonAdd";
+import RuleIcon from "@mui/icons-material/Rule";
 
 const DRAWER_WIDTH = 260;
 
@@ -52,6 +54,7 @@ export default function Sidebar({ rol }: { rol: string }) {
           {[
             { label: "Dashboard", href: "/promotor", icon: <DashboardIcon /> },
             { label: "Mis Oportunidades", href: "/promotor/oportunidades", icon: <TrendingUpIcon /> },
+            { label: "Captar cliente", href: "/promotor/captacion", icon: <PersonAddIcon /> },
             { label: "Mis Asignaciones", href: "/promotor/asignaciones", icon: <AssignmentIcon /> },
           ].map((item) => (
             <ListItemButton
@@ -91,6 +94,7 @@ export default function Sidebar({ rol }: { rol: string }) {
         <NavItem label="Bandeja" href="/admin/bandeja" icon={<InboxIcon />} pathname={pathname} />
         <NavItem label="Usuarios" href="/admin/usuarios" icon={<PeopleIcon />} exact pathname={pathname} />
         <NavItem label="Embudo" href="/admin/embudo" icon={<FunnelIcon />} exact pathname={pathname} />
+        <NavItem label="Convenio Reglas" href="/admin/convenio-reglas" icon={<RuleIcon />} exact pathname={pathname} />
 
         <Divider sx={{ borderColor: "rgba(255,255,255,0.12)", my: 1 }} />
         <Typography sx={{ px: 1.5, py: 0.5, fontSize: "0.7rem", fontWeight: 700, color: "rgba(255,255,255,0.45)", letterSpacing: 1 }}>

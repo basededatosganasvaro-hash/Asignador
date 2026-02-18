@@ -33,7 +33,7 @@ export async function GET(
     return NextResponse.json({ error: "Acceso denegado" }, { status: 403 });
   }
 
-  const clienteIds = lote.oportunidades.map((o) => o.cliente_id);
+  const clienteIds = lote.oportunidades.map((o) => o.cliente_id).filter((id): id is number => id !== null);
 
   if (clienteIds.length === 0) {
     return NextResponse.json({

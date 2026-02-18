@@ -25,7 +25,7 @@ export async function GET() {
   // Para cada lote, obtener cuantos clientes tienen tel_1 en datos_contacto o en clientes original
   const result = await Promise.all(
     lotes.map(async (lote) => {
-      const clienteIds = lote.oportunidades.map((o) => o.cliente_id);
+      const clienteIds = lote.oportunidades.map((o) => o.cliente_id).filter((id): id is number => id !== null);
       const cantidad = clienteIds.length;
 
       if (cantidad === 0) {

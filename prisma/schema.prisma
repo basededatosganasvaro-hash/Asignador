@@ -93,6 +93,7 @@ model usuarios {
   planes_trabajo_creados  planes_trabajo[]
   historial               historial[]
   ventas                  ventas[]
+  captaciones             captaciones[]
 
   @@index([email])
   @@index([rol])
@@ -176,8 +177,9 @@ model lotes {
 
 model oportunidades {
   id              Int      @id @default(autoincrement())
-  cliente_id      Int
+  cliente_id      Int?
   // Referencia a clientes.id en BD Clientes (sin FK constraint — DBs separadas)
+  // NULL cuando el cliente fue captado y no existe en BD Clientes
   usuario_id      Int
   etapa_id        Int?
   origen          String   @db.VarChar(20)
@@ -190,11 +192,12 @@ model oportunidades {
   created_at      DateTime @default(now())
   updated_at      DateTime @default(now()) @updatedAt
 
-  usuario  usuarios       @relation(fields: [usuario_id], references: [id])
-  lote     lotes?         @relation(fields: [lote_id], references: [id])
-  etapa    embudo_etapas? @relation(fields: [etapa_id], references: [id])
+  usuario   usuarios       @relation(fields: [usuario_id], references: [id])
+  lote      lotes?         @relation(fields: [lote_id], references: [id])
+  etapa     embudo_etapas? @relation(fields: [etapa_id], references: [id])
   historial historial[]
-  venta    ventas?
+  venta     ventas?
+  captacion captaciones?
 
   @@index([usuario_id, activo])
   @@index([cliente_id, activo])
@@ -270,4 +273,34 @@ model configuracion {
   id    Int    @id @default(autoincrement())
   clave String @unique @db.VarChar(100)
   valor String
+}
+
+// =============================================
+// CAPTACION
+// =============================================
+
+model captaciones {
+  id               Int      @id @default(autoincrement())
+  oportunidad_id   Int      @unique
+  usuario_id       Int
+  origen_captacion String   @db.VarChar(50)
+  // CAMBACEO | REFERIDO | REDES_SOCIALES | OTRO
+  convenio         String   @db.VarChar(300)
+  datos_json       Json
+  created_at       DateTime @default(now())
+
+  oportunidad oportunidades @relation(fields: [oportunidad_id], references: [id])
+  usuario     usuarios      @relation(fields: [usuario_id], references: [id])
+
+  @@index([usuario_id])
+}
+
+model convenio_reglas {
+  id          Int     @id @default(autoincrement())
+  convenio    String  @db.VarChar(300)
+  campo       String  @db.VarChar(50)
+  obligatorio Boolean @default(true)
+
+  @@unique([convenio, campo])
+  @@index([convenio])
 }
