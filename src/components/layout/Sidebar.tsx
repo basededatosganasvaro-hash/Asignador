@@ -2,15 +2,8 @@
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import {
-  Drawer,
-  List,
-  ListItemButton,
-  ListItemIcon,
-  ListItemText,
-  Toolbar,
-  Typography,
-  Box,
-  Divider,
+  Drawer, List, ListItemButton, ListItemIcon, ListItemText,
+  Toolbar, Typography, Box, Divider, IconButton,
 } from "@mui/material";
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import PeopleIcon from "@mui/icons-material/People";
@@ -26,90 +19,75 @@ import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import InboxIcon from "@mui/icons-material/Inbox";
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
 import RuleIcon from "@mui/icons-material/Rule";
+import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 
 const DRAWER_WIDTH = 260;
 
-export default function Sidebar({ rol }: { rol: string }) {
+interface SidebarProps {
+  rol: string;
+  open: boolean;
+  onToggle: () => void;
+}
+
+export default function Sidebar({ rol, open, onToggle }: SidebarProps) {
   const pathname = usePathname();
 
-  if (rol !== "admin" && rol !== "gerente_regional" && rol !== "gerente_sucursal" && rol !== "supervisor") {
-    // promotor nav
-    return (
-      <Drawer
-        variant="permanent"
-        sx={{
-          width: DRAWER_WIDTH,
-          flexShrink: 0,
-          "& .MuiDrawer-paper": { width: DRAWER_WIDTH, boxSizing: "border-box", bgcolor: "#1a237e", color: "white" },
-        }}
-      >
-        <Toolbar>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1, py: 1 }}>
-            <AssignmentIcon sx={{ fontSize: 28 }} />
-            <Typography variant="h6" noWrap sx={{ fontWeight: 700, fontSize: "1rem" }}>Asignaciones</Typography>
-          </Box>
-        </Toolbar>
-        <Divider sx={{ borderColor: "rgba(255,255,255,0.12)" }} />
-        <List sx={{ px: 1, pt: 1 }}>
-          {[
-            { label: "Dashboard", href: "/promotor", icon: <DashboardIcon /> },
-            { label: "Mis Oportunidades", href: "/promotor/oportunidades", icon: <TrendingUpIcon /> },
-            { label: "Captar cliente", href: "/promotor/captacion", icon: <PersonAddIcon /> },
-            { label: "Mis Asignaciones", href: "/promotor/asignaciones", icon: <AssignmentIcon /> },
-          ].map((item) => (
-            <ListItemButton
-              key={item.href}
-              component={Link}
-              href={item.href}
-              selected={pathname === item.href}
-              sx={navItemSx}
-            >
-              <ListItemIcon sx={{ color: "inherit", minWidth: 40 }}>{item.icon}</ListItemIcon>
-              <ListItemText primary={item.label} />
-            </ListItemButton>
-          ))}
-        </List>
-      </Drawer>
-    );
-  }
+  const isPromotor = rol !== "admin" && rol !== "gerente_regional" && rol !== "gerente_sucursal" && rol !== "supervisor";
 
   return (
     <Drawer
-      variant="permanent"
+      variant="persistent"
+      anchor="left"
+      open={open}
       sx={{
-        width: DRAWER_WIDTH,
-        flexShrink: 0,
-        "& .MuiDrawer-paper": { width: DRAWER_WIDTH, boxSizing: "border-box", bgcolor: "#1a237e", color: "white" },
+        "& .MuiDrawer-paper": {
+          width: DRAWER_WIDTH,
+          boxSizing: "border-box",
+          bgcolor: "#1a237e",
+          color: "white",
+        },
       }}
     >
-      <Toolbar>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1, py: 1 }}>
+      <Toolbar sx={{ justifyContent: "space-between" }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
           <AssignmentIcon sx={{ fontSize: 28 }} />
           <Typography variant="h6" noWrap sx={{ fontWeight: 700, fontSize: "1rem" }}>Asignaciones</Typography>
         </Box>
+        <IconButton onClick={onToggle} sx={{ color: "rgba(255,255,255,0.7)" }} size="small">
+          <ChevronLeftIcon />
+        </IconButton>
       </Toolbar>
       <Divider sx={{ borderColor: "rgba(255,255,255,0.12)" }} />
-      <List sx={{ px: 1, pt: 1 }}>
-        <NavItem label="Dashboard" href="/admin" icon={<DashboardIcon />} exact pathname={pathname} />
-        <NavItem label="Bandeja" href="/admin/bandeja" icon={<InboxIcon />} pathname={pathname} />
-        <NavItem label="Usuarios" href="/admin/usuarios" icon={<PeopleIcon />} exact pathname={pathname} />
-        <NavItem label="Embudo" href="/admin/embudo" icon={<FunnelIcon />} exact pathname={pathname} />
-        <NavItem label="Convenio Reglas" href="/admin/convenio-reglas" icon={<RuleIcon />} exact pathname={pathname} />
 
-        <Divider sx={{ borderColor: "rgba(255,255,255,0.12)", my: 1 }} />
-        <Typography sx={{ px: 1.5, py: 0.5, fontSize: "0.7rem", fontWeight: 700, color: "rgba(255,255,255,0.45)", letterSpacing: 1 }}>
-          ORGANIZACIÓN
-        </Typography>
-        <NavItem label="Regiones" href="/admin/organizacion/regiones" icon={<MapIcon />} pathname={pathname} indent />
-        <NavItem label="Zonas" href="/admin/organizacion/zonas" icon={<BusinessIcon />} pathname={pathname} indent />
-        <NavItem label="Sucursales" href="/admin/organizacion/sucursales" icon={<LocationCityIcon />} pathname={pathname} indent />
-        <NavItem label="Equipos" href="/admin/organizacion/equipos" icon={<GroupsIcon />} pathname={pathname} indent />
+      {isPromotor ? (
+        <List sx={{ px: 1, pt: 1 }}>
+          <NavItem label="Dashboard" href="/promotor" icon={<DashboardIcon />} exact pathname={pathname} />
+          <NavItem label="Mi Asignación" href="/promotor/oportunidades" icon={<TrendingUpIcon />} pathname={pathname} />
+          <NavItem label="Captar cliente" href="/promotor/captacion" icon={<PersonAddIcon />} pathname={pathname} />
+          <NavItem label="Mis Lotes" href="/promotor/asignaciones" icon={<AssignmentIcon />} pathname={pathname} />
+        </List>
+      ) : (
+        <List sx={{ px: 1, pt: 1 }}>
+          <NavItem label="Dashboard" href="/admin" icon={<DashboardIcon />} exact pathname={pathname} />
+          <NavItem label="Bandeja" href="/admin/bandeja" icon={<InboxIcon />} pathname={pathname} />
+          <NavItem label="Usuarios" href="/admin/usuarios" icon={<PeopleIcon />} exact pathname={pathname} />
+          <NavItem label="Embudo" href="/admin/embudo" icon={<FunnelIcon />} exact pathname={pathname} />
+          <NavItem label="Convenio Reglas" href="/admin/convenio-reglas" icon={<RuleIcon />} exact pathname={pathname} />
 
-        <Divider sx={{ borderColor: "rgba(255,255,255,0.12)", my: 1 }} />
-        <NavItem label="Planes de Trabajo" href="/admin/planes-trabajo" icon={<WorkIcon />} exact pathname={pathname} />
-        <NavItem label="Configuracion" href="/admin/configuracion" icon={<SettingsIcon />} exact pathname={pathname} />
+          <Divider sx={{ borderColor: "rgba(255,255,255,0.12)", my: 1 }} />
+          <Typography sx={{ px: 1.5, py: 0.5, fontSize: "0.7rem", fontWeight: 700, color: "rgba(255,255,255,0.45)", letterSpacing: 1 }}>
+            ORGANIZACIÓN
+          </Typography>
+          <NavItem label="Regiones" href="/admin/organizacion/regiones" icon={<MapIcon />} pathname={pathname} indent />
+          <NavItem label="Zonas" href="/admin/organizacion/zonas" icon={<BusinessIcon />} pathname={pathname} indent />
+          <NavItem label="Sucursales" href="/admin/organizacion/sucursales" icon={<LocationCityIcon />} pathname={pathname} indent />
+          <NavItem label="Equipos" href="/admin/organizacion/equipos" icon={<GroupsIcon />} pathname={pathname} indent />
 
-      </List>
+          <Divider sx={{ borderColor: "rgba(255,255,255,0.12)", my: 1 }} />
+          <NavItem label="Planes de Trabajo" href="/admin/planes-trabajo" icon={<WorkIcon />} exact pathname={pathname} />
+          <NavItem label="Configuracion" href="/admin/configuracion" icon={<SettingsIcon />} exact pathname={pathname} />
+        </List>
+      )}
     </Drawer>
   );
 }
@@ -129,12 +107,8 @@ const navItemSx = {
 function NavItem({
   label, href, icon, pathname, exact = false, indent = false,
 }: {
-  label: string;
-  href: string;
-  icon: React.ReactNode;
-  pathname: string;
-  exact?: boolean;
-  indent?: boolean;
+  label: string; href: string; icon: React.ReactNode;
+  pathname: string; exact?: boolean; indent?: boolean;
 }) {
   const isActive = exact ? pathname === href : pathname.startsWith(href);
   return (

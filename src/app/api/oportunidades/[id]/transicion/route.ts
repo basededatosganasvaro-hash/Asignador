@@ -47,10 +47,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ error: "La transicion no corresponde a la etapa actual" }, { status: 400 });
   }
 
-  // Validar nota obligatoria
-  if (transicion.requiere_nota && !nota?.trim()) {
-    return NextResponse.json({ error: "Esta transicion requiere una nota" }, { status: 400 });
-  }
+  // Nota es siempre opcional (el campo observaciones en la tabla es libre)
 
   // Validar supervisor requerido
   if (transicion.requiere_supervisor && !rolesSuperiores.includes(rol)) {

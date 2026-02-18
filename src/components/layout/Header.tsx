@@ -1,17 +1,18 @@
 "use client";
 import { signOut, useSession } from "next-auth/react";
 import {
-  AppBar,
-  Toolbar,
-  Typography,
-  Button,
-  Box,
-  Chip,
+  AppBar, Toolbar, Typography, Button, Box, Chip, IconButton,
 } from "@mui/material";
 import LogoutIcon from "@mui/icons-material/Logout";
+import MenuIcon from "@mui/icons-material/Menu";
 import { DRAWER_WIDTH } from "./Sidebar";
 
-export default function Header() {
+interface HeaderProps {
+  open: boolean;
+  onToggle: () => void;
+}
+
+export default function Header({ open, onToggle }: HeaderProps) {
   const { data: session } = useSession();
 
   return (
@@ -19,8 +20,9 @@ export default function Header() {
       position="fixed"
       elevation={0}
       sx={{
-        width: `calc(100% - ${DRAWER_WIDTH}px)`,
-        ml: `${DRAWER_WIDTH}px`,
+        width: open ? `calc(100% - ${DRAWER_WIDTH}px)` : "100%",
+        ml: open ? `${DRAWER_WIDTH}px` : 0,
+        transition: "width 0.25s ease, margin-left 0.25s ease",
         bgcolor: "white",
         color: "text.primary",
         borderBottom: "1px solid",
@@ -28,6 +30,11 @@ export default function Header() {
       }}
     >
       <Toolbar>
+        {!open && (
+          <IconButton edge="start" onClick={onToggle} sx={{ mr: 1 }}>
+            <MenuIcon />
+          </IconButton>
+        )}
         <Box sx={{ flexGrow: 1 }} />
         <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
           <Chip
