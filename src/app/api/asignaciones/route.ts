@@ -136,29 +136,30 @@ export async function POST(request: Request) {
     });
     const excludeIds = activas.map((o) => o.cliente_id).filter((id): id is number => id !== null);
 
-    // 3. Construir condiciones para el filtro
-    const conditions: Prisma.Sql[] = [];
-    if (excludeIds.length > 0) {
-      conditions.push(Prisma.sql`id NOT IN (${Prisma.join(excludeIds)})`);
-    }
-    if (tipo_cliente) conditions.push(Prisma.sql`tipo_cliente = ${tipo_cliente}`);
-    if (convenio) conditions.push(Prisma.sql`convenio = ${convenio}`);
-    if (estado) conditions.push(Prisma.sql`estado = ${estado}`);
-    if (municipio) conditions.push(Prisma.sql`municipio = ${municipio}`);
-    if (tiene_telefono) conditions.push(Prisma.sql`tel_1 IS NOT NULL AND TRIM(tel_1) != ''`);
+    // 3. Construir SQL con parámetros posicionales explícitos ($1, $2, ...)
+    const params: unknown[] = [];
+    const clauses: string[] = [];
 
-    const whereClause = conditions.length > 0
-      ? Prisma.sql`WHERE ${Prisma.join(conditions, " AND ")}`
-      : Prisma.empty;
+    if (excludeIds.length > 0) {
+      const start = params.length + 1;
+      const placeholders = excludeIds.map((_, i) => `$${start + i}`).join(", ");
+      clauses.push(`id NOT IN (${placeholders})`);
+      params.push(...excludeIds);
+    }
+    if (tipo_cliente) { params.push(tipo_cliente); clauses.push(`tipo_cliente = $${params.length}`); }
+    if (convenio)     { params.push(convenio);     clauses.push(`convenio = $${params.length}`); }
+    if (estado)       { params.push(estado);       clauses.push(`estado = $${params.length}`); }
+    if (municipio)    { params.push(municipio);    clauses.push(`municipio = $${params.length}`); }
+    if (tiene_telefono) clauses.push(`tel_1 IS NOT NULL AND TRIM(tel_1) != ''`);
+
+    params.push(requested);
+    const limitParam = `$${params.length}`;
+
+    const where = clauses.length > 0 ? `WHERE ${clauses.join(" AND ")}` : "";
+    const sql = `SELECT id FROM clientes ${where} ORDER BY id ASC LIMIT ${limitParam} FOR UPDATE SKIP LOCKED`;
 
     // 4. Seleccionar clientes del pool en BD Clientes (con lock para concurrencia)
-    const records = await prismaClientes.$queryRaw<{ id: number }[]>`
-      SELECT id FROM clientes
-      ${whereClause}
-      ORDER BY id ASC
-      LIMIT ${requested}
-      FOR UPDATE SKIP LOCKED
-    `;
+    const records = await prismaClientes.$queryRawUnsafe<{ id: number }[]>(sql, ...params);
 
     if (records.length === 0) {
       return NextResponse.json(
