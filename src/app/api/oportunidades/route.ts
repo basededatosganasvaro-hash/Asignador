@@ -10,7 +10,16 @@ export async function GET() {
   const userId = Number(session!.user.id);
 
   const oportunidades = await prisma.oportunidades.findMany({
-    where: { usuario_id: userId, activo: true },
+    where: {
+      usuario_id: userId,
+      activo: true,
+      // Excluir oportunidades en etapas de salida (datos legacy pre auto-pool)
+      OR: [
+        { etapa: { tipo: "AVANCE" } },
+        { etapa: { tipo: "FINAL", nombre: "Venta" } },
+        { etapa_id: null },
+      ],
+    },
     include: {
       etapa: { select: { id: true, nombre: true, tipo: true, color: true } },
       captacion: { select: { convenio: true, datos_json: true } },
