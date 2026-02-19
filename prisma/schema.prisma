@@ -101,6 +101,8 @@ model usuarios {
   captaciones             captaciones[]
   cupo_diario             cupo_diario[]
   plantillas_whatsapp     plantillas_whatsapp[]
+  wa_sesion               wa_sesiones?
+  wa_campanas             wa_campanas[]
 
   @@index([username])
   @@index([rol])
@@ -202,9 +204,10 @@ model oportunidades {
   usuario   usuarios       @relation(fields: [usuario_id], references: [id])
   lote      lotes?         @relation(fields: [lote_id], references: [id])
   etapa     embudo_etapas? @relation(fields: [etapa_id], references: [id])
-  historial historial[]
-  venta     ventas?
-  captacion captaciones?
+  historial    historial[]
+  venta        ventas?
+  captacion    captaciones?
+  wa_mensajes  wa_mensajes[]
 
   @@index([usuario_id, activo])
   @@index([cliente_id, activo])
@@ -344,4 +347,86 @@ model convenio_reglas {
 
   @@unique([convenio, campo])
   @@index([convenio])
+}
+
+// =============================================
+// WHATSAPP MASIVO — SESIONES
+// =============================================
+
+model wa_sesiones {
+  id         Int      @id @default(autoincrement())
+  usuario_id Int      @unique
+  estado     String   @default("DESCONECTADO") @db.VarChar(20)
+  // DESCONECTADO | CONECTANDO | CONECTADO | QR_PENDIENTE
+  numero_wa  String?  @db.VarChar(30)
+  creds_json String?  // Baileys auth state encriptado
+  keys_json  String?  // Baileys signal keys encriptado
+  ultimo_uso DateTime @default(now())
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now()) @updatedAt
+
+  usuario  usuarios      @relation(fields: [usuario_id], references: [id])
+  campanas wa_campanas[]
+
+  @@index([estado])
+}
+
+// =============================================
+// WHATSAPP MASIVO — CAMPAÑAS
+// =============================================
+
+model wa_campanas {
+  id             Int      @id @default(autoincrement())
+  usuario_id     Int
+  sesion_id      Int
+  nombre         String   @db.VarChar(200)
+  mensaje_base   String
+  variaciones    Json?    // string[] de variaciones generadas por IA
+  etapa_filtro   String?  @db.VarChar(50)
+  estado         String   @default("CREADA") @db.VarChar(20)
+  // CREADA | EN_COLA | ENVIANDO | PAUSADA | COMPLETADA | CANCELADA
+  total_mensajes Int      @default(0)
+  enviados       Int      @default(0)
+  entregados     Int      @default(0)
+  leidos         Int      @default(0)
+  fallidos       Int      @default(0)
+  config_json    Json?    // delay ranges, burst sizes, etc.
+  created_at     DateTime @default(now())
+  updated_at     DateTime @default(now()) @updatedAt
+
+  usuario  usuarios      @relation(fields: [usuario_id], references: [id])
+  sesion   wa_sesiones   @relation(fields: [sesion_id], references: [id])
+  mensajes wa_mensajes[]
+
+  @@index([usuario_id])
+  @@index([estado])
+}
+
+// =============================================
+// WHATSAPP MASIVO — MENSAJES INDIVIDUALES
+// =============================================
+
+model wa_mensajes {
+  id              Int       @id @default(autoincrement())
+  campana_id      Int
+  oportunidad_id  Int
+  numero_destino  String    @db.VarChar(30)
+  mensaje_texto   String
+  variacion_idx   Int       @default(0)
+  wa_message_id   String?   @db.VarChar(100)
+  estado          String    @default("PENDIENTE") @db.VarChar(20)
+  // PENDIENTE | ENVIANDO | ENVIADO | ENTREGADO | LEIDO | FALLIDO
+  error_detalle   String?
+  enviado_at      DateTime?
+  entregado_at    DateTime?
+  leido_at        DateTime?
+  created_at      DateTime  @default(now())
+
+  campana     wa_campanas   @relation(fields: [campana_id], references: [id])
+  oportunidad oportunidades @relation(fields: [oportunidad_id], references: [id])
+
+  @@index([campana_id])
+  @@index([oportunidad_id])
+  @@index([wa_message_id])
+  @@index([estado])
 }

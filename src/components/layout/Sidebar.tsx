@@ -19,6 +19,7 @@ import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import InboxIcon from "@mui/icons-material/Inbox";
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
 import RuleIcon from "@mui/icons-material/Rule";
+import WhatsAppIcon from "@mui/icons-material/WhatsApp";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 
@@ -74,6 +75,7 @@ export default function Sidebar({ rol, open, onToggle }: SidebarProps) {
       {isPromotor ? (
         <List sx={{ px: open ? 1 : 0.5, pt: 1 }}>
           <NavItem label="Mi Asignación" href="/promotor/oportunidades" icon={<TrendingUpIcon />} pathname={pathname} open={open} />
+          <NavItem label="WhatsApp" href="/promotor/whatsapp" icon={<WhatsAppIcon />} exact pathname={pathname} open={open} />
           <NavItem label="Configuración" href="/promotor/configuracion" icon={<SettingsIcon />} exact pathname={pathname} open={open} />
         </List>
       ) : (
@@ -94,6 +96,14 @@ export default function Sidebar({ rol, open, onToggle }: SidebarProps) {
           <NavItem label="Zonas" href="/admin/organizacion/zonas" icon={<BusinessIcon />} pathname={pathname} indent open={open} />
           <NavItem label="Sucursales" href="/admin/organizacion/sucursales" icon={<LocationCityIcon />} pathname={pathname} indent open={open} />
           <NavItem label="Equipos" href="/admin/organizacion/equipos" icon={<GroupsIcon />} pathname={pathname} indent open={open} />
+
+          <Divider sx={{ borderColor: "rgba(255,255,255,0.12)", my: 1 }} />
+          {open && (
+            <Typography sx={{ px: 1.5, py: 0.5, fontSize: "0.7rem", fontWeight: 700, color: "rgba(255,255,255,0.45)", letterSpacing: 1 }}>
+              MENSAJERÍA
+            </Typography>
+          )}
+          <NavItem label="WhatsApp" href="/admin/whatsapp" icon={<WhatsAppIcon />} exact pathname={pathname} open={open} />
 
           <Divider sx={{ borderColor: "rgba(255,255,255,0.12)", my: 1 }} />
           <NavItem label="Planes de Trabajo" href="/admin/planes-trabajo" icon={<WorkIcon />} exact pathname={pathname} open={open} />
