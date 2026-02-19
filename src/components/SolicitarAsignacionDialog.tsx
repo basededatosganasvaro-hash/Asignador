@@ -15,12 +15,12 @@ interface Props {
 }
 
 interface Opciones {
-  tipos_cliente: string[];
+  tiposCliente: string[];
   convenios: string[];
   estados: string[];
   municipios: string[];
   disponibles: number;
-  cupo_restante: number;
+  cupoRestante: number;
   asignables: number;
 }
 
@@ -144,18 +144,18 @@ export default function SolicitarAsignacionDialog({ open, onClose, onSuccess }: 
                 color="success"
               />
               <Chip
-                label={`Cupo hoy: ${opciones.cupo_restante}`}
+                label={`Cupo hoy: ${opciones.cupoRestante}`}
                 size="small"
                 variant="outlined"
-                color={opciones.cupo_restante > 0 ? "primary" : "error"}
+                color={opciones.cupoRestante > 0 ? "primary" : "error"}
               />
             </Box>
           )}
 
-          {opciones && opciones.cupo_restante > 0 && (
+          {opciones && opciones.cupoRestante > 0 && (
             <LinearProgress
               variant="determinate"
-              value={((300 - opciones.cupo_restante) / 300) * 100}
+              value={((300 - opciones.cupoRestante) / 300) * 100}
               sx={{ height: 6, borderRadius: 3 }}
             />
           )}
@@ -171,7 +171,7 @@ export default function SolicitarAsignacionDialog({ open, onClose, onSuccess }: 
               onChange={(e) => setFiltros((p) => ({ ...p, tipo_cliente: e.target.value, convenio: "", estado: "", municipio: "" }))}
             >
               <MenuItem value=""><em>Todos</em></MenuItem>
-              {opciones?.tipos_cliente.map((v) => <MenuItem key={v} value={v}>{v}</MenuItem>)}
+              {opciones?.tiposCliente?.map((v) => <MenuItem key={v} value={v}>{v}</MenuItem>)}
             </Select>
           </FormControl>
 
@@ -183,7 +183,7 @@ export default function SolicitarAsignacionDialog({ open, onClose, onSuccess }: 
               onChange={(e) => setFiltros((p) => ({ ...p, convenio: e.target.value, estado: "", municipio: "" }))}
             >
               <MenuItem value=""><em>Todos</em></MenuItem>
-              {opciones?.convenios.map((v) => <MenuItem key={v} value={v}>{v}</MenuItem>)}
+              {opciones?.convenios?.map((v) => <MenuItem key={v} value={v}>{v}</MenuItem>)}
             </Select>
           </FormControl>
 
@@ -195,7 +195,7 @@ export default function SolicitarAsignacionDialog({ open, onClose, onSuccess }: 
               onChange={(e) => setFiltros((p) => ({ ...p, estado: e.target.value, municipio: "" }))}
             >
               <MenuItem value=""><em>Todos</em></MenuItem>
-              {opciones?.estados.map((v) => <MenuItem key={v} value={v}>{v}</MenuItem>)}
+              {opciones?.estados?.map((v) => <MenuItem key={v} value={v}>{v}</MenuItem>)}
             </Select>
           </FormControl>
 
@@ -207,7 +207,7 @@ export default function SolicitarAsignacionDialog({ open, onClose, onSuccess }: 
               onChange={(e) => setFiltros((p) => ({ ...p, municipio: e.target.value }))}
             >
               <MenuItem value=""><em>Todos</em></MenuItem>
-              {opciones?.municipios.map((v) => <MenuItem key={v} value={v}>{v}</MenuItem>)}
+              {opciones?.municipios?.map((v) => <MenuItem key={v} value={v}>{v}</MenuItem>)}
             </Select>
           </FormControl>
 
@@ -240,7 +240,7 @@ export default function SolicitarAsignacionDialog({ open, onClose, onSuccess }: 
           {loading && <LinearProgress />}
           {error && <Alert severity="error">{error}</Alert>}
 
-          {opciones?.cupo_restante === 0 && (
+          {opciones?.cupoRestante === 0 && (
             <Alert severity="warning">
               Has alcanzado tu límite diario de asignaciones. Se reinicia mañana.
             </Alert>
@@ -253,7 +253,7 @@ export default function SolicitarAsignacionDialog({ open, onClose, onSuccess }: 
         <Button
           variant="contained"
           onClick={handleSubmit}
-          disabled={submitting || maxAsignable === 0 || cantidad <= 0 || (opciones?.cupo_restante ?? 0) === 0}
+          disabled={submitting || maxAsignable === 0 || cantidad <= 0 || (opciones?.cupoRestante ?? 0) === 0}
           startIcon={submitting ? <CircularProgress size={18} /> : <AssignmentIndIcon />}
         >
           {submitting ? "Asignando..." : `Asignar ${cantidad}`}
