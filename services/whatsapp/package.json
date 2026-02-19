@@ -8,6 +8,7 @@
     "start": "node dist/index.js"
   },
   "dependencies": {
+    "@hapi/boom": "^10.0.1",
     "@prisma/client": "^5.22.0",
     "@whiskeysockets/baileys": "^6.7.16",
     "express": "^4.21.0",
