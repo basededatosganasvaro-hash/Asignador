@@ -18,11 +18,11 @@ const logger = pino({ level: "warn" });
 interface SessionInfo {
   socket: WASocket;
   idleTimer: NodeJS.Timeout | null;
+  qrCode: string | null;
 }
 
 class SessionManager {
   private sessions: Map<number, SessionInfo> = new Map();
-  private qrCallbacks: Map<number, (data: { type: string; data: string }) => void> = new Map();
 
   /** Obtener socket activo de un usuario */
   getSocket(userId: number): WASocket | undefined {
@@ -35,21 +35,15 @@ class SessionManager {
     return !!session?.socket?.user;
   }
 
-  /** Registrar callback para eventos QR/conexión (SSE) */
-  onQrEvent(userId: number, callback: (data: { type: string; data: string }) => void) {
-    this.qrCallbacks.set(userId, callback);
-  }
-
-  /** Remover callback QR */
-  removeQrCallback(userId: number) {
-    this.qrCallbacks.delete(userId);
+  /** Obtener QR code actual de un usuario */
+  getQrCode(userId: number): string | null {
+    return this.sessions.get(userId)?.qrCode || null;
   }
 
   /** Conectar WhatsApp de un usuario */
   async connect(userId: number): Promise<void> {
     // Si ya está conectado, no hacer nada
     if (this.isConnected(userId)) {
-      this.emitQrEvent(userId, "connected", "already_connected");
       return;
     }
 
@@ -72,7 +66,7 @@ class SessionManager {
       browser: ["Sistema Asignacion", "Chrome", "1.0.0"],
     });
 
-    const sessionInfo: SessionInfo = { socket: sock, idleTimer: null };
+    const sessionInfo: SessionInfo = { socket: sock, idleTimer: null, qrCode: null };
     this.sessions.set(userId, sessionInfo);
 
     // Evento de actualización de conexión
@@ -80,14 +74,18 @@ class SessionManager {
       const { connection, lastDisconnect, qr } = update;
 
       if (qr) {
+        // Guardar QR en memoria para polling
+        const si = this.sessions.get(userId);
+        if (si) si.qrCode = qr;
         await this.upsertSession(userId, "QR_PENDIENTE");
-        this.emitQrEvent(userId, "qr", qr);
       }
 
       if (connection === "open") {
+        // Limpiar QR de memoria
+        const si = this.sessions.get(userId);
+        if (si) si.qrCode = null;
         const numero = sock.user?.id?.split(":")[0] || null;
         await this.upsertSession(userId, "CONECTADO", numero);
-        this.emitQrEvent(userId, "connected", numero || "connected");
         this.startIdleTimer(userId);
 
         // Guardar credenciales en BD
@@ -106,7 +104,6 @@ class SessionManager {
           setTimeout(() => this.connect(userId), 3000);
         } else {
           await this.upsertSession(userId, "DESCONECTADO");
-          this.emitQrEvent(userId, "disconnected", "logged_out");
           // Limpiar credenciales
           await this.clearCreds(userId, sessionDir);
         }
@@ -150,7 +147,7 @@ class SessionManager {
     this.startIdleTimer(userId);
   }
 
-  /** Obtener estado de sesión desde BD */
+  /** Obtener estado de sesión desde BD + QR de memoria */
   async getStatus(userId: number) {
     const sesion = await prisma.wa_sesiones.findUnique({
       where: { usuario_id: userId },
@@ -160,6 +157,7 @@ class SessionManager {
       numero_wa: sesion?.numero_wa || null,
       ultimo_uso: sesion?.ultimo_uso || null,
       activo_en_memoria: this.isConnected(userId),
+      qr_code: this.getQrCode(userId),
     };
   }
 
@@ -181,11 +179,6 @@ class SessionManager {
       this.sessions.delete(userId);
       await this.upsertSession(userId, "DESCONECTADO");
     }, config.idleTimeoutMs);
-  }
-
-  private emitQrEvent(userId: number, type: string, data: string) {
-    const callback = this.qrCallbacks.get(userId);
-    if (callback) callback({ type, data });
   }
 
   private async upsertSession(userId: number, estado: string, numero_wa?: string | null) {

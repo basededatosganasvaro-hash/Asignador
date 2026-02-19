@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import {
   Dialog, DialogTitle, DialogContent, DialogActions,
   Button, Typography, Box, CircularProgress, Alert,
@@ -17,10 +17,20 @@ export default function WhatsAppQRDialog({ open, onClose, onConnected }: Props) 
   const [status, setStatus] = useState<"connecting" | "qr" | "connected" | "error">("connecting");
   const [qrData, setQrData] = useState<string>("");
   const [error, setError] = useState("");
-  const eventSourceRef = useRef<EventSource | null>(null);
+  const pollingRef = useRef<NodeJS.Timeout | null>(null);
+
+  const stopPolling = useCallback(() => {
+    if (pollingRef.current) {
+      clearInterval(pollingRef.current);
+      pollingRef.current = null;
+    }
+  }, []);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      stopPolling();
+      return;
+    }
 
     setStatus("connecting");
     setQrData("");
@@ -34,46 +44,39 @@ export default function WhatsAppQRDialog({ open, onClose, onConnected }: Props) 
       .catch((err) => {
         setStatus("error");
         setError(err.message);
-        return;
       });
 
-    // 2. Listen for QR events via SSE
-    const es = new EventSource("/api/whatsapp/sesion/qr");
-    eventSourceRef.current = es;
-
-    es.onmessage = (event) => {
+    // 2. Poll status every 2 seconds
+    const poll = async () => {
       try {
-        const data = JSON.parse(event.data);
-        if (data.type === "qr") {
-          setStatus("qr");
-          setQrData(data.data);
-        } else if (data.type === "connected") {
+        const res = await fetch("/api/whatsapp/sesion/estado");
+        if (!res.ok) return;
+        const data = await res.json();
+
+        if (data.estado === "CONECTADO") {
           setStatus("connected");
-          setTimeout(() => {
-            onConnected();
-          }, 1500);
-        } else if (data.type === "disconnected") {
-          setStatus("error");
-          setError("Sesión cerrada");
+          stopPolling();
+          setTimeout(() => onConnected(), 1500);
+        } else if (data.estado === "QR_PENDIENTE" && data.qr_code) {
+          setStatus("qr");
+          setQrData(data.qr_code);
+        } else if (data.estado === "DESCONECTADO") {
+          // Puede pasar si falla la conexión
         }
-      } catch { /* ignore */ }
+      } catch {
+        // Ignore polling errors
+      }
     };
 
-    es.onerror = () => {
-      // SSE disconnected, check if already connected
-      es.close();
-    };
+    // Poll immediately, then every 2s
+    poll();
+    pollingRef.current = setInterval(poll, 2000);
 
-    return () => {
-      es.close();
-      eventSourceRef.current = null;
-    };
-  }, [open, onConnected]);
+    return () => stopPolling();
+  }, [open, onConnected, stopPolling]);
 
   const handleClose = () => {
-    if (eventSourceRef.current) {
-      eventSourceRef.current.close();
-    }
+    stopPolling();
     onClose();
   };
 

@@ -21,37 +21,6 @@ router.post("/:userId/connect", async (req: Request, res: Response) => {
   }
 });
 
-/** GET /sessions/:userId/qr — SSE stream para QR y eventos de conexión */
-router.get("/:userId/qr", (req: Request, res: Response) => {
-  const userId = Number(req.params.userId);
-  if (!userId) {
-    res.status(400).json({ error: "userId inválido" });
-    return;
-  }
-
-  // Configurar SSE
-  res.setHeader("Content-Type", "text/event-stream");
-  res.setHeader("Cache-Control", "no-cache");
-  res.setHeader("Connection", "keep-alive");
-  res.setHeader("X-Accel-Buffering", "no");
-  res.flushHeaders();
-
-  // Registrar callback para eventos QR
-  sessionManager.onQrEvent(userId, (data) => {
-    res.write(`data: ${JSON.stringify(data)}\n\n`);
-
-    // Si se conectó o desconectó, cerrar stream
-    if (data.type === "connected" || data.type === "disconnected") {
-      setTimeout(() => res.end(), 500);
-    }
-  });
-
-  // Limpiar al cerrar conexión
-  req.on("close", () => {
-    sessionManager.removeQrCallback(userId);
-  });
-});
-
 /** DELETE /sessions/:userId — Desconectar sesión WA */
 router.delete("/:userId", async (req: Request, res: Response) => {
   const userId = Number(req.params.userId);
