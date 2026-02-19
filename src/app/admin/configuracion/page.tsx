@@ -10,6 +10,8 @@ import {
   Alert,
   Snackbar,
   CircularProgress,
+  Switch,
+  FormControlLabel,
 } from "@mui/material";
 import SaveIcon from "@mui/icons-material/Save";
 
@@ -22,6 +24,7 @@ interface Config {
 export default function ConfiguracionPage() {
   const [configs, setConfigs] = useState<Config[]>([]);
   const [maxRegistros, setMaxRegistros] = useState("300");
+  const [horarioActivo, setHorarioActivo] = useState(true);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" as "success" | "error" });
@@ -31,8 +34,10 @@ export default function ConfiguracionPage() {
       .then((res) => res.json())
       .then((data: Config[]) => {
         setConfigs(data);
-        const maxReg = data.find((c) => c.clave === "max_registros_por_dia");
+        const maxReg = data.find((c: Config) => c.clave === "max_registros_por_dia");
         if (maxReg) setMaxRegistros(maxReg.valor);
+        const horario = data.find((c: Config) => c.clave === "horario_activo");
+        if (horario) setHorarioActivo(horario.valor !== "false");
         setLoading(false);
       });
   }, []);
@@ -70,6 +75,40 @@ export default function ConfiguracionPage() {
       <Typography variant="h4" sx={{ mb: 3 }}>
         Configuracion del Sistema
       </Typography>
+
+      <Card sx={{ maxWidth: 600, mb: 3 }}>
+        <CardContent sx={{ p: 3 }}>
+          <Typography variant="h6" sx={{ mb: 1 }}>
+            Horario Operativo
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Controla si el sistema aplica la restriccion de horario para promotores (08:55 - 19:15 L-V).
+          </Typography>
+          <FormControlLabel
+            control={
+              <Switch
+                checked={horarioActivo}
+                onChange={async (e) => {
+                  const nuevoValor = e.target.checked;
+                  setHorarioActivo(nuevoValor);
+                  const res = await fetch("/api/admin/configuracion", {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ clave: "horario_activo", valor: String(nuevoValor) }),
+                  });
+                  if (res.ok) {
+                    setSnackbar({ open: true, message: nuevoValor ? "Horario activado" : "Horario desactivado", severity: "success" });
+                  } else {
+                    setHorarioActivo(!nuevoValor);
+                    setSnackbar({ open: true, message: "Error al cambiar horario", severity: "error" });
+                  }
+                }}
+              />
+            }
+            label={horarioActivo ? "Horario activo" : "Horario desactivado (acceso libre)"}
+          />
+        </CardContent>
+      </Card>
 
       <Card sx={{ maxWidth: 600 }}>
         <CardContent sx={{ p: 3 }}>

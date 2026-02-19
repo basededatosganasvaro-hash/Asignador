@@ -84,13 +84,18 @@ export async function verificarHorarioConConfig(): Promise<HorarioResult> {
 
   const configs = await prisma.configuracion.findMany({
     where: {
-      clave: { in: ["horario_inicio", "horario_fin", "dias_operativos"] },
+      clave: { in: ["horario_inicio", "horario_fin", "dias_operativos", "horario_activo"] },
     },
   });
 
   const configMap: Record<string, string> = {};
   for (const c of configs) {
     configMap[c.clave] = c.valor;
+  }
+
+  // Si el horario está desactivado desde el admin, permitir acceso siempre
+  if (configMap.horario_activo === "false") {
+    return { activo: true, horaActual: getHoraMexico().toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit", timeZone: ZONA_HORARIA }) };
   }
 
   return verificarHorario({
