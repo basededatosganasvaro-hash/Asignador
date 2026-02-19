@@ -16,13 +16,11 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
 import AssignmentIndIcon from "@mui/icons-material/AssignmentInd";
 import { useSession } from "next-auth/react";
-import SendIcon from "@mui/icons-material/Send";
-import { buildWhatsAppUrl, formatPhoneForWA, WA_MENSAJES_DEFAULT } from "@/lib/whatsapp";
+import { useRouter } from "next/navigation";
+import { buildWhatsAppUrl, WA_MENSAJES_DEFAULT } from "@/lib/whatsapp";
 import ImportCaptacionDialog from "@/components/ImportCaptacionDialog";
 import CaptacionModal from "@/components/CaptacionModal";
 import SolicitarAsignacionDialog from "@/components/SolicitarAsignacionDialog";
-import CampanaCrearDialog from "@/components/CampanaCrearDialog";
-import CampanaProgreso from "@/components/CampanaProgreso";
 
 // ════════════════════════════════════════════
 // TIPOS
@@ -255,11 +253,10 @@ export default function OportunidadesPage() {
       localStorage.setItem("promotor_columns", JSON.stringify(enforced));
     } catch { /* ignore */ }
   }, []);
+  const router = useRouter();
   const [importOpen, setImportOpen] = useState(false);
   const [captacionOpen, setCaptacionOpen] = useState(false);
   const [asignacionOpen, setAsignacionOpen] = useState(false);
-  const [campanaOpen, setCampanaOpen] = useState(false);
-  const [selectedIds, setSelectedIds] = useState<number[]>([]);
 
   // Modal Ver detalle
   const [verDialog, setVerDialog] = useState<{ open: boolean; loading: boolean; data: OportunidadDetalle | null }>({
@@ -581,22 +578,8 @@ export default function OportunidadesPage() {
           >
             Solicitar Asignación
           </Button>
-          {selectedIds.length > 0 && (
-            <Button
-              variant="contained"
-              size="small"
-              startIcon={<SendIcon />}
-              onClick={() => setCampanaOpen(true)}
-              sx={{ textTransform: "none", fontWeight: 600, bgcolor: "#25D366", "&:hover": { bgcolor: "#1da851" } }}
-            >
-              WhatsApp Masivo ({selectedIds.length})
-            </Button>
-          )}
         </Box>
       </Box>
-
-      {/* ═══════ CAMPAÑAS ACTIVAS ═══════ */}
-      <CampanaProgreso />
 
       {/* ═══════ 6 CARDS PIPELINE ═══════ */}
       <Box
@@ -699,9 +682,7 @@ export default function OportunidadesPage() {
             columns={columns}
             pageSizeOptions={[25, 50, 100]}
             initialState={{ pagination: { paginationModel: { pageSize: 25 } } }}
-            checkboxSelection
             disableRowSelectionOnClick
-            onRowSelectionModelChange={(model) => setSelectedIds(Array.from(model.ids).map(Number))}
             autoHeight
             rowHeight={56}
             columnVisibilityModel={columnVisibility}
@@ -885,26 +866,6 @@ export default function OportunidadesPage() {
         open={importOpen}
         onClose={() => setImportOpen(false)}
         onSuccess={() => { setImportOpen(false); fetchData(); }}
-      />
-
-      <CampanaCrearDialog
-        open={campanaOpen}
-        onClose={() => setCampanaOpen(false)}
-        onSuccess={() => {
-          setCampanaOpen(false);
-          setSelectedIds([]);
-          setSnackbar({ open: true, message: "Campaña creada, envío iniciado", severity: "success" });
-        }}
-        destinatarios={selectedIds.map((id) => {
-          const row = rows.find((r) => r.id === id);
-          const tel = row?.tel_1 || "";
-          return {
-            oportunidad_id: id,
-            numero_destino: formatPhoneForWA(tel),
-            nombre_cliente: row?.nombres || "",
-          };
-        }).filter((d) => d.numero_destino.length >= 12)}
-        mensajeInicial={plantillas[cardFiltro === "capturados" ? "Capturados" : cardFiltro] || ""}
       />
 
       <Snackbar open={snackbar.open} autoHideDuration={3000} onClose={() => setSnackbar((p) => ({ ...p, open: false }))}>

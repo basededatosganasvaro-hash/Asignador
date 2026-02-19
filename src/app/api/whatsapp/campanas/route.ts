@@ -21,6 +21,18 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json();
+    const promotorNombre = session!.user.nombre || "";
+
+    // Replace {promotor} in mensaje_base and variaciones before sending to WA service
+    if (body.mensaje_base && typeof body.mensaje_base === "string") {
+      body.mensaje_base = body.mensaje_base.replace(/\{promotor\}/g, promotorNombre);
+    }
+    if (Array.isArray(body.variaciones)) {
+      body.variaciones = body.variaciones.map((v: string) =>
+        typeof v === "string" ? v.replace(/\{promotor\}/g, promotorNombre) : v
+      );
+    }
+
     const result = await waFetch("/campaigns", {
       method: "POST",
       body: { ...body, usuario_id: session!.user.id },

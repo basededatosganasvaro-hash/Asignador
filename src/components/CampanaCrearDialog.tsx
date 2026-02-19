@@ -47,7 +47,7 @@ export default function CampanaCrearDialog({ open, onClose, onSuccess, destinata
       const res = await fetch("/api/whatsapp/variaciones", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mensaje_base: mensajeBase, cantidad: 30 }),
+        body: JSON.stringify({ mensaje_base: mensajeBase, cantidad: 15 }),
       });
       if (!res.ok) throw new Error("Error al generar variaciones");
       const data = await res.json();

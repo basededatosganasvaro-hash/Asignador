@@ -8,40 +8,27 @@ export async function POST(req: Request) {
   const { session, error } = await requireAuth();
   if (error) return error;
 
-  const { mensaje_base, cantidad = 30 } = await req.json();
+  const { mensaje_base, cantidad = 15 } = await req.json();
 
   if (!mensaje_base || typeof mensaje_base !== "string") {
     return NextResponse.json({ error: "mensaje_base requerido" }, { status: 400 });
   }
 
-  const cant = Math.min(Math.max(Number(cantidad), 5), 50);
+  const cant = Math.min(Math.max(Number(cantidad), 5), 30);
 
   try {
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
-      temperature: 0.9,
+      temperature: 0.8,
+      max_tokens: 4000,
       messages: [
         {
           role: "system",
-          content: `Eres un asistente que genera variaciones de mensajes de WhatsApp para vendedores mexicanos.
-
-REGLAS ESTRICTAS:
-- Genera exactamente ${cant} variaciones del mensaje proporcionado
-- Cada variación debe mantener el MISMO significado e intención
-- Varía: estructura de oraciones, saludos, puntuación, emojis, sinónimos
-- PRESERVA las variables {nombre} y {promotor} exactamente como están — NO las reemplaces
-- Usa español mexicano, tono semi-formal y amigable
-- Cada variación debe verse diferente a simple vista (no solo cambiar una palabra)
-- No uses malas palabras ni lenguaje ofensivo
-- Longitud similar al original (±30%)
-
-FORMATO DE RESPUESTA:
-Devuelve SOLO un JSON array de strings, sin explicaciones. Ejemplo:
-["variación 1", "variación 2", ...]`,
+          content: `Genera ${cant} variaciones de un mensaje WhatsApp. Reglas: mismo significado, varía estructura/saludos/emojis/sinónimos, preserva {nombre} y {promotor} tal cual, español mexicano semi-formal, sin groserías. Responde SOLO un JSON array de strings.`,
         },
         {
           role: "user",
-          content: `Genera ${cant} variaciones de este mensaje:\n\n${mensaje_base}`,
+          content: mensaje_base,
         },
       ],
     });
