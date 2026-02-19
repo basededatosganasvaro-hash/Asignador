@@ -303,7 +303,7 @@ export default function OportunidadDetallePage({ params }: { params: Promise<{ i
           )}
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setDialogOpen(false)}>Cancelar</Button>
+          <Button onClick={() => setDialogOpen(false)} color="error" variant="outlined">Cancelar</Button>
           <Button variant="contained" onClick={handleExecuteTransicion} disabled={saving || (selectedTransicion?.requiere_nota && !nota.trim()) || (esVenta && !numOperacion.trim())} color={selectedTransicion?.devuelve_al_pool ? "error" : "primary"}>
             {saving ? <CircularProgress size={20} /> : "Confirmar"}
           </Button>
@@ -317,7 +317,7 @@ export default function OportunidadDetallePage({ params }: { params: Promise<{ i
           <TextField fullWidth label="Tel 1" value={editTel} onChange={(e) => setEditTel(e.target.value)} margin="normal" autoFocus />
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setEditTelOpen(false)}>Cancelar</Button>
+          <Button onClick={() => setEditTelOpen(false)} color="error" variant="outlined">Cancelar</Button>
           <Button variant="contained" onClick={handleEditTel}>Guardar</Button>
         </DialogActions>
       </Dialog>

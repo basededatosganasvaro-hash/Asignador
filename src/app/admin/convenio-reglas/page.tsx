@@ -208,7 +208,7 @@ export default function ConvenioReglasPage() {
           {error && <Alert severity="error">{error}</Alert>}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDialogOpen(false)}>Cancelar</Button>
+          <Button onClick={() => setDialogOpen(false)} color="error" variant="outlined">Cancelar</Button>
           <Button variant="contained" onClick={handleSave} disabled={saving}>
             Guardar
           </Button>

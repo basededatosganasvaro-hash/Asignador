@@ -225,7 +225,7 @@ export default function EmbudoPage() {
           </Box>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setEtapaDialogOpen(false)}>Cancelar</Button>
+          <Button onClick={() => setEtapaDialogOpen(false)} color="error" variant="outlined">Cancelar</Button>
           <Button variant="contained" onClick={handleSaveEtapa}>{editingEtapa ? "Actualizar" : "Crear"}</Button>
         </DialogActions>
       </Dialog>
@@ -254,7 +254,7 @@ export default function EmbudoPage() {
           <FormControlLabel control={<Checkbox checked={transForm.requiere_supervisor} onChange={(e) => setTransForm({ ...transForm, requiere_supervisor: e.target.checked })} />} label="Requiere supervisor" />
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setTransDialogOpen(false)}>Cancelar</Button>
+          <Button onClick={() => setTransDialogOpen(false)} color="error" variant="outlined">Cancelar</Button>
           <Button variant="contained" onClick={handleSaveTransicion} disabled={!transForm.etapa_origen_id || !transForm.nombre_accion}>Crear</Button>
         </DialogActions>
       </Dialog>

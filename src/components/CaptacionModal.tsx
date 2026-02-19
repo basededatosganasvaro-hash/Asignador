@@ -7,6 +7,7 @@ import {
   Divider, Tabs, Tab,
 } from "@mui/material";
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
+import UploadFileIcon from "@mui/icons-material/UploadFile";
 import ImportCaptacionDialog from "@/components/ImportCaptacionDialog";
 
 const ORIGENES = [
@@ -152,10 +153,20 @@ export default function CaptacionModal({ open, onClose, onSuccess }: Props) {
         <Tabs
           value={tab}
           onChange={(_, v) => setTab(v)}
-          sx={{ "& .MuiTab-root": { textTransform: "none", fontWeight: 600, fontSize: 13 } }}
+          sx={{
+            "& .MuiTab-root": { textTransform: "none", fontWeight: 600, fontSize: 13 },
+          }}
         >
-          <Tab label="Individual" />
-          <Tab label="Carga Masiva" />
+          <Tab
+            icon={<PersonAddIcon sx={{ fontSize: 18 }} />}
+            iconPosition="start"
+            label="Individual"
+          />
+          <Tab
+            icon={<UploadFileIcon sx={{ fontSize: 18 }} />}
+            iconPosition="start"
+            label="Carga Masiva"
+          />
         </Tabs>
       </Box>
 
@@ -164,7 +175,7 @@ export default function CaptacionModal({ open, onClose, onSuccess }: Props) {
           <DialogContent sx={{ pt: 2 }}>
             <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
               <FormControl fullWidth size="small" required>
-                <InputLabel>Origen de captación</InputLabel>
+                <InputLabel>Origen de captaci&oacute;n</InputLabel>
                 <Select
                   value={form.origen_captacion}
                   label="Origen de captación"
@@ -255,7 +266,9 @@ export default function CaptacionModal({ open, onClose, onSuccess }: Props) {
             </Box>
           </DialogContent>
           <DialogActions sx={{ px: 3, pb: 2 }}>
-            <Button onClick={handleClose}>Cancelar</Button>
+            <Button onClick={handleClose} color="error" variant="outlined">
+              Cancelar
+            </Button>
             <Button
               type="submit"
               variant="contained"

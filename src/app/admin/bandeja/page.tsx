@@ -296,7 +296,7 @@ function EquipoTab({ showSnack }: { showSnack: (m: string, s?: "success" | "erro
           </FormControl>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setReasignarOp(null)}>Cancelar</Button>
+          <Button onClick={() => setReasignarOp(null)} color="error" variant="outlined">Cancelar</Button>
           <Button variant="contained" onClick={handleReasignar} disabled={!nuevoPromotor}>Reasignar</Button>
         </DialogActions>
       </Dialog>
@@ -380,7 +380,7 @@ function PromotoresTab({ showSnack }: { showSnack: (m: string, s?: "success" | "
           </FormControl>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setBajaPromotor(null)}>Cancelar</Button>
+          <Button onClick={() => setBajaPromotor(null)} color="error" variant="outlined">Cancelar</Button>
           <Button variant="contained" color="error" onClick={handleBaja} disabled={saving}>
             {saving ? <CircularProgress size={20} /> : "Confirmar baja"}
           </Button>

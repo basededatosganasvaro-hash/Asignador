@@ -252,7 +252,7 @@ export default function SolicitarAsignacionDialog({ open, onClose, onSuccess }: 
       </DialogContent>
 
       <DialogActions sx={{ px: 3, pb: 2 }}>
-        <Button onClick={handleClose}>Cancelar</Button>
+        <Button onClick={handleClose} color="error" variant="outlined">Cancelar</Button>
         <Button
           variant="contained"
           size="large"

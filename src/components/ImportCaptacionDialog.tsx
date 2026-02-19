@@ -3,11 +3,13 @@ import { useEffect, useState } from "react";
 import {
   Dialog, DialogTitle, DialogContent, DialogActions,
   Button, Typography, Box, FormControl, InputLabel, Select,
-  MenuItem, CircularProgress, Alert, Chip, Divider,
+  MenuItem, CircularProgress, Alert, Divider,
 } from "@mui/material";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
+import DownloadIcon from "@mui/icons-material/Download";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import ErrorIcon from "@mui/icons-material/Error";
+import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
 
 const ORIGENES = [
   { value: "CAMBACEO", label: "Cambaceo" },
@@ -58,6 +60,13 @@ export default function ImportCaptacionDialog({ open, onClose, onSuccess, embedd
     onClose();
   };
 
+  const handleDownloadTemplate = () => {
+    const link = document.createElement("a");
+    link.href = "/api/captaciones/template";
+    link.download = "template_captaciones.xlsx";
+    link.click();
+  };
+
   const handleUpload = async () => {
     if (!file || !origen || !convenio) return;
 
@@ -97,8 +106,41 @@ export default function ImportCaptacionDialog({ open, onClose, onSuccess, embedd
 
   const content = (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5, mt: embedded ? 0 : 1 }}>
+      {/* Paso 1: Descargar template */}
+      <Box
+        sx={{
+          p: 2,
+          border: "2px dashed",
+          borderColor: "primary.main",
+          borderRadius: 2,
+          bgcolor: "primary.50",
+          textAlign: "center",
+        }}
+      >
+        <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 0.5 }}>
+          Paso 1: Descarga el template
+        </Typography>
+        <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1.5 }}>
+          Llena el archivo Excel con los datos de tus prospectos y luego s&uacute;belo aqu&iacute;
+        </Typography>
+        <Button
+          variant="contained"
+          startIcon={<DownloadIcon />}
+          onClick={handleDownloadTemplate}
+          sx={{ textTransform: "none", fontWeight: 600 }}
+        >
+          Descargar Template Excel
+        </Button>
+      </Box>
+
+      <Divider>
+        <Typography variant="caption" color="text.secondary" fontWeight={600}>
+          Paso 2: Configura la importaci&oacute;n
+        </Typography>
+      </Divider>
+
       <FormControl fullWidth size="small" required>
-        <InputLabel>Origen de captación</InputLabel>
+        <InputLabel>Origen de captaci&oacute;n</InputLabel>
         <Select value={origen} label="Origen de captación" onChange={(e) => setOrigen(e.target.value)}>
           {ORIGENES.map((o) => (
             <MenuItem key={o.value} value={o.value}>{o.label}</MenuItem>
@@ -115,15 +157,27 @@ export default function ImportCaptacionDialog({ open, onClose, onSuccess, embedd
         </Select>
       </FormControl>
 
-      <Divider />
+      <Divider>
+        <Typography variant="caption" color="text.secondary" fontWeight={600}>
+          Paso 3: Sube tu archivo
+        </Typography>
+      </Divider>
 
+      {/* Zona de subida de archivo */}
       <Box>
         <Button
           variant="outlined"
           component="label"
-          startIcon={<UploadFileIcon />}
+          startIcon={file ? <InsertDriveFileIcon /> : <UploadFileIcon />}
           fullWidth
-          sx={{ py: 2, borderStyle: "dashed", textTransform: "none" }}
+          color={file ? "success" : "primary"}
+          sx={{
+            py: 2,
+            borderStyle: file ? "solid" : "dashed",
+            borderWidth: 2,
+            textTransform: "none",
+            fontWeight: file ? 600 : 400,
+          }}
         >
           {file ? file.name : "Seleccionar archivo Excel (.xlsx)"}
           <input
@@ -138,13 +192,6 @@ export default function ImportCaptacionDialog({ open, onClose, onSuccess, embedd
           />
         </Button>
       </Box>
-
-      <Alert severity="info" variant="outlined" sx={{ fontSize: 12 }}>
-        <Typography variant="body2" fontWeight={600} sx={{ mb: 0.5 }}>Columnas esperadas:</Typography>
-        <Typography variant="caption">
-          nombres, a_paterno, a_materno, tel_1 (requeridos) — nss, curp, rfc, num_empleado, tel_2, estado, municipio, email (opcionales)
-        </Typography>
-      </Alert>
 
       {error && <Alert severity="error">{error}</Alert>}
 
@@ -168,7 +215,7 @@ export default function ImportCaptacionDialog({ open, onClose, onSuccess, embedd
                 ))}
                 {result.errors.length > 10 && (
                   <Typography variant="caption" color="text.secondary">
-                    ...y {result.errors.length - 10} más
+                    ...y {result.errors.length - 10} m&aacute;s
                   </Typography>
                 )}
               </Box>
@@ -179,7 +226,9 @@ export default function ImportCaptacionDialog({ open, onClose, onSuccess, embedd
 
       {embedded && (
         <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1 }}>
-          <Button onClick={handleClose}>Cancelar</Button>
+          <Button onClick={handleClose} color="error" variant="outlined">
+            Cancelar
+          </Button>
           {!result?.created && (
             <Button
               variant="contained"
@@ -212,7 +261,7 @@ export default function ImportCaptacionDialog({ open, onClose, onSuccess, embedd
       <DialogContent>{content}</DialogContent>
 
       <DialogActions sx={{ px: 3, pb: 2 }}>
-        <Button onClick={handleClose}>
+        <Button onClick={handleClose} color="error" variant="outlined">
           {result?.created ? "Cerrar" : "Cancelar"}
         </Button>
         {!result?.created && (

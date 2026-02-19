@@ -699,7 +699,7 @@ export default function OportunidadesPage() {
           />
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setVentaDialog((p) => ({ ...p, open: false }))}>Cancelar</Button>
+          <Button onClick={() => setVentaDialog((p) => ({ ...p, open: false }))} color="error" variant="outlined">Cancelar</Button>
           <Button
             variant="contained"
             color="success"

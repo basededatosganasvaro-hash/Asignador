@@ -92,7 +92,7 @@ export default function RegionesPage() {
           <TextField fullWidth label="Nombre" value={nombre} onChange={(e) => setNombre(e.target.value)} margin="normal" required autoFocus />
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setDialogOpen(false)}>Cancelar</Button>
+          <Button onClick={() => setDialogOpen(false)} color="error" variant="outlined">Cancelar</Button>
           <Button variant="contained" onClick={handleSave}>{editing ? "Actualizar" : "Crear"}</Button>
         </DialogActions>
       </Dialog>
