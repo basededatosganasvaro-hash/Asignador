@@ -1,0 +1,432 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_SISTEMA_URL")
+}
+
+// =============================================
+// ORGANIZACION
+// =============================================
+
+model regiones {
+  id         Int        @id @default(autoincrement())
+  nombre     String     @db.VarChar(200)
+  activo     Boolean    @default(true)
+  created_at DateTime   @default(now())
+
+  zonas    zonas[]
+  usuarios usuarios[]
+}
+
+model zonas {
+  id        Int     @id @default(autoincrement())
+  region_id Int
+  nombre    String  @db.VarChar(200)
+  activo    Boolean @default(true)
+
+  region     regiones     @relation(fields: [region_id], references: [id])
+  sucursales sucursales[]
+
+  @@index([region_id])
+}
+
+model sucursales {
+  id        Int     @id @default(autoincrement())
+  zona_id   Int
+  nombre    String  @db.VarChar(200)
+  direccion String?
+  activo    Boolean @default(true)
+
+  zona           zonas            @relation(fields: [zona_id], references: [id])
+  equipos        equipos[]
+  usuarios       usuarios[]
+  planes_trabajo planes_trabajo[]
+
+  @@index([zona_id])
+}
+
+model equipos {
+  id            Int     @id @default(autoincrement())
+  sucursal_id   Int
+  nombre        String  @db.VarChar(200)
+  supervisor_id Int?
+  activo        Boolean @default(true)
+
+  sucursal   sucursales @relation(fields: [sucursal_id], references: [id])
+  miembros   usuarios[] @relation("EquipoMiembros")
+  supervisor usuarios?  @relation("EquipoSupervisor", fields: [supervisor_id], references: [id])
+
+  @@index([sucursal_id])
+}
+
+// =============================================
+// USUARIOS
+// =============================================
+
+model usuarios {
+  id            Int      @id @default(autoincrement())
+  nombre        String   @db.VarChar(200)
+  username      String   @unique @db.VarChar(50)
+  email         String   @unique @db.VarChar(300)
+  password_hash String
+  rol           String   @default("promotor") @db.VarChar(30)
+  // admin | gerente_regional | gerente_sucursal | supervisor | promotor
+
+  equipo_id   Int?
+  sucursal_id Int?
+  region_id   Int?
+
+  intentos_fallidos     Int       @default(0)
+  bloqueado_hasta       DateTime?
+  debe_cambiar_password Boolean   @default(false)
+
+  activo     Boolean  @default(true)
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now()) @updatedAt
+
+  equipo                  equipos?    @relation("EquipoMiembros", fields: [equipo_id], references: [id])
+  sucursal                sucursales? @relation(fields: [sucursal_id], references: [id])
+  region                  regiones?   @relation(fields: [region_id], references: [id])
+  equipos_supervisados    equipos[]   @relation("EquipoSupervisor")
+
+  lotes                   lotes[]
+  oportunidades           oportunidades[]
+  datos_contacto_editados datos_contacto[]
+  planes_trabajo_creados  planes_trabajo[]
+  historial               historial[]
+  ventas                  ventas[]
+  captaciones             captaciones[]
+  cupo_diario             cupo_diario[]
+  plantillas_whatsapp     plantillas_whatsapp[]
+  wa_sesion               wa_sesiones?
+  wa_campanas             wa_campanas[]
+
+  @@index([username])
+  @@index([rol])
+}
+
+// =============================================
+// PLAN DE TRABAJO
+// =============================================
+
+model planes_trabajo {
+  id          Int      @id @default(autoincrement())
+  sucursal_id Int
+  convenio    String   @db.VarChar(300)
+  creado_por  Int
+  activo      Boolean  @default(true)
+  created_at  DateTime @default(now())
+
+  sucursal sucursales @relation(fields: [sucursal_id], references: [id])
+  creador  usuarios   @relation(fields: [creado_por], references: [id])
+
+  @@index([sucursal_id, activo])
+}
+
+// =============================================
+// EMBUDO DE VENTAS
+// =============================================
+
+model embudo_etapas {
+  id          Int     @id @default(autoincrement())
+  nombre      String  @db.VarChar(100)
+  orden       Int
+  tipo        String  @db.VarChar(20)
+  // AVANCE | SALIDA | FINAL
+  timer_horas Int?
+  color       String  @db.VarChar(7)
+  activo      Boolean @default(true)
+
+  transiciones_origen  embudo_transiciones[] @relation("TransicionOrigen")
+  transiciones_destino embudo_transiciones[] @relation("TransicionDestino")
+  oportunidades        oportunidades[]
+  historial_anterior   historial[]           @relation("HistorialEtapaAnterior")
+  historial_nueva      historial[]           @relation("HistorialEtapaNueva")
+
+  @@index([orden])
+}
+
+model embudo_transiciones {
+  id                  Int     @id @default(autoincrement())
+  etapa_origen_id     Int
+  etapa_destino_id    Int?
+  // NULL = devuelve al pool
+  nombre_accion       String  @db.VarChar(100)
+  requiere_nota       Boolean @default(true)
+  requiere_supervisor Boolean @default(false)
+  devuelve_al_pool    Boolean @default(false)
+  activo              Boolean @default(true)
+
+  etapa_origen  embudo_etapas  @relation("TransicionOrigen", fields: [etapa_origen_id], references: [id])
+  etapa_destino embudo_etapas? @relation("TransicionDestino", fields: [etapa_destino_id], references: [id])
+
+  @@index([etapa_origen_id])
+}
+
+// =============================================
+// OPORTUNIDADES (centro del sistema)
+// =============================================
+
+model lotes {
+  id         Int      @id @default(autoincrement())
+  usuario_id Int
+  fecha      DateTime @default(now()) @db.Date
+  cantidad   Int
+  created_at DateTime @default(now())
+
+  usuario       usuarios        @relation(fields: [usuario_id], references: [id])
+  oportunidades oportunidades[]
+
+  @@index([usuario_id])
+  @@index([usuario_id, fecha])
+}
+
+model oportunidades {
+  id              Int      @id @default(autoincrement())
+  cliente_id      Int?
+  // Referencia a clientes.id en BD Clientes (sin FK constraint — DBs separadas)
+  // NULL cuando el cliente fue captado y no existe en BD Clientes
+  usuario_id      Int
+  etapa_id        Int?
+  origen          String   @db.VarChar(20)
+  // POOL | CAPTACION | REASIGNACION
+  lote_id         Int?
+  timer_vence     DateTime?
+  num_operacion   String?  @db.VarChar(100)
+  venta_validada  Boolean  @default(false)
+  activo          Boolean  @default(true)
+  created_at      DateTime @default(now())
+  updated_at      DateTime @default(now()) @updatedAt
+
+  usuario   usuarios       @relation(fields: [usuario_id], references: [id])
+  lote      lotes?         @relation(fields: [lote_id], references: [id])
+  etapa     embudo_etapas? @relation(fields: [etapa_id], references: [id])
+  historial    historial[]
+  venta        ventas?
+  captacion    captaciones?
+  wa_mensajes  wa_mensajes[]
+
+  @@index([usuario_id, activo])
+  @@index([cliente_id, activo])
+  @@index([etapa_id])
+  @@index([timer_vence, activo])
+}
+
+// =============================================
+// DATOS DE CONTACTO EDITADOS
+// =============================================
+
+model datos_contacto {
+  id          Int      @id @default(autoincrement())
+  cliente_id  Int
+  // Referencia a clientes.id en BD Clientes (sin FK constraint — DBs separadas)
+  campo       String   @db.VarChar(50)
+  valor       String
+  editado_por Int
+  created_at  DateTime @default(now())
+
+  editor usuarios @relation(fields: [editado_por], references: [id])
+
+  @@index([cliente_id, campo])
+}
+
+// =============================================
+// HISTORIAL DE INTERACCIONES
+// =============================================
+
+model historial {
+  id                Int      @id @default(autoincrement())
+  oportunidad_id    Int
+  usuario_id        Int
+  tipo              String   @db.VarChar(30)
+  // CAMBIO_ETAPA | NOTA | LLAMADA | WHATSAPP | SMS | ASIGNACION | TIMER_VENCIDO
+  etapa_anterior_id Int?
+  etapa_nueva_id    Int?
+  canal             String?  @db.VarChar(20)
+  // LLAMADA | WHATSAPP | SMS
+  nota              String?
+  created_at        DateTime @default(now())
+
+  oportunidad    oportunidades  @relation(fields: [oportunidad_id], references: [id])
+  usuario        usuarios       @relation(fields: [usuario_id], references: [id])
+  etapa_anterior embudo_etapas? @relation("HistorialEtapaAnterior", fields: [etapa_anterior_id], references: [id])
+  etapa_nueva    embudo_etapas? @relation("HistorialEtapaNueva", fields: [etapa_nueva_id], references: [id])
+
+  @@index([oportunidad_id])
+  @@index([usuario_id])
+}
+
+// =============================================
+// VENTAS
+// =============================================
+
+model ventas {
+  id             Int      @id @default(autoincrement())
+  oportunidad_id Int      @unique
+  usuario_id     Int
+  num_operacion  String   @db.VarChar(100)
+  validada       Boolean  @default(false)
+  created_at     DateTime @default(now())
+
+  oportunidad oportunidades @relation(fields: [oportunidad_id], references: [id])
+  usuario     usuarios      @relation(fields: [usuario_id], references: [id])
+}
+
+// =============================================
+// CUPO DIARIO
+// =============================================
+
+model cupo_diario {
+  id             Int      @id @default(autoincrement())
+  usuario_id     Int
+  fecha          DateTime @db.Date
+  total_asignado Int      @default(0)
+  limite         Int      @default(300)
+  created_at     DateTime @default(now())
+
+  usuario usuarios @relation(fields: [usuario_id], references: [id])
+
+  @@unique([usuario_id, fecha])
+  @@index([usuario_id])
+}
+
+// =============================================
+// CONFIGURACION GENERAL
+// =============================================
+
+model configuracion {
+  id    Int    @id @default(autoincrement())
+  clave String @unique @db.VarChar(100)
+  valor String
+}
+
+// =============================================
+// CAPTACION
+// =============================================
+
+model captaciones {
+  id               Int      @id @default(autoincrement())
+  oportunidad_id   Int      @unique
+  usuario_id       Int
+  origen_captacion String   @db.VarChar(50)
+  // CAMBACEO | REFERIDO | REDES_SOCIALES | OTRO
+  convenio         String   @db.VarChar(300)
+  datos_json       Json
+  created_at       DateTime @default(now())
+
+  oportunidad oportunidades @relation(fields: [oportunidad_id], references: [id])
+  usuario     usuarios      @relation(fields: [usuario_id], references: [id])
+
+  @@index([usuario_id])
+}
+
+// =============================================
+// PLANTILLAS WHATSAPP (por usuario)
+// =============================================
+
+model plantillas_whatsapp {
+  id         Int    @id @default(autoincrement())
+  usuario_id Int
+  etapa      String @db.VarChar(50)
+  mensaje    String
+
+  usuario usuarios @relation(fields: [usuario_id], references: [id])
+
+  @@unique([usuario_id, etapa])
+  @@index([usuario_id])
+}
+
+model convenio_reglas {
+  id          Int     @id @default(autoincrement())
+  convenio    String  @db.VarChar(300)
+  campo       String  @db.VarChar(50)
+  obligatorio Boolean @default(true)
+
+  @@unique([convenio, campo])
+  @@index([convenio])
+}
+
+// =============================================
+// WHATSAPP MASIVO — SESIONES
+// =============================================
+
+model wa_sesiones {
+  id         Int      @id @default(autoincrement())
+  usuario_id Int      @unique
+  estado     String   @default("DESCONECTADO") @db.VarChar(20)
+  // DESCONECTADO | CONECTANDO | CONECTADO | QR_PENDIENTE
+  numero_wa  String?  @db.VarChar(30)
+  creds_json String?  // Baileys auth state encriptado
+  keys_json  String?  // Baileys signal keys encriptado
+  ultimo_uso DateTime @default(now())
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now()) @updatedAt
+
+  usuario  usuarios      @relation(fields: [usuario_id], references: [id])
+  campanas wa_campanas[]
+
+  @@index([estado])
+}
+
+// =============================================
+// WHATSAPP MASIVO — CAMPAÑAS
+// =============================================
+
+model wa_campanas {
+  id             Int      @id @default(autoincrement())
+  usuario_id     Int
+  sesion_id      Int
+  nombre         String   @db.VarChar(200)
+  mensaje_base   String
+  variaciones    Json?    // string[] de variaciones generadas por IA
+  etapa_filtro   String?  @db.VarChar(50)
+  estado         String   @default("CREADA") @db.VarChar(20)
+  // CREADA | EN_COLA | ENVIANDO | PAUSADA | COMPLETADA | CANCELADA
+  total_mensajes Int      @default(0)
+  enviados       Int      @default(0)
+  entregados     Int      @default(0)
+  leidos         Int      @default(0)
+  fallidos       Int      @default(0)
+  config_json    Json?    // delay ranges, burst sizes, etc.
+  created_at     DateTime @default(now())
+  updated_at     DateTime @default(now()) @updatedAt
+
+  usuario  usuarios      @relation(fields: [usuario_id], references: [id])
+  sesion   wa_sesiones   @relation(fields: [sesion_id], references: [id])
+  mensajes wa_mensajes[]
+
+  @@index([usuario_id])
+  @@index([estado])
+}
+
+// =============================================
+// WHATSAPP MASIVO — MENSAJES INDIVIDUALES
+// =============================================
+
+model wa_mensajes {
+  id              Int       @id @default(autoincrement())
+  campana_id      Int
+  oportunidad_id  Int
+  numero_destino  String    @db.VarChar(30)
+  mensaje_texto   String
+  variacion_idx   Int       @default(0)
+  wa_message_id   String?   @db.VarChar(100)
+  estado          String    @default("PENDIENTE") @db.VarChar(20)
+  // PENDIENTE | ENVIANDO | ENVIADO | ENTREGADO | LEIDO | FALLIDO
+  error_detalle   String?
+  enviado_at      DateTime?
+  entregado_at    DateTime?
+  leido_at        DateTime?
+  created_at      DateTime  @default(now())
+
+  campana     wa_campanas   @relation(fields: [campana_id], references: [id])
+  oportunidad oportunidades @relation(fields: [oportunidad_id], references: [id])
+
+  @@index([campana_id])
+  @@index([oportunidad_id])
+  @@index([wa_message_id])
+  @@index([estado])
+}
