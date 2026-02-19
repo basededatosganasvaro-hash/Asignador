@@ -185,9 +185,9 @@ export async function POST(request: Request) {
     const limitParam = `$${params.length}`;
 
     const where = clauses.length > 0 ? `WHERE ${clauses.join(" AND ")}` : "";
-    const sql = `SELECT id FROM clientes ${where} ORDER BY id ASC LIMIT ${limitParam} FOR UPDATE SKIP LOCKED`;
+    const sql = `SELECT id FROM clientes ${where} ORDER BY id ASC LIMIT ${limitParam}`;
 
-    // 6. Seleccionar clientes del pool en BD Clientes (con lock para concurrencia)
+    // 6. Seleccionar clientes del pool en BD Clientes
     const records = await prismaClientes.$queryRawUnsafe<{ id: number }[]>(sql, ...params);
 
     if (records.length === 0) {
@@ -299,9 +299,10 @@ export async function POST(request: Request) {
         { status: 409 }
       );
     }
-    console.error("Error al crear lote:", err);
+    const errMsg = err instanceof Error ? err.message : String(err);
+    console.error("Error al crear lote:", errMsg, err);
     return NextResponse.json(
-      { error: "Error al crear la asignacion" },
+      { error: `Error al crear la asignacion: ${errMsg}` },
       { status: 500 }
     );
   }

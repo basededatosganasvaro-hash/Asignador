@@ -128,27 +128,21 @@ export default function SolicitarAsignacionDialog({ open, onClose, onSuccess }: 
 
       <DialogContent>
         <Box sx={{ display: "flex", flexDirection: "column", gap: 2, mt: 1 }}>
-          {/* Contadores */}
+          {/* Contadores grandes */}
           {opciones && (
-            <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
-              <Chip
-                label={`En pool: ${opciones.disponibles}`}
-                size="small"
-                variant="outlined"
-                color="info"
-              />
-              <Chip
-                label={`Asignables: ${opciones.asignables}`}
-                size="small"
-                variant="outlined"
-                color="success"
-              />
-              <Chip
-                label={`Cupo hoy: ${opciones.cupoRestante}`}
-                size="small"
-                variant="outlined"
-                color={opciones.cupoRestante > 0 ? "primary" : "error"}
-              />
+            <Box sx={{ display: "flex", gap: 2, justifyContent: "center" }}>
+              <Box sx={{ textAlign: "center", flex: 1, p: 1.5, bgcolor: "#e3f2fd", borderRadius: 2 }}>
+                <Typography variant="h4" fontWeight={700} color="info.main">
+                  {opciones.disponibles.toLocaleString()}
+                </Typography>
+                <Typography variant="caption" color="text.secondary">En pool</Typography>
+              </Box>
+              <Box sx={{ textAlign: "center", flex: 1, p: 1.5, bgcolor: opciones.cupoRestante > 0 ? "#e8f5e9" : "#ffebee", borderRadius: 2 }}>
+                <Typography variant="h4" fontWeight={700} color={opciones.cupoRestante > 0 ? "success.main" : "error.main"}>
+                  {opciones.cupoRestante.toLocaleString()}
+                </Typography>
+                <Typography variant="caption" color="text.secondary">Cupo hoy</Typography>
+              </Box>
             </Box>
           )}
 
@@ -224,25 +218,34 @@ export default function SolicitarAsignacionDialog({ open, onClose, onSuccess }: 
 
           <Divider />
 
-          {/* Cantidad */}
+          {/* Cantidad y asignables */}
           <TextField
             label="Cantidad a solicitar"
             type="number"
-            size="small"
             fullWidth
             value={cantidad}
             onChange={(e) => setCantidad(Math.max(1, Math.min(maxAsignable, Number(e.target.value))))}
             inputProps={{ min: 1, max: maxAsignable }}
-            helperText={`Máximo disponible: ${maxAsignable}`}
             disabled={maxAsignable === 0}
           />
+
+          {opciones && (
+            <Box sx={{ textAlign: "center", p: 1.5, bgcolor: "#f3e5f5", borderRadius: 2 }}>
+              <Typography variant="h5" fontWeight={700} color="secondary.main">
+                {opciones.asignables.toLocaleString()} asignables
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                Con los filtros seleccionados
+              </Typography>
+            </Box>
+          )}
 
           {loading && <LinearProgress />}
           {error && <Alert severity="error">{error}</Alert>}
 
           {opciones?.cupoRestante === 0 && (
             <Alert severity="warning">
-              Has alcanzado tu límite diario de asignaciones. Se reinicia mañana.
+              Has alcanzado tu limite diario de asignaciones. Se reinicia manana.
             </Alert>
           )}
         </Box>
@@ -252,9 +255,11 @@ export default function SolicitarAsignacionDialog({ open, onClose, onSuccess }: 
         <Button onClick={handleClose}>Cancelar</Button>
         <Button
           variant="contained"
+          size="large"
           onClick={handleSubmit}
           disabled={submitting || maxAsignable === 0 || cantidad <= 0 || (opciones?.cupoRestante ?? 0) === 0}
           startIcon={submitting ? <CircularProgress size={18} /> : <AssignmentIndIcon />}
+          sx={{ fontWeight: 700, px: 4 }}
         >
           {submitting ? "Asignando..." : `Asignar ${cantidad}`}
         </Button>

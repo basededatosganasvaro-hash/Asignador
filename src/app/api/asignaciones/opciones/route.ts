@@ -26,7 +26,7 @@ export async function GET(req: Request) {
   const convenio      = searchParams.get("convenio")      || undefined;
   const estado        = searchParams.get("estado")        || undefined;
   const municipio     = searchParams.get("municipio")     || undefined;
-  const tiene_telefono = searchParams.get("tiene_telefono") === "1";
+  const tiene_telefono = searchParams.get("tiene_telefono") === "true" || searchParams.get("tiene_telefono") === "1";
 
   // IDs activos a excluir (para el conteo real)
   const activas = await prisma.oportunidades.findMany({
@@ -62,18 +62,19 @@ export async function GET(req: Request) {
   // Base where para excluir activos + cooldown
   const baseExclude = excludeArray.length > 0 ? { id: { notIn: excludeArray } } : {};
 
-  // Cupo restante del día
+  // Cupo restante del día (timezone Mexico, consistente con POST)
+  const nowMx = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Mexico_City" }));
+  const today = new Date(nowMx.getFullYear(), nowMx.getMonth(), nowMx.getDate());
+
   const config = await prisma.configuracion.findUnique({
     where: { clave: "max_registros_por_dia" },
   });
   const maxPerDay = parseInt(config?.valor || "300");
-  const today = new Date(); today.setHours(0, 0, 0, 0);
-  const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
-  const lotesHoy = await prisma.lotes.findMany({
-    where: { usuario_id: userId, fecha: { gte: today, lt: tomorrow } },
-    select: { cantidad: true },
+
+  const cupo = await prisma.cupo_diario.findUnique({
+    where: { usuario_id_fecha: { usuario_id: userId, fecha: today } },
   });
-  const cupoRestante = Math.max(0, maxPerDay - lotesHoy.reduce((s, l) => s + l.cantidad, 0));
+  const cupoRestante = Math.max(0, maxPerDay - (cupo?.total_asignado ?? 0));
 
   // Queries en paralelo — cada una filtra por los upstream ya seleccionados
   // NOTA: las queries de distinct NO usan baseExclude (sería lento con NOT IN miles de IDs)
