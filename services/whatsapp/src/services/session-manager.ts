@@ -42,36 +42,45 @@ class SessionManager {
 
   /** Conectar WhatsApp de un usuario */
   async connect(userId: number): Promise<void> {
-    // Si ya está conectado, no hacer nada
-    if (this.isConnected(userId)) {
-      return;
-    }
+    try {
+      console.log(`[SessionManager] connect() called for user ${userId}`);
 
-    // Actualizar estado en BD
-    await this.upsertSession(userId, "CONECTANDO");
+      // Si ya está conectado, no hacer nada
+      if (this.isConnected(userId)) {
+        console.log(`[SessionManager] User ${userId} already connected`);
+        return;
+      }
 
-    // Preparar directorio temporal para auth state
-    const sessionDir = path.join("/tmp", "wa-sessions", String(userId));
-    fs.mkdirSync(sessionDir, { recursive: true });
+      // Actualizar estado en BD
+      await this.upsertSession(userId, "CONECTANDO");
+      console.log(`[SessionManager] State set to CONECTANDO for user ${userId}`);
 
-    // Intentar restaurar credenciales desde BD
-    await this.restoreCredsFromDb(userId, sessionDir);
+      // Preparar directorio temporal para auth state
+      const sessionDir = path.join("/tmp", "wa-sessions", String(userId));
+      fs.mkdirSync(sessionDir, { recursive: true });
+      console.log(`[SessionManager] Session dir created: ${sessionDir}`);
 
-    const { state, saveCreds } = await useMultiFileAuthState(sessionDir);
+      // Intentar restaurar credenciales desde BD
+      await this.restoreCredsFromDb(userId, sessionDir);
 
-    const sock = makeWASocket({
-      auth: state,
-      logger,
-      printQRInTerminal: false,
-      browser: ["Sistema Asignacion", "Chrome", "1.0.0"],
-    });
+      const { state, saveCreds } = await useMultiFileAuthState(sessionDir);
+      console.log(`[SessionManager] Auth state loaded for user ${userId}`);
 
-    const sessionInfo: SessionInfo = { socket: sock, idleTimer: null, qrCode: null };
-    this.sessions.set(userId, sessionInfo);
+      const sock = makeWASocket({
+        auth: state,
+        logger,
+        printQRInTerminal: true,
+        browser: ["Sistema Asignacion", "Chrome", "1.0.0"],
+      });
+      console.log(`[SessionManager] WASocket created for user ${userId}`);
 
-    // Evento de actualización de conexión
-    sock.ev.on("connection.update", async (update: Partial<ConnectionState>) => {
-      const { connection, lastDisconnect, qr } = update;
+      const sessionInfo: SessionInfo = { socket: sock, idleTimer: null, qrCode: null };
+      this.sessions.set(userId, sessionInfo);
+
+      // Evento de actualización de conexión
+      sock.ev.on("connection.update", async (update: Partial<ConnectionState>) => {
+        console.log(`[SessionManager] connection.update for user ${userId}:`, JSON.stringify(update).slice(0, 200));
+        const { connection, lastDisconnect, qr } = update;
 
       if (qr) {
         // Guardar QR en memoria para polling
@@ -115,6 +124,12 @@ class SessionManager {
       await saveCreds();
       await this.saveCredsToDb(userId, sessionDir);
     });
+
+    console.log(`[SessionManager] All event handlers registered for user ${userId}, waiting for QR...`);
+    } catch (err) {
+      console.error(`[SessionManager] FATAL error in connect() for user ${userId}:`, err);
+      await this.upsertSession(userId, "DESCONECTADO");
+    }
   }
 
   /** Desconectar sesión de un usuario */

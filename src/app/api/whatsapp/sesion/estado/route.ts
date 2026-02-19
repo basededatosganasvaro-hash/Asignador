@@ -7,7 +7,11 @@ export async function GET() {
   if (error) return error;
 
   try {
-    const result = await waFetch(`/sessions/${session!.user.id}/status`);
+    const userId = Number(session!.user.id);
+    if (!userId || isNaN(userId)) {
+      return NextResponse.json({ error: `ID inválido: ${session!.user.id}` }, { status: 400 });
+    }
+    const result = await waFetch(`/sessions/${userId}/status`);
     return NextResponse.json(result);
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Error";
