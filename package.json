@@ -12,6 +12,7 @@
     "prisma:push": "prisma db push --schema=prisma/schema.prisma",
     "prisma:push-clientes": "prisma db push --schema=prisma/schema-clientes.prisma",
     "seed:embudo": "npx tsx prisma/seed-embudo.ts",
+    "migrate:usernames": "npx tsx prisma/migrate-usernames.ts",
     "prisma:index-clientes": "npx tsx prisma/add-indexes-clientes.ts"
   },
   "engines": {

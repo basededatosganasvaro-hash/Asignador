@@ -12,6 +12,7 @@ export async function GET() {
     select: {
       id: true,
       nombre: true,
+      username: true,
       email: true,
       rol: true,
       activo: true,
@@ -44,12 +45,20 @@ export async function POST(request: Request) {
     );
   }
 
-  const { nombre, email, password, rol, equipo_id, sucursal_id, region_id } = parsed.data;
+  const { nombre, username, email, password, rol, equipo_id, sucursal_id, region_id } = parsed.data;
 
-  const existing = await prisma.usuarios.findUnique({ where: { email } });
-  if (existing) {
+  const existingEmail = await prisma.usuarios.findUnique({ where: { email } });
+  if (existingEmail) {
     return NextResponse.json(
       { error: "Ya existe un usuario con ese email" },
+      { status: 409 }
+    );
+  }
+
+  const existingUsername = await prisma.usuarios.findUnique({ where: { username } });
+  if (existingUsername) {
+    return NextResponse.json(
+      { error: "Ya existe un usuario con ese nombre de usuario" },
       { status: 409 }
     );
   }
@@ -57,10 +66,11 @@ export async function POST(request: Request) {
   const password_hash = await bcrypt.hash(password, 10);
 
   const usuario = await prisma.usuarios.create({
-    data: { nombre, email, password_hash, rol, equipo_id, sucursal_id, region_id },
+    data: { nombre, username, email, password_hash, rol, equipo_id, sucursal_id, region_id },
     select: {
       id: true,
       nombre: true,
+      username: true,
       email: true,
       rol: true,
       activo: true,

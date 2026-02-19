@@ -1,11 +1,18 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth-utils";
+import { verificarHorarioConConfig } from "@/lib/horario";
 import ExcelJS from "exceljs";
 
 export async function POST(req: Request) {
   const { session, error } = await requireAuth();
   if (error) return error;
+
+  // Validar horario operativo
+  const horario = await verificarHorarioConConfig();
+  if (!horario.activo) {
+    return NextResponse.json({ error: horario.mensaje }, { status: 403 });
+  }
 
   const userId = Number(session!.user.id);
   const rol = session!.user.rol;

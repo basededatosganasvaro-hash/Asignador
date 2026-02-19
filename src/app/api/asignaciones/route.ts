@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { prismaClientes } from "@/lib/prisma-clientes";
 import { requireAuth } from "@/lib/auth-utils";
+import { verificarHorarioConConfig } from "@/lib/horario";
 import { Prisma } from "@prisma/client";
 
 // GET: Listar lotes del usuario autenticado
@@ -79,6 +80,12 @@ export async function POST(request: Request) {
   const { session, error } = await requireAuth();
   if (error) return error;
 
+  // Validar horario operativo
+  const horario = await verificarHorarioConConfig();
+  if (!horario.activo) {
+    return NextResponse.json({ error: horario.mensaje }, { status: 403 });
+  }
+
   const userId = parseInt(session.user.id);
 
   let cantidad: number | undefined;
@@ -101,35 +108,33 @@ export async function POST(request: Request) {
   }
 
   try {
-    // 1. Leer configuracion y calcular cupo restante (BD Sistema)
+    // 1. Fecha de hoy en timezone Mexico
+    const nowMx = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Mexico_City" }));
+    const today = new Date(nowMx.getFullYear(), nowMx.getMonth(), nowMx.getDate());
+
+    // 2. Leer configuracion del límite diario
     const config = await prisma.configuracion.findUnique({
       where: { clave: "max_registros_por_dia" },
     });
     const maxPerDay = parseInt(config?.valor || "300");
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-
-    const lotesHoy = await prisma.lotes.findMany({
-      where: { usuario_id: userId, fecha: { gte: today, lt: tomorrow } },
-      select: { cantidad: true },
+    // 3. Verificar cupo antes de hacer trabajo pesado (lectura rápida, sin lock)
+    const cupoExistente = await prisma.cupo_diario.findUnique({
+      where: { usuario_id_fecha: { usuario_id: userId, fecha: today } },
     });
+    const yaAsignados = cupoExistente?.total_asignado ?? 0;
+    const cupoDisponible = maxPerDay - yaAsignados;
 
-    const asignadosHoy = lotesHoy.reduce((sum, l) => sum + l.cantidad, 0);
-    const remaining = maxPerDay - asignadosHoy;
-
-    if (remaining <= 0) {
+    if (cupoDisponible <= 0) {
       return NextResponse.json(
-        { error: "Has alcanzado el limite diario de asignaciones" },
+        { error: "Has alcanzado el límite diario de asignaciones", cupo_restante: 0 },
         { status: 409 }
       );
     }
 
-    const requested = Math.min(cantidad || remaining, remaining);
+    const requested = Math.min(cantidad || cupoDisponible, cupoDisponible);
 
-    // 2. Obtener cliente_ids ya asignados activamente (BD Sistema)
+    // 4. Obtener cliente_ids ya asignados activamente (BD Sistema)
     const activas = await prisma.oportunidades.findMany({
       where: { activo: true },
       select: { cliente_id: true },
@@ -138,7 +143,7 @@ export async function POST(request: Request) {
       activas.map((o) => o.cliente_id).filter((id): id is number => id !== null)
     );
 
-    // 2b. Cooldown: excluir clientes que este promotor ya trabajó en los últimos N meses
+    // 4b. Cooldown: excluir clientes que este promotor ya trabajó en los últimos N meses
     const cooldownConfig = await prisma.configuracion.findUnique({
       where: { clave: "cooldown_meses" },
     });
@@ -160,7 +165,7 @@ export async function POST(request: Request) {
 
     const excludeArray = Array.from(excludeIds);
 
-    // 3. Construir SQL con parámetros posicionales explícitos ($1, $2, ...)
+    // 5. Construir SQL con parámetros posicionales explícitos ($1, $2, ...)
     const params: unknown[] = [];
     const clauses: string[] = [];
 
@@ -182,7 +187,7 @@ export async function POST(request: Request) {
     const where = clauses.length > 0 ? `WHERE ${clauses.join(" AND ")}` : "";
     const sql = `SELECT id FROM clientes ${where} ORDER BY id ASC LIMIT ${limitParam} FOR UPDATE SKIP LOCKED`;
 
-    // 4. Seleccionar clientes del pool en BD Clientes (con lock para concurrencia)
+    // 6. Seleccionar clientes del pool en BD Clientes (con lock para concurrencia)
     const records = await prismaClientes.$queryRawUnsafe<{ id: number }[]>(sql, ...params);
 
     if (records.length === 0) {
@@ -192,7 +197,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // 4. Obtener etapa "Asignado" para inicializar el embudo
+    // 7. Obtener etapa "Asignado" para inicializar el embudo
     const etapaAsignado = await prisma.embudo_etapas.findFirst({
       where: { nombre: "Asignado", activo: true },
     });
@@ -200,19 +205,45 @@ export async function POST(request: Request) {
       ? new Date(Date.now() + etapaAsignado.timer_horas * 60 * 60 * 1000)
       : null;
 
-    // 5. Crear lote + oportunidades en BD Sistema (transaccion)
+    // 8. Transacción atómica: verificar cupo con lock + crear lote + actualizar cupo
     const result = await prisma.$transaction(
       async (tx) => {
+        // 8a. Upsert cupo_diario y luego lock con FOR UPDATE
+        await tx.cupo_diario.upsert({
+          where: { usuario_id_fecha: { usuario_id: userId, fecha: today } },
+          create: { usuario_id: userId, fecha: today, total_asignado: 0, limite: maxPerDay },
+          update: {},
+        });
+
+        const cupoRows = await tx.$queryRaw<{ id: number; total_asignado: number; limite: number }[]>`
+          SELECT id, total_asignado, limite FROM cupo_diario
+          WHERE usuario_id = ${userId} AND fecha = ${today}
+          FOR UPDATE
+        `;
+
+        const cupo = cupoRows[0];
+        const disponible = cupo.limite - cupo.total_asignado;
+
+        if (disponible <= 0) {
+          throw new Error("CUPO_AGOTADO");
+        }
+
+        // Ajustar cantidad real si excede lo disponible
+        const cantidadReal = Math.min(records.length, disponible);
+        const registrosFinales = records.slice(0, cantidadReal);
+
+        // 8b. Crear lote
         const lote = await tx.lotes.create({
           data: {
             usuario_id: userId,
             fecha: today,
-            cantidad: records.length,
+            cantidad: registrosFinales.length,
           },
         });
 
+        // 8c. Crear oportunidades
         await tx.oportunidades.createMany({
-          data: records.map((r) => ({
+          data: registrosFinales.map((r) => ({
             cliente_id: r.id,
             usuario_id: userId,
             etapa_id: etapaAsignado?.id ?? null,
@@ -223,7 +254,7 @@ export async function POST(request: Request) {
           })),
         });
 
-        // Crear historial de asignacion para cada oportunidad
+        // 8d. Crear historial de asignacion
         const oportunidadesCreadas = await tx.oportunidades.findMany({
           where: { lote_id: lote.id },
           select: { id: true },
@@ -238,7 +269,13 @@ export async function POST(request: Request) {
           })),
         });
 
-        return lote;
+        // 8e. Actualizar cupo atómicamente
+        await tx.cupo_diario.update({
+          where: { id: cupo.id },
+          data: { total_asignado: cupo.total_asignado + registrosFinales.length },
+        });
+
+        return { lote, cantidadReal: registrosFinales.length, cupoRestante: disponible - registrosFinales.length };
       },
       {
         isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
@@ -247,10 +284,21 @@ export async function POST(request: Request) {
     );
 
     return NextResponse.json(
-      { id: result.id, fecha: result.fecha, cantidad: records.length },
+      {
+        id: result.lote.id,
+        fecha: result.lote.fecha,
+        cantidad: result.cantidadReal,
+        cupo_restante: result.cupoRestante,
+      },
       { status: 201 }
     );
   } catch (err: unknown) {
+    if (err instanceof Error && err.message === "CUPO_AGOTADO") {
+      return NextResponse.json(
+        { error: "Has alcanzado el límite diario de asignaciones", cupo_restante: 0 },
+        { status: 409 }
+      );
+    }
     console.error("Error al crear lote:", err);
     return NextResponse.json(
       { error: "Error al crear la asignacion" },

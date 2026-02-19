@@ -23,6 +23,7 @@ interface Props {
   open: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  embedded?: boolean;
 }
 
 interface Convenio {
@@ -30,7 +31,7 @@ interface Convenio {
   nombre: string;
 }
 
-export default function ImportCaptacionDialog({ open, onClose, onSuccess }: Props) {
+export default function ImportCaptacionDialog({ open, onClose, onSuccess, embedded = false }: Props) {
   const [convenios, setConvenios] = useState<Convenio[]>([]);
   const [origen, setOrigen] = useState("");
   const [convenio, setConvenio] = useState("");
@@ -94,6 +95,108 @@ export default function ImportCaptacionDialog({ open, onClose, onSuccess }: Prop
     }
   };
 
+  const content = (
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5, mt: embedded ? 0 : 1 }}>
+      <FormControl fullWidth size="small" required>
+        <InputLabel>Origen de captación</InputLabel>
+        <Select value={origen} label="Origen de captación" onChange={(e) => setOrigen(e.target.value)}>
+          {ORIGENES.map((o) => (
+            <MenuItem key={o.value} value={o.value}>{o.label}</MenuItem>
+          ))}
+        </Select>
+      </FormControl>
+
+      <FormControl fullWidth size="small" required>
+        <InputLabel>Convenio</InputLabel>
+        <Select value={convenio} label="Convenio" onChange={(e) => setConvenio(e.target.value)}>
+          {convenios.map((c) => (
+            <MenuItem key={c.id} value={c.nombre}>{c.nombre}</MenuItem>
+          ))}
+        </Select>
+      </FormControl>
+
+      <Divider />
+
+      <Box>
+        <Button
+          variant="outlined"
+          component="label"
+          startIcon={<UploadFileIcon />}
+          fullWidth
+          sx={{ py: 2, borderStyle: "dashed", textTransform: "none" }}
+        >
+          {file ? file.name : "Seleccionar archivo Excel (.xlsx)"}
+          <input
+            type="file"
+            hidden
+            accept=".xlsx,.xls"
+            onChange={(e) => {
+              setFile(e.target.files?.[0] || null);
+              setResult(null);
+              setError("");
+            }}
+          />
+        </Button>
+      </Box>
+
+      <Alert severity="info" variant="outlined" sx={{ fontSize: 12 }}>
+        <Typography variant="body2" fontWeight={600} sx={{ mb: 0.5 }}>Columnas esperadas:</Typography>
+        <Typography variant="caption">
+          nombres, a_paterno, a_materno, tel_1 (requeridos) — nss, curp, rfc, num_empleado, tel_2, estado, municipio, email (opcionales)
+        </Typography>
+      </Alert>
+
+      {error && <Alert severity="error">{error}</Alert>}
+
+      {result && (
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+          {result.created > 0 && (
+            <Alert severity="success" icon={<CheckCircleIcon />}>
+              {result.created} cliente{result.created !== 1 ? "s" : ""} importado{result.created !== 1 ? "s" : ""} exitosamente
+            </Alert>
+          )}
+          {result.errors.length > 0 && (
+            <Alert severity="warning" icon={<ErrorIcon />}>
+              <Typography variant="body2" fontWeight={600} sx={{ mb: 0.5 }}>
+                {result.errors.length} fila{result.errors.length !== 1 ? "s" : ""} con errores:
+              </Typography>
+              <Box sx={{ maxHeight: 120, overflow: "auto" }}>
+                {result.errors.slice(0, 10).map((e, i) => (
+                  <Typography key={i} variant="caption" display="block">
+                    Fila {e.row}: {e.message}
+                  </Typography>
+                ))}
+                {result.errors.length > 10 && (
+                  <Typography variant="caption" color="text.secondary">
+                    ...y {result.errors.length - 10} más
+                  </Typography>
+                )}
+              </Box>
+            </Alert>
+          )}
+        </Box>
+      )}
+
+      {embedded && (
+        <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1 }}>
+          <Button onClick={handleClose}>Cancelar</Button>
+          {!result?.created && (
+            <Button
+              variant="contained"
+              onClick={handleUpload}
+              disabled={uploading || !file || !origen || !convenio}
+              startIcon={uploading ? <CircularProgress size={18} /> : <UploadFileIcon />}
+            >
+              {uploading ? "Importando..." : "Importar"}
+            </Button>
+          )}
+        </Box>
+      )}
+    </Box>
+  );
+
+  if (embedded) return content;
+
   return (
     <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 3 } }}>
       <DialogTitle>
@@ -106,89 +209,7 @@ export default function ImportCaptacionDialog({ open, onClose, onSuccess }: Prop
         </Typography>
       </DialogTitle>
 
-      <DialogContent>
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5, mt: 1 }}>
-          <FormControl fullWidth size="small" required>
-            <InputLabel>Origen de captación</InputLabel>
-            <Select value={origen} label="Origen de captación" onChange={(e) => setOrigen(e.target.value)}>
-              {ORIGENES.map((o) => (
-                <MenuItem key={o.value} value={o.value}>{o.label}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-
-          <FormControl fullWidth size="small" required>
-            <InputLabel>Convenio</InputLabel>
-            <Select value={convenio} label="Convenio" onChange={(e) => setConvenio(e.target.value)}>
-              {convenios.map((c) => (
-                <MenuItem key={c.id} value={c.nombre}>{c.nombre}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-
-          <Divider />
-
-          <Box>
-            <Button
-              variant="outlined"
-              component="label"
-              startIcon={<UploadFileIcon />}
-              fullWidth
-              sx={{ py: 2, borderStyle: "dashed", textTransform: "none" }}
-            >
-              {file ? file.name : "Seleccionar archivo Excel (.xlsx)"}
-              <input
-                type="file"
-                hidden
-                accept=".xlsx,.xls"
-                onChange={(e) => {
-                  setFile(e.target.files?.[0] || null);
-                  setResult(null);
-                  setError("");
-                }}
-              />
-            </Button>
-          </Box>
-
-          <Alert severity="info" variant="outlined" sx={{ fontSize: 12 }}>
-            <Typography variant="body2" fontWeight={600} sx={{ mb: 0.5 }}>Columnas esperadas:</Typography>
-            <Typography variant="caption">
-              nombres, a_paterno, a_materno, tel_1 (requeridos) — nss, curp, rfc, num_empleado, tel_2, estado, municipio, email (opcionales)
-            </Typography>
-          </Alert>
-
-          {error && <Alert severity="error">{error}</Alert>}
-
-          {result && (
-            <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
-              {result.created > 0 && (
-                <Alert severity="success" icon={<CheckCircleIcon />}>
-                  {result.created} cliente{result.created !== 1 ? "s" : ""} importado{result.created !== 1 ? "s" : ""} exitosamente
-                </Alert>
-              )}
-              {result.errors.length > 0 && (
-                <Alert severity="warning" icon={<ErrorIcon />}>
-                  <Typography variant="body2" fontWeight={600} sx={{ mb: 0.5 }}>
-                    {result.errors.length} fila{result.errors.length !== 1 ? "s" : ""} con errores:
-                  </Typography>
-                  <Box sx={{ maxHeight: 120, overflow: "auto" }}>
-                    {result.errors.slice(0, 10).map((e, i) => (
-                      <Typography key={i} variant="caption" display="block">
-                        Fila {e.row}: {e.message}
-                      </Typography>
-                    ))}
-                    {result.errors.length > 10 && (
-                      <Typography variant="caption" color="text.secondary">
-                        ...y {result.errors.length - 10} más
-                      </Typography>
-                    )}
-                  </Box>
-                </Alert>
-              )}
-            </Box>
-          )}
-        </Box>
-      </DialogContent>
+      <DialogContent>{content}</DialogContent>
 
       <DialogActions sx={{ px: 3, pb: 2 }}>
         <Button onClick={handleClose}>

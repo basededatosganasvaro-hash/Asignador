@@ -73,10 +73,7 @@ export default function Sidebar({ rol, open, onToggle }: SidebarProps) {
 
       {isPromotor ? (
         <List sx={{ px: open ? 1 : 0.5, pt: 1 }}>
-          <NavItem label="Dashboard" href="/promotor" icon={<DashboardIcon />} exact pathname={pathname} open={open} />
           <NavItem label="Mi Asignación" href="/promotor/oportunidades" icon={<TrendingUpIcon />} pathname={pathname} open={open} />
-          <NavItem label="Captar cliente" href="/promotor/captacion" icon={<PersonAddIcon />} pathname={pathname} open={open} />
-          <NavItem label="Mis Lotes" href="/promotor/asignaciones" icon={<AssignmentIcon />} pathname={pathname} open={open} />
         </List>
       ) : (
         <List sx={{ px: open ? 1 : 0.5, pt: 1 }}>

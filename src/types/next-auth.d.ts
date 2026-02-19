@@ -6,6 +6,7 @@ declare module "next-auth" {
     id: string;
     rol: string;
     nombre: string;
+    debe_cambiar_password?: boolean;
   }
 
   interface Session {
@@ -15,6 +16,7 @@ declare module "next-auth" {
       name: string;
       rol: string;
       nombre: string;
+      debe_cambiar_password?: boolean;
     };
   }
 }
@@ -24,5 +26,6 @@ declare module "next-auth/jwt" {
     id: string;
     rol: string;
     nombre: string;
+    debe_cambiar_password?: boolean;
   }
 }

@@ -1,0 +1,103 @@
+/**
+ * Control de horario operativo del sistema.
+ * Valida si el sistema está dentro del horario permitido.
+ * Configuración por defecto: 08:55 AM - 07:15 PM, Lunes a Viernes (America/Mexico_City).
+ */
+
+const ZONA_HORARIA = "America/Mexico_City";
+
+// Defaults (pueden sobreescribirse con tabla configuracion)
+const HORARIO_INICIO_DEFAULT = "08:55";
+const HORARIO_FIN_DEFAULT = "19:15";
+const DIAS_OPERATIVOS_DEFAULT = [1, 2, 3, 4, 5]; // lun=1 ... vie=5
+
+interface HorarioResult {
+  activo: boolean;
+  mensaje?: string;
+  horaActual?: string;
+  horarioInicio?: string;
+  horarioFin?: string;
+}
+
+function getHoraMexico(): Date {
+  const now = new Date();
+  const mexicoStr = now.toLocaleString("en-US", { timeZone: ZONA_HORARIA });
+  return new Date(mexicoStr);
+}
+
+export function verificarHorario(config?: {
+  horario_inicio?: string;
+  horario_fin?: string;
+  dias_operativos?: number[];
+}): HorarioResult {
+  const inicio = config?.horario_inicio || HORARIO_INICIO_DEFAULT;
+  const fin = config?.horario_fin || HORARIO_FIN_DEFAULT;
+  const diasPermitidos = config?.dias_operativos || DIAS_OPERATIVOS_DEFAULT;
+
+  const ahora = getHoraMexico();
+  const dia = ahora.getDay(); // 0=dom, 6=sab
+  const minutos = ahora.getHours() * 60 + ahora.getMinutes();
+
+  const [hInicio, mInicio] = inicio.split(":").map(Number);
+  const [hFin, mFin] = fin.split(":").map(Number);
+  const minutosInicio = hInicio * 60 + mInicio;
+  const minutosFin = hFin * 60 + mFin;
+
+  const horaActual = ahora.toLocaleTimeString("es-MX", {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: ZONA_HORARIA,
+  });
+
+  if (!diasPermitidos.includes(dia)) {
+    return {
+      activo: false,
+      mensaje: "El sistema opera de lunes a viernes.",
+      horaActual,
+      horarioInicio: inicio,
+      horarioFin: fin,
+    };
+  }
+
+  if (minutos < minutosInicio || minutos > minutosFin) {
+    return {
+      activo: false,
+      mensaje: `El sistema opera de ${inicio} a ${fin}.`,
+      horaActual,
+      horarioInicio: inicio,
+      horarioFin: fin,
+    };
+  }
+
+  return { activo: true, horaActual, horarioInicio: inicio, horarioFin: fin };
+}
+
+/**
+ * Carga configuración de horario desde la tabla `configuracion` y verifica.
+ * Uso en APIs protegidas:
+ *   const horario = await verificarHorarioConConfig();
+ *   if (!horario.activo) return NextResponse.json({ error: horario.mensaje }, { status: 403 });
+ */
+export async function verificarHorarioConConfig(): Promise<HorarioResult> {
+  // Import dinámico para evitar dependencia circular
+  const { prisma } = await import("@/lib/prisma");
+
+  const configs = await prisma.configuracion.findMany({
+    where: {
+      clave: { in: ["horario_inicio", "horario_fin", "dias_operativos"] },
+    },
+  });
+
+  const configMap: Record<string, string> = {};
+  for (const c of configs) {
+    configMap[c.clave] = c.valor;
+  }
+
+  return verificarHorario({
+    horario_inicio: configMap.horario_inicio,
+    horario_fin: configMap.horario_fin,
+    dias_operativos: configMap.dias_operativos
+      ? configMap.dias_operativos.split(",").map(Number)
+      : undefined,
+  });
+}

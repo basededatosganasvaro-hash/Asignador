@@ -17,6 +17,11 @@ export async function middleware(request: NextRequest) {
 
   const rol = token.rol as string;
 
+  // Forzar cambio de contraseña si es obligatorio
+  if (token.debe_cambiar_password && !pathname.startsWith("/cambiar-password") && !pathname.startsWith("/api/auth")) {
+    return NextResponse.redirect(new URL("/cambiar-password", request.url));
+  }
+
   // Area admin: acceso para roles de gestion
   if (pathname.startsWith("/admin") && !ROLES_ADMIN_AREA.includes(rol)) {
     return NextResponse.redirect(new URL("/promotor", request.url));

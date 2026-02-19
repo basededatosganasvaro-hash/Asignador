@@ -57,6 +57,7 @@ export async function PUT(
 
   const data: Record<string, unknown> = {};
   if (parsed.data.nombre !== undefined) data.nombre = parsed.data.nombre;
+  if (parsed.data.username !== undefined) data.username = parsed.data.username;
   if (parsed.data.email !== undefined) data.email = parsed.data.email;
   if (parsed.data.rol !== undefined) data.rol = parsed.data.rol;
   if (parsed.data.activo !== undefined) data.activo = parsed.data.activo;
@@ -65,6 +66,9 @@ export async function PUT(
   if (parsed.data.region_id !== undefined) data.region_id = parsed.data.region_id;
   if (parsed.data.password) {
     data.password_hash = await bcrypt.hash(parsed.data.password, 10);
+    data.debe_cambiar_password = true; // Forzar cambio en próximo login
+    data.intentos_fallidos = 0;
+    data.bloqueado_hasta = null;
   }
 
   const usuario = await prisma.usuarios.update({

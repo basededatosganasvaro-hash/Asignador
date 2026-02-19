@@ -6,17 +6,19 @@ import {
   FormControlLabel, IconButton, Tooltip, Collapse, Button,
   Card, CardContent, Dialog, DialogTitle, DialogContent,
   DialogActions, TextField, Snackbar, Paper, Divider, Grid,
-  Tabs, Tab,
+  LinearProgress,
 } from "@mui/material";
 import { DataGrid, GridColDef, GridRenderCellParams, GridToolbarColumnsButton } from "@mui/x-data-grid";
 import FilterListIcon from "@mui/icons-material/FilterList";
 import FilterListOffIcon from "@mui/icons-material/FilterListOff";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import PhoneIcon from "@mui/icons-material/Phone";
-import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import UploadFileIcon from "@mui/icons-material/UploadFile";
+import PersonAddIcon from "@mui/icons-material/PersonAdd";
+import AssignmentIndIcon from "@mui/icons-material/AssignmentInd";
 import ImportCaptacionDialog from "@/components/ImportCaptacionDialog";
+import CaptacionModal from "@/components/CaptacionModal";
+import SolicitarAsignacionDialog from "@/components/SolicitarAsignacionDialog";
 
 // ════════════════════════════════════════════
 // TIPOS
@@ -78,8 +80,22 @@ interface HistorialEntry {
   etapa_nueva: { id: number; nombre: string; color: string } | null;
 }
 
+type FiltroCard = "capturados" | string; // "capturados" o nombre de etapa
+
 const FILTROS_VACIOS = {
   tipoCliente: "", convenio: "", estado: "", municipio: "", soloConTel: false,
+};
+
+// Columnas que no se pueden ocultar
+const LOCKED_COLUMNS = ["nombres", "convenio", "tel_1", "etapa"];
+
+const CARD_COLORS: Record<string, string> = {
+  capturados: "#26C6DA",
+  Asignado: "#42A5F5",
+  Contactado: "#FFA726",
+  Interesado: "#AB47BC",
+  "Negociación": "#66BB6A",
+  Venta: "#FFD700",
 };
 
 // ════════════════════════════════════════════
@@ -142,16 +158,37 @@ export default function OportunidadesPage() {
   const [rows, setRows] = useState<Oportunidad[]>([]);
   const [etapas, setEtapas] = useState<Etapa[]>([]);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<"ASIGNADOS" | "CAPTURADOS">("ASIGNADOS");
-  const [etapaFiltro, setEtapaFiltro] = useState("");
+  const [cardFiltro, setCardFiltro] = useState<FiltroCard>("Asignado"); // default: Asignado
   const [filtros, setFiltros] = useState(FILTROS_VACIOS);
   const [showFiltros, setShowFiltros] = useState(false);
   const [observaciones, setObservaciones] = useState<Record<number, string>>({});
   const [transitioning, setTransitioning] = useState<number | null>(null);
   const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" as "success" | "error" });
   const [confetti, setConfetti] = useState(false);
-  const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>({});
+  const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("promotor_columns");
+        if (saved) return JSON.parse(saved);
+      } catch { /* ignore */ }
+    }
+    return {};
+  });
+
+  const handleColumnVisibilityChange = useCallback((model: Record<string, boolean>) => {
+    // Enforcar columnas obligatorias
+    const enforced = { ...model };
+    for (const col of LOCKED_COLUMNS) {
+      enforced[col] = true;
+    }
+    setColumnVisibility(enforced);
+    try {
+      localStorage.setItem("promotor_columns", JSON.stringify(enforced));
+    } catch { /* ignore */ }
+  }, []);
   const [importOpen, setImportOpen] = useState(false);
+  const [captacionOpen, setCaptacionOpen] = useState(false);
+  const [asignacionOpen, setAsignacionOpen] = useState(false);
 
   // Modal Ver detalle
   const [verDialog, setVerDialog] = useState<{ open: boolean; loading: boolean; data: OportunidadDetalle | null }>({
@@ -185,53 +222,64 @@ export default function OportunidadesPage() {
     return map;
   }, [etapas]);
 
-  // Filtrar por tab (Asignados vs Capturados)
-  const rowsByTab = useMemo(() => rows.filter((r) => {
-    if (tab === "ASIGNADOS") return r.origen === "POOL" || r.origen === "REASIGNACION";
-    return r.origen === "CAPTACION";
-  }), [rows, tab]);
-
-  // Conteo por etapa (sobre el tab activo)
-  const conteoPorEtapa = useMemo(() => {
-    const map: Record<string, number> = {};
-    rowsByTab.forEach((r) => { map[r.etapa?.nombre ?? ""] = (map[r.etapa?.nombre ?? ""] || 0) + 1; });
-    return map;
-  }, [rowsByTab]);
-
   // Solo etapas de avance + Venta (sin salidas)
   const etapasAvance = useMemo(() => etapas.filter((e) => e.tipo === "AVANCE" || (e.tipo === "FINAL" && e.nombre === "Venta")), [etapas]);
 
+  // ─── CONTEOS para las 6 cards ───
+  const conteos = useMemo(() => {
+    const result: Record<string, number> = { capturados: 0 };
+    etapasAvance.forEach((e) => { result[e.nombre] = 0; });
+    rows.forEach((r) => {
+      if (r.origen === "CAPTACION") {
+        result.capturados++;
+      } else if (r.etapa) {
+        if (result[r.etapa.nombre] !== undefined) {
+          result[r.etapa.nombre]++;
+        }
+      }
+    });
+    return result;
+  }, [rows, etapasAvance]);
+
+  const totalOps = rows.length;
+
+  // ─── FILTRADO por card activa + filtros avanzados ───
+  const filtered = useMemo(() => {
+    let base = rows;
+
+    if (cardFiltro === "capturados") {
+      base = base.filter((r) => r.origen === "CAPTACION");
+    } else if (cardFiltro) {
+      base = base.filter((r) => r.origen !== "CAPTACION" && r.etapa?.nombre === cardFiltro);
+    }
+
+    return base.filter((r) => {
+      if (filtros.tipoCliente && r.tipo_cliente !== filtros.tipoCliente) return false;
+      if (filtros.convenio && r.convenio !== filtros.convenio) return false;
+      if (filtros.estado && r.estado !== filtros.estado) return false;
+      if (filtros.municipio && r.municipio !== filtros.municipio) return false;
+      if (filtros.soloConTel && !r.tel_1) return false;
+      return true;
+    });
+  }, [rows, cardFiltro, filtros]);
+
   const opts = useMemo(() => ({
-    tiposCliente: Array.from(new Set(rowsByTab.map((r) => r.tipo_cliente).filter((v) => v && v !== "—"))).sort(),
-    convenios: Array.from(new Set(rowsByTab.map((r) => r.convenio).filter((v) => v && v !== "—"))).sort(),
-    estados: Array.from(new Set(rowsByTab.map((r) => r.estado).filter((v) => v && v !== "—"))).sort(),
+    tiposCliente: Array.from(new Set(rows.map((r) => r.tipo_cliente).filter((v) => v && v !== "—"))).sort(),
+    convenios: Array.from(new Set(rows.map((r) => r.convenio).filter((v) => v && v !== "—"))).sort(),
+    estados: Array.from(new Set(rows.map((r) => r.estado).filter((v) => v && v !== "—"))).sort(),
     municipios: Array.from(new Set(
-      rowsByTab.filter((r) => !filtros.estado || r.estado === filtros.estado)
+      rows.filter((r) => !filtros.estado || r.estado === filtros.estado)
         .map((r) => r.municipio).filter((v) => v && v !== "—")
     )).sort(),
-  }), [rowsByTab, filtros.estado]);
-
-  const filtered = useMemo(() => rowsByTab.filter((r) => {
-    if (etapaFiltro && r.etapa?.nombre !== etapaFiltro) return false;
-    if (filtros.tipoCliente && r.tipo_cliente !== filtros.tipoCliente) return false;
-    if (filtros.convenio && r.convenio !== filtros.convenio) return false;
-    if (filtros.estado && r.estado !== filtros.estado) return false;
-    if (filtros.municipio && r.municipio !== filtros.municipio) return false;
-    if (filtros.soloConTel && !r.tel_1) return false;
-    return true;
-  }), [rowsByTab, etapaFiltro, filtros]);
+  }), [rows, filtros.estado]);
 
   const hayFiltros = Object.values(filtros).some((v) => v !== "" && v !== false);
-
-  const countAsignados = useMemo(() => rows.filter((r) => r.origen === "POOL" || r.origen === "REASIGNACION").length, [rows]);
-  const countCapturados = useMemo(() => rows.filter((r) => r.origen === "CAPTACION").length, [rows]);
 
   // ─── Cambiar etapa inline ───
   const handleTransicion = async (opId: number, transicionId: number) => {
     const trans = etapas.flatMap((e) => e.transiciones_origen).find((t) => t.id === transicionId);
     if (!trans) return;
 
-    // Si es Venta → pedir num_operacion primero
     if (trans.etapa_destino?.tipo === "FINAL" && trans.etapa_destino?.nombre === "Venta") {
       setVentaDialog({ open: true, opId, transId: transicionId, numOp: "", saving: false });
       return;
@@ -257,13 +305,12 @@ export default function OportunidadesPage() {
       const result = await res.json();
       if (result.confetti) {
         setConfetti(true);
-        setSnackbar({ open: true, message: "¡Venta registrada!", severity: "success" });
+        setSnackbar({ open: true, message: "Venta registrada!", severity: "success" });
       } else if (result.devuelta_al_pool) {
         setSnackbar({ open: true, message: "Cliente devuelto al pool", severity: "success" });
       } else {
         setSnackbar({ open: true, message: "Etapa actualizada", severity: "success" });
       }
-      // Limpiar observaciones de esta fila
       setObservaciones((p) => { const next = { ...p }; delete next[opId]; return next; });
       fetchData();
     } else {
@@ -333,9 +380,7 @@ export default function OportunidadesPage() {
         const trans = transMap[etapa.id] || [];
         const isLoading = transitioning === p.row.id;
 
-        if (isLoading) {
-          return <CircularProgress size={20} />;
-        }
+        if (isLoading) return <CircularProgress size={20} />;
 
         if (trans.length === 0) {
           return <Chip label={etapa.nombre} size="small" sx={{ bgcolor: etapa.color, color: "white", fontWeight: 600 }} />;
@@ -376,8 +421,7 @@ export default function OportunidadesPage() {
         );
       },
     },
-    // Columna num_operacion: solo visible cuando filtramos por Venta
-    ...(etapaFiltro === "Venta" ? [{
+    ...(cardFiltro === "Venta" ? [{
       field: "num_operacion",
       headerName: "No. Operación",
       width: 150,
@@ -416,224 +460,223 @@ export default function OportunidadesPage() {
       ),
     },
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  ], [transMap, transitioning, observaciones, etapaFiltro]);
+  ], [transMap, transitioning, observaciones, cardFiltro]);
 
   if (loading) return (
     <Box sx={{ display: "flex", justifyContent: "center", mt: 8 }}><CircularProgress /></Box>
   );
+
+  // ─── Cards para el pipeline ───
+  const cardItems: { key: FiltroCard; label: string; color: string }[] = [
+    { key: "capturados", label: "Capturados", color: CARD_COLORS.capturados },
+    ...etapasAvance.map((e) => ({ key: e.nombre as FiltroCard, label: e.nombre, color: CARD_COLORS[e.nombre] || e.color })),
+  ];
 
   return (
     <Box>
       {confetti && <ConfettiEffect onDone={() => setConfetti(false)} />}
 
       {/* Header */}
-      <Box sx={{ mb: 2 }}>
-        <Typography variant="h4" fontWeight={700}>Mi Asignación</Typography>
-        <Typography variant="body2" color="text.secondary">
-          {rows.length} oportunidades activas
-        </Typography>
+      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 2, flexWrap: "wrap", gap: 1 }}>
+        <Box>
+          <Typography variant="h5" fontWeight={600}>Mi Asignación</Typography>
+          <Typography variant="body2" color="text.secondary">
+            Gestiona tus oportunidades activas
+          </Typography>
+        </Box>
+        <Box sx={{ display: "flex", gap: 1 }}>
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<PersonAddIcon />}
+            onClick={() => setCaptacionOpen(true)}
+            sx={{ textTransform: "none", fontWeight: 600 }}
+          >
+            Captar Cliente
+          </Button>
+          <Button
+            variant="contained"
+            size="small"
+            startIcon={<AssignmentIndIcon />}
+            onClick={() => setAsignacionOpen(true)}
+            sx={{ textTransform: "none", fontWeight: 600 }}
+          >
+            Solicitar Asignación
+          </Button>
+        </Box>
       </Box>
 
-      {/* Tabs: Asignados / Capturados */}
-      <Tabs
-        value={tab}
-        onChange={(_, v) => { setTab(v); setEtapaFiltro(""); setFiltros(FILTROS_VACIOS); }}
-        sx={{ mb: 2, "& .MuiTab-root": { fontWeight: 600, textTransform: "none", fontSize: 14 } }}
+      {/* ═══════ 6 CARDS PIPELINE ═══════ */}
+      <Box
+        sx={{
+          display: "flex", gap: 1.5, mb: 3, overflowX: "auto", pb: 0.5,
+          "&::-webkit-scrollbar": { height: 4 },
+          "&::-webkit-scrollbar-thumb": { bgcolor: "grey.300", borderRadius: 2 },
+        }}
       >
-        <Tab value="ASIGNADOS" label={`Asignados (${countAsignados})`} />
-        <Tab value="CAPTURADOS" label={`Capturados (${countCapturados})`} />
-      </Tabs>
+        {cardItems.map((item) => {
+          const count = conteos[item.key] || 0;
+          const isSelected = cardFiltro === item.key;
+          const pct = totalOps > 0 ? Math.round((count / totalOps) * 100) : 0;
 
-      {rowsByTab.length === 0 ? (
-        <Alert severity="info" sx={{ borderRadius: 2 }}>
-          {tab === "ASIGNADOS"
-            ? "No tienes oportunidades asignadas activas. Solicita una asignación desde el Dashboard."
-            : "No tienes clientes capturados activos. Capta clientes desde la sección correspondiente."
-          }
-          {tab === "CAPTURADOS" && (
-            <Button
-              size="small"
-              startIcon={<UploadFileIcon />}
-              onClick={() => setImportOpen(true)}
-              sx={{ mt: 1, display: "block" }}
-            >
-              Importar desde Excel
-            </Button>
-          )}
-        </Alert>
-      ) : (
-        <>
-          {/* ═══════ EMBUDO VISUAL ═══════ */}
-          <Card
-            elevation={0}
-            sx={{
-              mb: 3, borderRadius: 3, overflow: "hidden",
-              border: "1px solid", borderColor: "divider",
-              background: "linear-gradient(135deg, #fafbfc 0%, #f0f4f8 100%)",
-            }}
-          >
-            <Box sx={{ px: 3, pt: 2.5, pb: 1, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <Typography variant="overline" color="text.secondary" fontWeight={700} letterSpacing={1.5}>
-                Embudo de ventas
-              </Typography>
-              {tab === "CAPTURADOS" && (
-                <Button
-                  size="small"
-                  startIcon={<UploadFileIcon />}
-                  onClick={() => setImportOpen(true)}
-                  sx={{ textTransform: "none" }}
-                >
-                  Importar Excel
-                </Button>
-              )}
-            </Box>
-
-            {/* Pipeline AVANCE + Venta */}
-            <Box
+          return (
+            <Paper
+              key={item.key}
+              elevation={isSelected ? 4 : 0}
+              onClick={() => setCardFiltro(isSelected ? "" : item.key)}
               sx={{
-                display: "flex", alignItems: "center", gap: 0.5,
-                px: 3, pb: 2, overflowX: "auto",
-                "&::-webkit-scrollbar": { height: 4 },
-                "&::-webkit-scrollbar-thumb": { bgcolor: "grey.300", borderRadius: 2 },
+                px: 2.5, py: 1.5, cursor: "pointer", minWidth: 130, flex: 1,
+                borderRadius: 2.5, textAlign: "center",
+                bgcolor: isSelected ? item.color : "background.paper",
+                color: isSelected ? "white" : "text.primary",
+                border: "2px solid",
+                borderColor: isSelected ? item.color : count > 0 ? item.color : "grey.200",
+                "&:hover": {
+                  bgcolor: isSelected ? item.color : `${item.color}15`,
+                  borderColor: item.color,
+                  transform: "translateY(-2px)",
+                  boxShadow: 3,
+                },
+                transition: "all 0.2s ease",
               }}
             >
-              {etapasAvance.map((e, i) => {
-                const count = conteoPorEtapa[e.nombre] || 0;
-                const isSelected = etapaFiltro === e.nombre;
-                return (
-                  <Box key={e.id} sx={{ display: "flex", alignItems: "center" }}>
-                    {i > 0 && <ChevronRightIcon sx={{ color: "grey.400", fontSize: 20, mx: 0.3, flexShrink: 0 }} />}
-                    <Paper
-                      elevation={isSelected ? 4 : 0}
-                      onClick={() => setEtapaFiltro(isSelected ? "" : e.nombre)}
-                      sx={{
-                        px: 2.5, py: 1.5, textAlign: "center", cursor: "pointer",
-                        minWidth: 110, borderRadius: 2.5,
-                        bgcolor: isSelected ? e.color : "background.paper",
-                        color: isSelected ? "white" : "text.primary",
-                        border: "2px solid",
-                        borderColor: isSelected ? e.color : count > 0 ? e.color : "grey.200",
-                        "&:hover": { bgcolor: isSelected ? e.color : `${e.color}15`, borderColor: e.color, transform: "translateY(-2px)", boxShadow: 3 },
-                        transition: "all 0.2s ease",
-                      }}
-                    >
-                      <Typography variant="h4" fontWeight={800} sx={{ lineHeight: 1.1, color: isSelected ? "white" : e.color }}>
-                        {count}
-                      </Typography>
-                      <Typography variant="caption" fontWeight={600} sx={{ mt: 0.3, display: "block", color: isSelected ? "rgba(255,255,255,0.9)" : "text.secondary", whiteSpace: "nowrap" }}>
-                        {e.nombre}
-                      </Typography>
-                    </Paper>
-                  </Box>
-                );
-              })}
-            </Box>
-          </Card>
-
-          {/* ═══════ FILTROS + GRID ═══════ */}
-          <Card elevation={0} sx={{ border: "1px solid", borderColor: "divider", borderRadius: 3, overflow: "hidden" }}>
-            {/* Barra de filtros */}
-            <Box sx={{ display: "flex", alignItems: "center", gap: 2, flexWrap: "wrap", px: 2.5, py: 1.5, bgcolor: "grey.50", borderBottom: "1px solid", borderColor: "divider" }}>
-              {/* Chip de etapa activa (reemplaza el dropdown) */}
-              {etapaFiltro && (
-                <Chip
-                  label={etapaFiltro}
-                  onDelete={() => setEtapaFiltro("")}
-                  size="small"
-                  color="primary"
-                  variant="outlined"
-                  sx={{ fontWeight: 600 }}
-                />
-              )}
-
-              <Typography variant="body2" color="text.secondary" sx={{ flex: 1 }}>
-                {filtered.length} resultado{filtered.length !== 1 ? "s" : ""}
+              <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, justifyContent: "center", mb: 0.5 }}>
+                <Box sx={{
+                  width: 8, height: 8, borderRadius: "50%",
+                  bgcolor: isSelected ? "rgba(255,255,255,0.8)" : item.color,
+                }} />
+                <Typography
+                  variant="caption"
+                  fontWeight={600}
+                  sx={{ color: isSelected ? "rgba(255,255,255,0.9)" : "text.secondary", whiteSpace: "nowrap" }}
+                >
+                  {item.label}
+                </Typography>
+              </Box>
+              <Typography variant="h4" fontWeight={800} sx={{ lineHeight: 1.1, color: isSelected ? "white" : item.color }}>
+                {count}
               </Typography>
-
-              {hayFiltros && (
-                <Button size="small" onClick={() => setFiltros(FILTROS_VACIOS)} startIcon={<FilterListOffIcon />}>Limpiar</Button>
-              )}
-              <Tooltip title="Más filtros">
-                <IconButton size="small" onClick={() => setShowFiltros((p) => !p)} color={showFiltros ? "primary" : "default"}>
-                  <FilterListIcon />
-                </IconButton>
-              </Tooltip>
-            </Box>
-
-            {/* Filtros avanzados */}
-            <Collapse in={showFiltros}>
-              <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1.5, p: 2, bgcolor: "grey.50", borderBottom: "1px solid", borderColor: "divider" }}>
-                <FormControl size="small" sx={{ minWidth: 160 }}>
-                  <InputLabel shrink>Tipo de cliente</InputLabel>
-                  <Select value={filtros.tipoCliente} label="Tipo de cliente" notched displayEmpty onChange={(e) => setFiltro("tipoCliente", e.target.value)}>
-                    <MenuItem value=""><em>Todos</em></MenuItem>
-                    {opts.tiposCliente.map((v) => <MenuItem key={v} value={v}>{v}</MenuItem>)}
-                  </Select>
-                </FormControl>
-                <FormControl size="small" sx={{ minWidth: 190 }}>
-                  <InputLabel shrink>Convenio</InputLabel>
-                  <Select value={filtros.convenio} label="Convenio" notched displayEmpty onChange={(e) => setFiltro("convenio", e.target.value)}>
-                    <MenuItem value=""><em>Todos</em></MenuItem>
-                    {opts.convenios.map((v) => <MenuItem key={v} value={v}>{v}</MenuItem>)}
-                  </Select>
-                </FormControl>
-                <FormControl size="small" sx={{ minWidth: 140 }}>
-                  <InputLabel shrink>Estado</InputLabel>
-                  <Select value={filtros.estado} label="Estado" notched displayEmpty onChange={(e) => { setFiltro("estado", e.target.value); setFiltro("municipio", ""); }}>
-                    <MenuItem value=""><em>Todos</em></MenuItem>
-                    {opts.estados.map((v) => <MenuItem key={v} value={v}>{v}</MenuItem>)}
-                  </Select>
-                </FormControl>
-                <FormControl size="small" sx={{ minWidth: 150 }} disabled={!filtros.estado}>
-                  <InputLabel shrink>Municipio</InputLabel>
-                  <Select value={filtros.municipio} label="Municipio" notched displayEmpty onChange={(e) => setFiltro("municipio", e.target.value)}>
-                    <MenuItem value=""><em>Todos</em></MenuItem>
-                    {opts.municipios.map((v) => <MenuItem key={v} value={v}>{v}</MenuItem>)}
-                  </Select>
-                </FormControl>
-                <FormControlLabel control={<Switch checked={filtros.soloConTel} onChange={(e) => setFiltro("soloConTel", e.target.checked)} size="small" />} label="Solo con teléfono" sx={{ ml: 0.5 }} />
-              </Box>
-            </Collapse>
-
-            {/* DataGrid */}
-            {filtered.length === 0 ? (
-              <Box sx={{ textAlign: "center", py: 8, color: "text.secondary" }}>
-                <Typography>Sin oportunidades en esta vista</Typography>
-              </Box>
-            ) : (
-              <DataGrid
-                rows={filtered}
-                columns={columns}
-                pageSizeOptions={[25, 50, 100]}
-                initialState={{ pagination: { paginationModel: { pageSize: 25 } } }}
-                disableRowSelectionOnClick
-                autoHeight
-                rowHeight={56}
-                columnVisibilityModel={columnVisibility}
-                onColumnVisibilityModelChange={setColumnVisibility}
-                slots={{
-                  toolbar: () => (
-                    <Box sx={{ px: 1, py: 0.5, borderBottom: "1px solid", borderColor: "grey.100" }}>
-                      <GridToolbarColumnsButton />
-                    </Box>
-                  ),
-                }}
+              <LinearProgress
+                variant="determinate"
+                value={pct}
                 sx={{
-                  border: "none",
-                  "& .MuiDataGrid-columnHeader": {
-                    bgcolor: "background.paper", fontSize: 11, fontWeight: 700,
-                    color: "text.secondary", textTransform: "uppercase", letterSpacing: "0.05em",
-                  },
-                  "& .MuiDataGrid-row:hover": { bgcolor: "action.hover" },
-                  "& .MuiDataGrid-cell": { borderColor: "grey.100", display: "flex", alignItems: "center" },
-                  "& .MuiDataGrid-footerContainer": { borderColor: "grey.100" },
-                  "& .MuiDataGrid-columnSeparator": { color: "grey.200" },
+                  mt: 1, height: 4, borderRadius: 2,
+                  bgcolor: isSelected ? "rgba(255,255,255,0.3)" : "grey.100",
+                  "& .MuiLinearProgress-bar": { bgcolor: isSelected ? "white" : item.color, borderRadius: 2 },
                 }}
               />
-            )}
-          </Card>
-        </>
-      )}
+              <Typography variant="caption" sx={{ color: isSelected ? "rgba(255,255,255,0.8)" : "text.disabled", fontSize: 10 }}>
+                {pct}% del total
+              </Typography>
+            </Paper>
+          );
+        })}
+      </Box>
+
+      {/* ═══════ FILTROS + GRID ═══════ */}
+      <Card elevation={0} sx={{ border: "1px solid", borderColor: "divider", borderRadius: 3, overflow: "hidden" }}>
+        {/* Barra de filtros */}
+        <Box sx={{ display: "flex", alignItems: "center", gap: 2, flexWrap: "wrap", px: 2.5, py: 1.5, bgcolor: "grey.50", borderBottom: "1px solid", borderColor: "divider" }}>
+          {cardFiltro && (
+            <Chip
+              label={cardFiltro === "capturados" ? "Capturados" : cardFiltro}
+              onDelete={() => setCardFiltro("")}
+              size="small"
+              sx={{
+                fontWeight: 600,
+                bgcolor: CARD_COLORS[cardFiltro] || "primary.main",
+                color: "white",
+                "& .MuiChip-deleteIcon": { color: "rgba(255,255,255,0.7)" },
+              }}
+            />
+          )}
+
+          <Typography variant="body2" color="text.secondary" sx={{ flex: 1 }}>
+            {filtered.length} resultado{filtered.length !== 1 ? "s" : ""}
+          </Typography>
+
+          {hayFiltros && (
+            <Button size="small" onClick={() => setFiltros(FILTROS_VACIOS)} startIcon={<FilterListOffIcon />}>Limpiar</Button>
+          )}
+          <Tooltip title="Más filtros">
+            <IconButton size="small" onClick={() => setShowFiltros((p) => !p)} color={showFiltros ? "primary" : "default"}>
+              <FilterListIcon />
+            </IconButton>
+          </Tooltip>
+        </Box>
+
+        {/* Filtros avanzados */}
+        <Collapse in={showFiltros}>
+          <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1.5, p: 2, bgcolor: "grey.50", borderBottom: "1px solid", borderColor: "divider" }}>
+            <FormControl size="small" sx={{ minWidth: 160 }}>
+              <InputLabel shrink>Tipo de cliente</InputLabel>
+              <Select value={filtros.tipoCliente} label="Tipo de cliente" notched displayEmpty onChange={(e) => setFiltro("tipoCliente", e.target.value)}>
+                <MenuItem value=""><em>Todos</em></MenuItem>
+                {opts.tiposCliente.map((v) => <MenuItem key={v} value={v}>{v}</MenuItem>)}
+              </Select>
+            </FormControl>
+            <FormControl size="small" sx={{ minWidth: 190 }}>
+              <InputLabel shrink>Convenio</InputLabel>
+              <Select value={filtros.convenio} label="Convenio" notched displayEmpty onChange={(e) => setFiltro("convenio", e.target.value)}>
+                <MenuItem value=""><em>Todos</em></MenuItem>
+                {opts.convenios.map((v) => <MenuItem key={v} value={v}>{v}</MenuItem>)}
+              </Select>
+            </FormControl>
+            <FormControl size="small" sx={{ minWidth: 140 }}>
+              <InputLabel shrink>Estado</InputLabel>
+              <Select value={filtros.estado} label="Estado" notched displayEmpty onChange={(e) => { setFiltro("estado", e.target.value); setFiltro("municipio", ""); }}>
+                <MenuItem value=""><em>Todos</em></MenuItem>
+                {opts.estados.map((v) => <MenuItem key={v} value={v}>{v}</MenuItem>)}
+              </Select>
+            </FormControl>
+            <FormControl size="small" sx={{ minWidth: 150 }} disabled={!filtros.estado}>
+              <InputLabel shrink>Municipio</InputLabel>
+              <Select value={filtros.municipio} label="Municipio" notched displayEmpty onChange={(e) => setFiltro("municipio", e.target.value)}>
+                <MenuItem value=""><em>Todos</em></MenuItem>
+                {opts.municipios.map((v) => <MenuItem key={v} value={v}>{v}</MenuItem>)}
+              </Select>
+            </FormControl>
+            <FormControlLabel control={<Switch checked={filtros.soloConTel} onChange={(e) => setFiltro("soloConTel", e.target.checked)} size="small" />} label="Solo con teléfono" sx={{ ml: 0.5 }} />
+          </Box>
+        </Collapse>
+
+        {/* DataGrid */}
+        {filtered.length === 0 ? (
+          <Box sx={{ textAlign: "center", py: 8, color: "text.secondary" }}>
+            <Typography>Sin oportunidades en esta vista</Typography>
+          </Box>
+        ) : (
+          <DataGrid
+            rows={filtered}
+            columns={columns}
+            pageSizeOptions={[25, 50, 100]}
+            initialState={{ pagination: { paginationModel: { pageSize: 25 } } }}
+            disableRowSelectionOnClick
+            autoHeight
+            rowHeight={56}
+            columnVisibilityModel={columnVisibility}
+            onColumnVisibilityModelChange={handleColumnVisibilityChange}
+            slots={{
+              toolbar: () => (
+                <Box sx={{ px: 1, py: 0.5, borderBottom: "1px solid", borderColor: "grey.100" }}>
+                  <GridToolbarColumnsButton />
+                </Box>
+              ),
+            }}
+            sx={{
+              border: "none",
+              "& .MuiDataGrid-columnHeader": {
+                bgcolor: "background.paper", fontSize: 11, fontWeight: 700,
+                color: "text.secondary", textTransform: "uppercase", letterSpacing: "0.05em",
+              },
+              "& .MuiDataGrid-row:hover": { bgcolor: "action.hover" },
+              "& .MuiDataGrid-cell": { borderColor: "grey.100", display: "flex", alignItems: "center" },
+              "& .MuiDataGrid-footerContainer": { borderColor: "grey.100" },
+              "& .MuiDataGrid-columnSeparator": { color: "grey.200" },
+            }}
+          />
+        )}
+      </Card>
 
       {/* ═══════ DIALOG: NUM OPERACIÓN (VENTA) ═══════ */}
       <Dialog open={ventaDialog.open} onClose={() => setVentaDialog((p) => ({ ...p, open: false }))} maxWidth="xs" fullWidth PaperProps={{ sx: { borderRadius: 3 } }}>
@@ -685,7 +728,6 @@ export default function OportunidadesPage() {
             <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}><CircularProgress /></Box>
           ) : verDialog.data ? (
             <Grid container spacing={3} sx={{ mt: 0 }}>
-              {/* Datos del cliente */}
               <Grid size={{ xs: 12, md: 6 }}>
                 <Card variant="outlined" sx={{ borderRadius: 2 }}>
                   <CardContent>
@@ -715,8 +757,6 @@ export default function OportunidadesPage() {
                   </CardContent>
                 </Card>
               </Grid>
-
-              {/* Historial */}
               <Grid size={{ xs: 12, md: 6 }}>
                 <Card variant="outlined" sx={{ borderRadius: 2 }}>
                   <CardContent>
@@ -769,7 +809,27 @@ export default function OportunidadesPage() {
         </DialogActions>
       </Dialog>
 
-      {/* ═══════ DIALOG: IMPORTAR CAPTURADOS ═══════ */}
+      {/* ═══════ MODALS ═══════ */}
+      <CaptacionModal
+        open={captacionOpen}
+        onClose={() => setCaptacionOpen(false)}
+        onSuccess={(opId) => {
+          setCaptacionOpen(false);
+          fetchData();
+          setSnackbar({ open: true, message: "Cliente captado exitosamente", severity: "success" });
+        }}
+      />
+
+      <SolicitarAsignacionDialog
+        open={asignacionOpen}
+        onClose={() => setAsignacionOpen(false)}
+        onSuccess={() => {
+          setAsignacionOpen(false);
+          fetchData();
+          setSnackbar({ open: true, message: "Asignación completada", severity: "success" });
+        }}
+      />
+
       <ImportCaptacionDialog
         open={importOpen}
         onClose={() => setImportOpen(false)}

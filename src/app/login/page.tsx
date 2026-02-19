@@ -16,7 +16,7 @@ import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -27,7 +27,7 @@ export default function LoginPage() {
     setLoading(true);
 
     const result = await signIn("credentials", {
-      email,
+      username,
       password,
       redirect: false,
     });
@@ -35,7 +35,7 @@ export default function LoginPage() {
     setLoading(false);
 
     if (result?.error) {
-      setError("Email o contraseña incorrectos");
+      setError(result.error);
     } else {
       router.push("/");
       router.refresh();
@@ -87,13 +87,15 @@ export default function LoginPage() {
           <Box component="form" onSubmit={handleSubmit}>
             <TextField
               fullWidth
-              label="Email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              label="Usuario"
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
               margin="normal"
               required
               autoFocus
+              autoComplete="username"
+              inputProps={{ minLength: 4, maxLength: 50 }}
             />
             <TextField
               fullWidth
@@ -103,6 +105,7 @@ export default function LoginPage() {
               onChange={(e) => setPassword(e.target.value)}
               margin="normal"
               required
+              autoComplete="current-password"
             />
             <Button
               fullWidth

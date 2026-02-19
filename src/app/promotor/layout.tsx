@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import LayoutShell from "@/components/layout/LayoutShell";
+import HorarioGuard from "@/components/HorarioGuard";
 
 export default async function PromotorLayout({
   children,
@@ -14,5 +15,9 @@ export default async function PromotorLayout({
     redirect("/login");
   }
 
-  return <LayoutShell rol="promotor">{children}</LayoutShell>;
+  return (
+    <LayoutShell rol="promotor">
+      <HorarioGuard>{children}</HorarioGuard>
+    </LayoutShell>
+  );
 }

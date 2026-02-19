@@ -143,30 +143,107 @@ npm run prisma:push       # Aplica schema a BD Sistema
 npm run seed:embudo       # Seed de 9 etapas + 14 transiciones
 ```
 
-## Último Avance (2026-02-18)
+## Último Avance (2026-02-18) — Rediseño completo módulo promotor
 
 ### Implementado en esta sesión:
-1. **Salidas auto-pool** — Al marcar No contactado, No interesado, Negociación caída o Descartado, la oportunidad se desactiva automáticamente y el cliente regresa al pool. El historial preserva la razón.
-2. **Cooldown 3 meses** — En asignaciones y opciones, se excluyen clientes que el promotor ya trabajó en los últimos N meses.
-3. **Tabs Asignados/Capturados** — La página de oportunidades separa por origen con tabs dedicados. Embudo y conteos reflejan el tab activo.
-4. **Importación masiva** — Nueva API `POST /api/captaciones/importar` + componente `ImportCaptacionDialog` para subir Excel con prospectos.
-5. **Embudo limpio** — Eliminada sección "Salidas" y dropdown "Etapa" redundante. Solo cards de avance + Venta.
-6. **num_operacion visible** — Columna condicional al filtrar por Venta + visible en modal detalle.
-7. **Visibilidad de columnas** — Toolbar con `GridToolbarColumnsButton` para mostrar/ocultar columnas.
-8. **Rediseño Mis Asignaciones** — Stat cards (Total Lotes, Registros, Con Teléfono, Listos para Excel), tipografía mejorada, estilos consistentes.
+
+#### 1. Control de Horario del Sistema
+- Horario operativo: 08:55 AM - 07:15 PM, Lunes a Viernes (America/Mexico_City)
+- `src/lib/horario.ts` — validación server-side del horario
+- `GET /api/sistema/horario` — endpoint para consultar estado
+- Overlay `FueraDeHorario` + `HorarioGuard` en layout promotor
+- Hook `useHorario` — polling cada 60s
+- APIs protegidas: asignaciones, captaciones, transiciones, importación, exportación
+- Configuración via tabla `configuracion` (horario_inicio, horario_fin, dias_operativos)
+
+#### 2. Límite Estricto de Asignación Diaria
+- Nueva tabla `cupo_diario` (usuario_id + fecha, unique)
+- Validación con `SELECT FOR UPDATE` dentro de transacción Serializable
+- Contador decremental: no se reinicia al consumir registros
+- `GET /api/asignaciones/cupo` — endpoint para consultar cupo restante
+- Prevención de bypass por concurrencia (lock atómico)
+
+#### 3. Autenticación por Username con Bloqueo
+- Login cambiado de email a `username` (campo unique en usuarios)
+- Bloqueo tras 5 intentos fallidos (15 min)
+- Campos nuevos: `username`, `intentos_fallidos`, `bloqueado_hasta`, `debe_cambiar_password`
+- Pantalla de cambio de contraseña obligatorio (`/cambiar-password`)
+- API `POST /api/auth/cambiar-password`
+- Middleware redirige a cambio de contraseña si `debe_cambiar_password = true`
+- Admin puede resetear contraseña → fuerza cambio en próximo login
+
+#### 4. Reestructuración UI del Módulo Promotor
+- **Sidebar**: 1 solo item (Mi Asignación)
+- **Dashboard**: redirect a `/promotor/oportunidades`
+- **Mis Lotes**: eliminado del sidebar (no accesible)
+- **Captación**: convertida en modal con tabs (Individual + Carga Masiva)
+- **6 cards pipeline sin tabs**: Capturados | Asignado | Contactado | Interesado | Negociación | Venta
+- Capturados filtra por `origen=CAPTACION`, las demás por etapa (excluyendo captaciones)
+- **Filtro default**: card "Asignado" activa al entrar
+- **Solicitar Asignación**: botón en la página (no en Dashboard)
+- Componentes nuevos: `CaptacionModal`, `SolicitarAsignacionDialog`
+
+#### 5. Control de Descargas
+- `POST /api/oportunidades/exportar` — descarga controlada con criterios obligatorios
+- Requiere: al menos 1 filtro activo + rango de fechas (máx 90 días)
+- Máximo 500 registros por descarga
+- Solo registros propios del promotor
+- Validación de horario operativo
+- Registro de descarga en historial
+
+#### 6. Personalización de Columnas
+- Columnas no ocultables: nombre, convenio, teléfono, etapa
+- Persistencia de preferencias en localStorage
+- Enforcement automático al cambiar visibilidad
+
+### Tabla de configuración actualizada
+| Clave | Valor default | Descripción |
+|-------|---------------|-------------|
+| `max_registros_por_dia` | 300 | Límite diario por promotor |
+| `horario_inicio` | 08:55 | Hora de inicio del sistema |
+| `horario_fin` | 19:15 | Hora de fin del sistema |
+| `dias_operativos` | 1,2,3,4,5 | Días operativos (L-V) |
+| `cooldown_meses` | 3 | Meses antes de reasignar mismo cliente |
 
 ### Fases Pendientes
 - **Fase 3**: Dashboards para gerentes, métricas por sucursal/región
 - **Fase 4**: Bandeja supervisor, reasignación de oportunidades, baja de promotor
 
-### Archivos clave modificados
+### Pasos pendientes de despliegue
+1. `npx prisma db push` — aplicar nuevos campos (username, cupo_diario, etc.)
+2. Script de migración: generar `username` para usuarios existentes
+3. `npx prisma db seed` — seed de configuración de horario
+4. Agregar `CRON_SECRET` en Railway si no existe
+
+### Archivos clave modificados/creados
 ```
-src/app/api/oportunidades/[id]/transicion/route.ts  — Auto-pool en salidas
-src/app/api/oportunidades/route.ts                   — num_operacion en respuesta
-src/app/api/asignaciones/route.ts                    — Cooldown en asignación
-src/app/api/asignaciones/opciones/route.ts           — Cooldown en opciones
-src/app/api/captaciones/importar/route.ts            — NUEVO: importación masiva
-src/app/promotor/oportunidades/page.tsx              — Tabs, embudo limpio, columns
-src/app/promotor/asignaciones/page.tsx               — Rediseño completo
-src/components/ImportCaptacionDialog.tsx              — NUEVO: dialog de importación
+prisma/schema.prisma                                 — username, cupo_diario, bloqueo
+prisma/seed.ts                                       — config de horario + cooldown
+src/lib/auth.ts                                      — login por username, bloqueo
+src/lib/horario.ts                                   — NUEVO: validación de horario
+src/lib/validators.ts                                — username en schemas
+src/types/next-auth.d.ts                             — debe_cambiar_password
+src/middleware.ts                                    — redirect a cambiar-password
+src/hooks/useHorario.ts                              — NUEVO: hook de horario
+src/components/FueraDeHorario.tsx                    — NUEVO: overlay fuera de horario
+src/components/HorarioGuard.tsx                      — NUEVO: wrapper con overlay
+src/components/CaptacionModal.tsx                    — NUEVO: modal unificada
+src/components/SolicitarAsignacionDialog.tsx         — NUEVO: dialog de asignación
+src/components/ImportCaptacionDialog.tsx             — prop embedded
+src/components/layout/Sidebar.tsx                    — 1 item promotor
+src/app/login/page.tsx                               — campo username
+src/app/cambiar-password/page.tsx                    — NUEVO: cambio de contraseña
+src/app/promotor/page.tsx                            — redirect a oportunidades
+src/app/promotor/layout.tsx                          — HorarioGuard
+src/app/promotor/oportunidades/page.tsx              — 6 cards, sin tabs, modal captación
+src/app/api/sistema/horario/route.ts                 — NUEVO: estado del horario
+src/app/api/auth/cambiar-password/route.ts           — NUEVO: cambiar contraseña
+src/app/api/asignaciones/route.ts                    — cupo_diario + horario
+src/app/api/asignaciones/cupo/route.ts               — NUEVO: consultar cupo
+src/app/api/oportunidades/exportar/route.ts          — NUEVO: descarga controlada
+src/app/api/oportunidades/[id]/transicion/route.ts   — horario
+src/app/api/captaciones/route.ts                     — horario
+src/app/api/captaciones/importar/route.ts            — horario
+src/app/api/admin/usuarios/route.ts                  — username
+src/app/api/admin/usuarios/[id]/route.ts             — reset password
 ```

@@ -69,6 +69,7 @@ model equipos {
 model usuarios {
   id            Int      @id @default(autoincrement())
   nombre        String   @db.VarChar(200)
+  username      String   @unique @db.VarChar(50)
   email         String   @unique @db.VarChar(300)
   password_hash String
   rol           String   @default("promotor") @db.VarChar(30)
@@ -77,6 +78,10 @@ model usuarios {
   equipo_id   Int?
   sucursal_id Int?
   region_id   Int?
+
+  intentos_fallidos     Int       @default(0)
+  bloqueado_hasta       DateTime?
+  debe_cambiar_password Boolean   @default(false)
 
   activo     Boolean  @default(true)
   created_at DateTime @default(now())
@@ -94,8 +99,9 @@ model usuarios {
   historial               historial[]
   ventas                  ventas[]
   captaciones             captaciones[]
+  cupo_diario             cupo_diario[]
 
-  @@index([email])
+  @@index([username])
   @@index([rol])
 }
 
@@ -263,6 +269,24 @@ model ventas {
 
   oportunidad oportunidades @relation(fields: [oportunidad_id], references: [id])
   usuario     usuarios      @relation(fields: [usuario_id], references: [id])
+}
+
+// =============================================
+// CUPO DIARIO
+// =============================================
+
+model cupo_diario {
+  id             Int      @id @default(autoincrement())
+  usuario_id     Int
+  fecha          DateTime @db.Date
+  total_asignado Int      @default(0)
+  limite         Int      @default(300)
+  created_at     DateTime @default(now())
+
+  usuario usuarios @relation(fields: [usuario_id], references: [id])
+
+  @@unique([usuario_id, fecha])
+  @@index([usuario_id])
 }
 
 // =============================================

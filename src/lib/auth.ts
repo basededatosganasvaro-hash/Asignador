@@ -3,25 +3,42 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { prisma } from "./prisma";
 
+const MAX_INTENTOS = 5;
+const BLOQUEO_MINUTOS = 15;
+
 export const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
       name: "Credenciales",
       credentials: {
-        email: { label: "Email", type: "email" },
+        username: { label: "Usuario", type: "text" },
         password: { label: "Contraseña", type: "password" },
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
-          throw new Error("Email y contraseña son requeridos");
+        if (!credentials?.username || !credentials?.password) {
+          throw new Error("Usuario y contraseña son requeridos");
         }
 
         const user = await prisma.usuarios.findUnique({
-          where: { email: credentials.email },
+          where: { username: credentials.username },
         });
 
-        if (!user || !user.activo) {
-          throw new Error("Credenciales invalidas");
+        if (!user) {
+          throw new Error("Credenciales inválidas");
+        }
+
+        if (!user.activo) {
+          throw new Error("Cuenta desactivada. Contacte al administrador.");
+        }
+
+        // Verificar bloqueo temporal
+        if (user.bloqueado_hasta && user.bloqueado_hasta > new Date()) {
+          const minutosRestantes = Math.ceil(
+            (user.bloqueado_hasta.getTime() - Date.now()) / 60000
+          );
+          throw new Error(
+            `Cuenta bloqueada temporalmente. Intente en ${minutosRestantes} minuto${minutosRestantes !== 1 ? "s" : ""}.`
+          );
         }
 
         const isValid = await bcrypt.compare(
@@ -30,8 +47,38 @@ export const authOptions: NextAuthOptions = {
         );
 
         if (!isValid) {
-          throw new Error("Credenciales invalidas");
+          // Incrementar intentos fallidos
+          const nuevosIntentos = user.intentos_fallidos + 1;
+          const bloqueado =
+            nuevosIntentos >= MAX_INTENTOS
+              ? new Date(Date.now() + BLOQUEO_MINUTOS * 60 * 1000)
+              : null;
+
+          await prisma.usuarios.update({
+            where: { id: user.id },
+            data: {
+              intentos_fallidos: nuevosIntentos,
+              bloqueado_hasta: bloqueado,
+            },
+          });
+
+          if (bloqueado) {
+            throw new Error(
+              `Demasiados intentos fallidos. Cuenta bloqueada por ${BLOQUEO_MINUTOS} minutos.`
+            );
+          }
+
+          throw new Error("Credenciales inválidas");
         }
+
+        // Login exitoso: resetear contadores
+        await prisma.usuarios.update({
+          where: { id: user.id },
+          data: {
+            intentos_fallidos: 0,
+            bloqueado_hasta: null,
+          },
+        });
 
         return {
           id: String(user.id),
@@ -39,6 +86,7 @@ export const authOptions: NextAuthOptions = {
           name: user.nombre,
           nombre: user.nombre,
           rol: user.rol,
+          debe_cambiar_password: user.debe_cambiar_password,
         };
       },
     }),
@@ -53,6 +101,7 @@ export const authOptions: NextAuthOptions = {
         token.id = user.id;
         token.rol = (user as { rol: string }).rol;
         token.nombre = (user as { nombre: string }).nombre;
+        token.debe_cambiar_password = (user as { debe_cambiar_password: boolean }).debe_cambiar_password;
       }
       return token;
     },
@@ -61,6 +110,7 @@ export const authOptions: NextAuthOptions = {
         session.user.id = token.id as string;
         session.user.rol = token.rol as string;
         session.user.nombre = token.nombre as string;
+        session.user.debe_cambiar_password = token.debe_cambiar_password as boolean;
       }
       return session;
     },
