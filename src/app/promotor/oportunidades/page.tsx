@@ -2,13 +2,13 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import {
   Box, Typography, Chip, CircularProgress, Alert, Stack,
-  MenuItem, Select, FormControl, Switch,
-  FormControlLabel, IconButton, Tooltip, Button,
+  MenuItem, Select, FormControl,
+  IconButton, Tooltip, Button,
   Card, CardContent, Dialog, DialogTitle, DialogContent,
   DialogActions, TextField, Snackbar, Paper, Divider, Grid,
   LinearProgress,
 } from "@mui/material";
-import { DataGrid, GridColDef, GridRenderCellParams, GridToolbarColumnsButton } from "@mui/x-data-grid";
+import { DataGrid, GridColDef, GridRenderCellParams, GridToolbarColumnsButton, GridToolbarFilterButton } from "@mui/x-data-grid";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import PhoneIcon from "@mui/icons-material/Phone";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
@@ -36,6 +36,8 @@ interface Oportunidad {
   origen: string;
   num_operacion: string | null;
   created_at: string;
+  // All other client fields (dynamic)
+  [key: string]: unknown;
 }
 
 interface Transicion {
@@ -80,12 +82,69 @@ interface HistorialEntry {
 
 type FiltroCard = "capturados" | string; // "capturados" o nombre de etapa
 
-const FILTROS_VACIOS = {
-  soloConTel: false,
-};
 
 // Columnas que no se pueden ocultar
 const LOCKED_COLUMNS = ["nombres", "convenio", "tel_1", "etapa"];
+
+// Todas las columnas extras de la tabla clientes (ocultas por defecto)
+const CLIENTE_EXTRA_COLUMNS: { field: string; headerName: string; width?: number }[] = [
+  // Identificacion
+  { field: "nss", headerName: "NSS", width: 130 },
+  { field: "a_paterno", headerName: "Ap. Paterno", width: 130 },
+  { field: "a_materno", headerName: "Ap. Materno", width: 130 },
+  { field: "curp", headerName: "CURP", width: 180 },
+  { field: "rfc", headerName: "RFC", width: 140 },
+  // Datos personales
+  { field: "edad", headerName: "Edad", width: 80 },
+  { field: "genero", headerName: "Genero", width: 100 },
+  { field: "tipo_pension", headerName: "Tipo Pension", width: 130 },
+  { field: "mes_pension", headerName: "Mes Pension", width: 110 },
+  { field: "anio_pension", headerName: "Ano Pension", width: 110 },
+  // Ubicacion
+  { field: "umf_delegacion", headerName: "UMF/Delegacion", width: 150 },
+  { field: "calle_num", headerName: "Calle y Numero", width: 200 },
+  { field: "colonia", headerName: "Colonia", width: 150 },
+  { field: "domicilio_pensionados", headerName: "Domicilio Pensionados", width: 200 },
+  { field: "region", headerName: "Region", width: 120 },
+  { field: "municipio", headerName: "Municipio", width: 140 },
+  { field: "cp", headerName: "C.P.", width: 80 },
+  // Contacto
+  { field: "tel_2", headerName: "Tel 2", width: 130 },
+  { field: "tipo_1", headerName: "Tipo Tel 1", width: 100 },
+  { field: "tipo_2", headerName: "Tipo Tel 2", width: 100 },
+  { field: "tel_3", headerName: "Tel 3", width: 130 },
+  { field: "tipo_3", headerName: "Tipo Tel 3", width: 100 },
+  { field: "tel_4", headerName: "Tel 4", width: 130 },
+  { field: "tipo_4", headerName: "Tipo Tel 4", width: 100 },
+  { field: "tel_5", headerName: "Tel 5", width: 130 },
+  { field: "tipo_5", headerName: "Tipo Tel 5", width: 100 },
+  { field: "direccion_email", headerName: "Email", width: 200 },
+  // Financieras
+  { field: "creditos_actuales", headerName: "Creditos Actuales", width: 140 },
+  { field: "tipo_mercado", headerName: "Tipo Mercado", width: 130 },
+  { field: "tipo_cliente_original", headerName: "Tipo Cliente Original", width: 160 },
+  { field: "tipo_cliente_csp", headerName: "Tipo Cliente CSP", width: 140 },
+  { field: "capacidad", headerName: "Capacidad", width: 120 },
+  { field: "plazo_oferta", headerName: "Plazo Oferta", width: 120 },
+  { field: "oferta", headerName: "Oferta", width: 120 },
+  { field: "cotizador", headerName: "Cotizador", width: 120 },
+  { field: "tasa", headerName: "Tasa", width: 100 },
+  { field: "cat", headerName: "CAT", width: 100 },
+  { field: "financiera", headerName: "Financiera", width: 130 },
+  { field: "plazo", headerName: "Plazo", width: 100 },
+  { field: "monto_solicitado", headerName: "Monto Solicitado", width: 140 },
+  { field: "descuento_actual", headerName: "Descuento Actual", width: 140 },
+  { field: "plazo_transcurrido", headerName: "Plazo Transcurrido", width: 140 },
+  { field: "plazo_restante", headerName: "Plazo Restante", width: 130 },
+  { field: "cat_actual", headerName: "CAT Actual", width: 110 },
+  { field: "tasa_actual", headerName: "Tasa Actual", width: 110 },
+  // Cartera
+  { field: "monto_comisionable", headerName: "Monto Comisionable", width: 150 },
+  { field: "dependencia", headerName: "Dependencia", width: 140 },
+  { field: "estatus", headerName: "Estatus", width: 120 },
+  { field: "monto", headerName: "Monto", width: 120 },
+  { field: "num_empleado", headerName: "Num. Empleado", width: 130 },
+];
 
 const CARD_COLORS: Record<string, string> = {
   capturados: "#26C6DA",
@@ -157,7 +216,6 @@ export default function OportunidadesPage() {
   const [etapas, setEtapas] = useState<Etapa[]>([]);
   const [loading, setLoading] = useState(true);
   const [cardFiltro, setCardFiltro] = useState<FiltroCard>("Asignado"); // default: Asignado
-  const [filtros, setFiltros] = useState(FILTROS_VACIOS);
   const [observaciones, setObservaciones] = useState<Record<number, string>>({});
   const [transitioning, setTransitioning] = useState<number | null>(null);
   const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" as "success" | "error" });
@@ -169,7 +227,12 @@ export default function OportunidadesPage() {
         if (saved) return JSON.parse(saved);
       } catch { /* ignore */ }
     }
-    return {};
+    // Por defecto: ocultar todas las columnas extras del cliente
+    const defaults: Record<string, boolean> = {};
+    for (const col of CLIENTE_EXTRA_COLUMNS) {
+      defaults[col.field] = false;
+    }
+    return defaults;
   });
 
   const handleColumnVisibilityChange = useCallback((model: Record<string, boolean>) => {
@@ -209,8 +272,6 @@ export default function OportunidadesPage() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  const setFiltro = (key: keyof typeof FILTROS_VACIOS, value: boolean) =>
-    setFiltros((p) => ({ ...p, [key]: value }));
 
   // Mapa de transiciones por etapa_id
   const transMap = useMemo(() => {
@@ -240,23 +301,15 @@ export default function OportunidadesPage() {
 
   const totalOps = rows.length;
 
-  // ─── FILTRADO por card activa + filtros avanzados ───
+  // ─── FILTRADO por card activa ───
   const filtered = useMemo(() => {
-    let base = rows;
-
     if (cardFiltro === "capturados") {
-      base = base.filter((r) => r.origen === "CAPTACION");
+      return rows.filter((r) => r.origen === "CAPTACION");
     } else if (cardFiltro) {
-      base = base.filter((r) => r.origen !== "CAPTACION" && r.etapa?.nombre === cardFiltro);
+      return rows.filter((r) => r.origen !== "CAPTACION" && r.etapa?.nombre === cardFiltro);
     }
-
-    return base.filter((r) => {
-      if (filtros.soloConTel && !r.tel_1) return false;
-      return true;
-    });
-  }, [rows, cardFiltro, filtros]);
-
-  const hayFiltros = filtros.soloConTel;
+    return rows;
+  }, [rows, cardFiltro]);
 
   // ─── Cambiar etapa inline ───
   const handleTransicion = async (opId: number, transicionId: number) => {
@@ -406,12 +459,21 @@ export default function OportunidadesPage() {
     },
     ...(cardFiltro === "Venta" ? [{
       field: "num_operacion",
-      headerName: "No. Operación",
+      headerName: "No. Operacion",
       width: 150,
       renderCell: (p: GridRenderCellParams) => (
         <Typography variant="body2" fontWeight={500}>{p.value || "—"}</Typography>
       ),
     } satisfies GridColDef] : []),
+    // All client extra columns (hidden by default)
+    ...CLIENTE_EXTRA_COLUMNS.map((col) => ({
+      field: col.field,
+      headerName: col.headerName,
+      width: col.width || 120,
+      renderCell: (p: GridRenderCellParams) => (
+        <Typography variant="body2" noWrap>{p.value ?? "—"}</Typography>
+      ),
+    } satisfies GridColDef)),
     {
       field: "__obs", headerName: "Observaciones", flex: 1, minWidth: 150, sortable: false,
       renderCell: (p) => (
@@ -577,12 +639,6 @@ export default function OportunidadesPage() {
           <Typography variant="body2" color="text.secondary" sx={{ flex: 1 }}>
             {filtered.length} resultado{filtered.length !== 1 ? "s" : ""}
           </Typography>
-
-          <FormControlLabel
-            control={<Switch checked={filtros.soloConTel} onChange={(e) => setFiltro("soloConTel", e.target.checked)} size="small" />}
-            label={<Typography variant="body2">Solo con tel.</Typography>}
-            sx={{ mr: 0 }}
-          />
         </Box>
 
         {/* DataGrid */}
@@ -603,8 +659,9 @@ export default function OportunidadesPage() {
             onColumnVisibilityModelChange={handleColumnVisibilityChange}
             slots={{
               toolbar: () => (
-                <Box sx={{ px: 1, py: 0.5, borderBottom: "1px solid", borderColor: "grey.100" }}>
+                <Box sx={{ display: "flex", gap: 1, px: 1, py: 0.5, borderBottom: "1px solid", borderColor: "grey.100" }}>
                   <GridToolbarColumnsButton />
+                  <GridToolbarFilterButton />
                 </Box>
               ),
             }}

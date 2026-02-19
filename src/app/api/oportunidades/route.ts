@@ -29,48 +29,56 @@ export async function GET() {
 
   if (oportunidades.length === 0) return NextResponse.json([]);
 
-  // Fetch client names from BD Clientes (solo para los que tienen cliente_id)
+  // Fetch ALL client fields from BD Clientes
   const clienteIds = oportunidades.map((o) => o.cliente_id).filter((id): id is number => id !== null);
 
-  const clienteMap: Record<number, { id: number; nombres: string | null; convenio: string | null; estado: string | null; municipio: string | null; tipo_cliente: string | null; tel_1: string | null }> = {};
+  const clienteMap: Record<number, Record<string, unknown>> = {};
 
   if (clienteIds.length > 0) {
     const clientes = await prismaClientes.clientes.findMany({
       where: { id: { in: clienteIds } },
-      select: { id: true, nombres: true, convenio: true, estado: true, municipio: true, tipo_cliente: true, tel_1: true },
     });
-    for (const c of clientes) clienteMap[c.id] = c;
+    for (const c of clientes) clienteMap[c.id] = c as unknown as Record<string, unknown>;
   }
 
-  // Get last edit for tel_1 (solo clientes de BD Clientes)
-  const tel1Map: Record<number, string> = {};
+  // Get all contact edits (datos_contacto) for these clients
+  const editMap: Record<number, Record<string, string>> = {};
   if (clienteIds.length > 0) {
-    const tel1Edits = await prisma.datos_contacto.findMany({
-      where: { cliente_id: { in: clienteIds }, campo: "tel_1" },
+    const edits = await prisma.datos_contacto.findMany({
+      where: { cliente_id: { in: clienteIds } },
       orderBy: { created_at: "desc" },
     });
-    for (const edit of tel1Edits) {
-      if (!tel1Map[edit.cliente_id!]) tel1Map[edit.cliente_id!] = edit.valor;
+    for (const edit of edits) {
+      if (!editMap[edit.cliente_id]) editMap[edit.cliente_id] = {};
+      if (!editMap[edit.cliente_id][edit.campo]) {
+        editMap[edit.cliente_id][edit.campo] = edit.valor;
+      }
     }
   }
 
   const result = oportunidades.map((op) => {
     if (op.cliente_id !== null) {
-      const cliente = clienteMap[op.cliente_id];
+      const cliente = clienteMap[op.cliente_id] ?? {};
+      const edits = editMap[op.cliente_id] ?? {};
+      // Merge: edits override original client data
+      const merged = { ...cliente, ...edits };
       return {
         id: op.id,
         cliente_id: op.cliente_id,
-        nombres: cliente?.nombres ?? "—",
-        convenio: cliente?.convenio ?? "—",
-        estado: cliente?.estado ?? "—",
-        municipio: cliente?.municipio ?? "—",
-        tipo_cliente: cliente?.tipo_cliente ?? "—",
-        tel_1: tel1Map[op.cliente_id] ?? cliente?.tel_1 ?? null,
         etapa: op.etapa,
         timer_vence: op.timer_vence,
         origen: op.origen,
         num_operacion: op.num_operacion ?? null,
         created_at: op.created_at,
+        // All client fields (flat)
+        ...merged,
+        // Ensure key display fields have fallbacks
+        nombres: (merged.nombres as string) ?? "—",
+        convenio: (merged.convenio as string) ?? "—",
+        estado: (merged.estado as string) ?? "—",
+        municipio: (merged.municipio as string) ?? "—",
+        tipo_cliente: (merged.tipo_cliente as string) ?? "—",
+        tel_1: (merged.tel_1 as string) ?? null,
       };
     } else {
       // Cliente captado — datos desde captacion.datos_json
@@ -81,17 +89,18 @@ export async function GET() {
       return {
         id: op.id,
         cliente_id: null,
+        etapa: op.etapa,
+        timer_vence: op.timer_vence,
+        origen: op.origen,
+        num_operacion: op.num_operacion ?? null,
+        created_at: op.created_at,
+        ...datos,
         nombres,
         convenio: op.captacion?.convenio ?? "—",
         estado: datos.estado ?? "—",
         municipio: datos.municipio ?? "—",
         tipo_cliente: "Captado",
         tel_1: datos.tel_1 ?? null,
-        etapa: op.etapa,
-        timer_vence: op.timer_vence,
-        origen: op.origen,
-        num_operacion: op.num_operacion ?? null,
-        created_at: op.created_at,
       };
     }
   });
