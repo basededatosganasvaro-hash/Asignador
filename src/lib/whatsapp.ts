@@ -1,5 +1,5 @@
 // Mensajes predefinidos por etapa para WhatsApp
-// Variables disponibles: {nombre} = primer nombre del cliente, {promotor} = nombre del promotor
+// Variables disponibles: {nombre} = nombre completo del cliente, {promotor} = nombre del promotor
 export const WA_MENSAJES_DEFAULT: Record<string, string> = {
   Asignado: "Hola {nombre}, buenas tardes. Mi nombre es {promotor}, le contacto para brindarle información sobre un beneficio disponible para usted. ¿Tiene un momento para platicar?",
   Contactado: "Hola {nombre}, le saludo nuevamente. Dando seguimiento a nuestra conversación anterior, me gustaría resolver cualquier duda que tenga sobre el beneficio que le comenté.",
@@ -28,7 +28,7 @@ export function buildWhatsAppUrl(
 
   const template = plantillas[etapa] || plantillas["Asignado"] || WA_MENSAJES_DEFAULT["Asignado"];
   const mensaje = template
-    .replace(/\{nombre\}/g, nombre.split(" ")[0])
+    .replace(/\{nombre\}/g, nombre)
     .replace(/\{promotor\}/g, promotorNombre);
 
   return `https://wa.me/${tel}?text=${encodeURIComponent(mensaje)}`;

@@ -199,7 +199,7 @@ export default function ConfiguracionPage() {
                   </Typography>
                   <Typography variant="body2" sx={{ fontSize: 13, color: "text.secondary", fontStyle: "italic" }}>
                     {(plantillas[etapa] || "")
-                      .replace(/\{nombre\}/g, "Carlos")
+                      .replace(/\{nombre\}/g, "Carlos Pérez López")
                       .replace(/\{promotor\}/g, "Juan Pérez")
                     || "—"}
                   </Typography>
