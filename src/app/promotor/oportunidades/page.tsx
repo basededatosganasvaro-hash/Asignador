@@ -17,7 +17,7 @@ import PersonAddIcon from "@mui/icons-material/PersonAdd";
 import AssignmentIndIcon from "@mui/icons-material/AssignmentInd";
 import { useSession } from "next-auth/react";
 import SendIcon from "@mui/icons-material/Send";
-import { buildWhatsAppUrl, WA_MENSAJES_DEFAULT } from "@/lib/whatsapp";
+import { buildWhatsAppUrl, formatPhoneForWA, WA_MENSAJES_DEFAULT } from "@/lib/whatsapp";
 import ImportCaptacionDialog from "@/components/ImportCaptacionDialog";
 import CaptacionModal from "@/components/CaptacionModal";
 import SolicitarAsignacionDialog from "@/components/SolicitarAsignacionDialog";
@@ -898,12 +898,9 @@ export default function OportunidadesPage() {
         destinatarios={selectedIds.map((id) => {
           const row = rows.find((r) => r.id === id);
           const tel = row?.tel_1 || "";
-          // Format Mexican phone
-          const clean = tel.replace(/\D/g, "");
-          const numero = clean.length === 10 ? `52${clean}` : clean;
           return {
             oportunidad_id: id,
-            numero_destino: numero,
+            numero_destino: formatPhoneForWA(tel),
             nombre_cliente: row?.nombres || "",
           };
         }).filter((d) => d.numero_destino.length >= 12)}

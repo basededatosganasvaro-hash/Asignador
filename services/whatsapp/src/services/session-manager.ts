@@ -45,9 +45,9 @@ class SessionManager {
     try {
       console.log(`[SessionManager] connect() called for user ${userId}`);
 
-      // Si ya está conectado, no hacer nada
-      if (this.isConnected(userId)) {
-        console.log(`[SessionManager] User ${userId} already connected`);
+      // Si ya tiene sesión activa (conectada o conectando), no crear otra
+      if (this.sessions.has(userId)) {
+        console.log(`[SessionManager] User ${userId} already has active session, skipping`);
         return;
       }
 
@@ -107,18 +107,29 @@ class SessionManager {
 
       if (connection === "close") {
         const statusCode = (lastDisconnect?.error as Boom)?.output?.statusCode;
-        const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
+        console.log(`[SessionManager] Connection closed for user ${userId}, statusCode: ${statusCode}`);
 
         this.sessions.delete(userId);
 
+        // Solo reconectar si fue una desconexión temporal (no logout, no QR timeout, no conflict)
+        const noReconnectCodes = [
+          DisconnectReason.loggedOut,     // 401
+          DisconnectReason.timedOut,      // 408 (QR expiró)
+          405,                            // Method not allowed
+          409,                            // Conflict (replaced)
+        ];
+        const shouldReconnect = !noReconnectCodes.includes(statusCode || 0)
+          && statusCode !== undefined
+          && statusCode >= 500; // Solo reconectar en errores de servidor
+
         if (shouldReconnect) {
-          // Reconectar automáticamente
           await this.upsertSession(userId, "CONECTANDO");
-          setTimeout(() => this.connect(userId), 3000);
+          setTimeout(() => this.connect(userId), 5000);
         } else {
           await this.upsertSession(userId, "DESCONECTADO");
-          // Limpiar credenciales
-          await this.clearCreds(userId, sessionDir);
+          if (statusCode === DisconnectReason.loggedOut) {
+            await this.clearCreds(userId, sessionDir);
+          }
         }
       }
     });
