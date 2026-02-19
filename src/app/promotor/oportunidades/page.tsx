@@ -2,15 +2,13 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import {
   Box, Typography, Chip, CircularProgress, Alert, Stack,
-  MenuItem, Select, FormControl, InputLabel, Switch,
-  FormControlLabel, IconButton, Tooltip, Collapse, Button,
+  MenuItem, Select, FormControl, Switch,
+  FormControlLabel, IconButton, Tooltip, Button,
   Card, CardContent, Dialog, DialogTitle, DialogContent,
   DialogActions, TextField, Snackbar, Paper, Divider, Grid,
   LinearProgress,
 } from "@mui/material";
 import { DataGrid, GridColDef, GridRenderCellParams, GridToolbarColumnsButton } from "@mui/x-data-grid";
-import FilterListIcon from "@mui/icons-material/FilterList";
-import FilterListOffIcon from "@mui/icons-material/FilterListOff";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import PhoneIcon from "@mui/icons-material/Phone";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
@@ -83,7 +81,7 @@ interface HistorialEntry {
 type FiltroCard = "capturados" | string; // "capturados" o nombre de etapa
 
 const FILTROS_VACIOS = {
-  tipoCliente: "", convenio: "", estado: "", municipio: "", soloConTel: false,
+  soloConTel: false,
 };
 
 // Columnas que no se pueden ocultar
@@ -160,7 +158,6 @@ export default function OportunidadesPage() {
   const [loading, setLoading] = useState(true);
   const [cardFiltro, setCardFiltro] = useState<FiltroCard>("Asignado"); // default: Asignado
   const [filtros, setFiltros] = useState(FILTROS_VACIOS);
-  const [showFiltros, setShowFiltros] = useState(false);
   const [observaciones, setObservaciones] = useState<Record<number, string>>({});
   const [transitioning, setTransitioning] = useState<number | null>(null);
   const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" as "success" | "error" });
@@ -212,7 +209,7 @@ export default function OportunidadesPage() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  const setFiltro = (key: keyof typeof FILTROS_VACIOS, value: string | boolean) =>
+  const setFiltro = (key: keyof typeof FILTROS_VACIOS, value: boolean) =>
     setFiltros((p) => ({ ...p, [key]: value }));
 
   // Mapa de transiciones por etapa_id
@@ -254,26 +251,12 @@ export default function OportunidadesPage() {
     }
 
     return base.filter((r) => {
-      if (filtros.tipoCliente && r.tipo_cliente !== filtros.tipoCliente) return false;
-      if (filtros.convenio && r.convenio !== filtros.convenio) return false;
-      if (filtros.estado && r.estado !== filtros.estado) return false;
-      if (filtros.municipio && r.municipio !== filtros.municipio) return false;
       if (filtros.soloConTel && !r.tel_1) return false;
       return true;
     });
   }, [rows, cardFiltro, filtros]);
 
-  const opts = useMemo(() => ({
-    tiposCliente: Array.from(new Set(rows.map((r) => r.tipo_cliente).filter((v) => v && v !== "—"))).sort(),
-    convenios: Array.from(new Set(rows.map((r) => r.convenio).filter((v) => v && v !== "—"))).sort(),
-    estados: Array.from(new Set(rows.map((r) => r.estado).filter((v) => v && v !== "—"))).sort(),
-    municipios: Array.from(new Set(
-      rows.filter((r) => !filtros.estado || r.estado === filtros.estado)
-        .map((r) => r.municipio).filter((v) => v && v !== "—")
-    )).sort(),
-  }), [rows, filtros.estado]);
-
-  const hayFiltros = Object.values(filtros).some((v) => v !== "" && v !== false);
+  const hayFiltros = filtros.soloConTel;
 
   // ─── Cambiar etapa inline ───
   const handleTransicion = async (opId: number, transicionId: number) => {
@@ -575,7 +558,7 @@ export default function OportunidadesPage() {
 
       {/* ═══════ FILTROS + GRID ═══════ */}
       <Card elevation={0} sx={{ border: "1px solid", borderColor: "divider", borderRadius: 3, overflow: "hidden" }}>
-        {/* Barra de filtros */}
+        {/* Barra superior */}
         <Box sx={{ display: "flex", alignItems: "center", gap: 2, flexWrap: "wrap", px: 2.5, py: 1.5, bgcolor: "grey.50", borderBottom: "1px solid", borderColor: "divider" }}>
           {cardFiltro && (
             <Chip
@@ -595,50 +578,12 @@ export default function OportunidadesPage() {
             {filtered.length} resultado{filtered.length !== 1 ? "s" : ""}
           </Typography>
 
-          {hayFiltros && (
-            <Button size="small" onClick={() => setFiltros(FILTROS_VACIOS)} startIcon={<FilterListOffIcon />}>Limpiar</Button>
-          )}
-          <Tooltip title="Más filtros">
-            <IconButton size="small" onClick={() => setShowFiltros((p) => !p)} color={showFiltros ? "primary" : "default"}>
-              <FilterListIcon />
-            </IconButton>
-          </Tooltip>
+          <FormControlLabel
+            control={<Switch checked={filtros.soloConTel} onChange={(e) => setFiltro("soloConTel", e.target.checked)} size="small" />}
+            label={<Typography variant="body2">Solo con tel.</Typography>}
+            sx={{ mr: 0 }}
+          />
         </Box>
-
-        {/* Filtros avanzados */}
-        <Collapse in={showFiltros}>
-          <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1.5, p: 2, bgcolor: "grey.50", borderBottom: "1px solid", borderColor: "divider" }}>
-            <FormControl size="small" sx={{ minWidth: 160 }}>
-              <InputLabel shrink>Tipo de cliente</InputLabel>
-              <Select value={filtros.tipoCliente} label="Tipo de cliente" notched displayEmpty onChange={(e) => setFiltro("tipoCliente", e.target.value)}>
-                <MenuItem value=""><em>Todos</em></MenuItem>
-                {opts.tiposCliente.map((v) => <MenuItem key={v} value={v}>{v}</MenuItem>)}
-              </Select>
-            </FormControl>
-            <FormControl size="small" sx={{ minWidth: 190 }}>
-              <InputLabel shrink>Convenio</InputLabel>
-              <Select value={filtros.convenio} label="Convenio" notched displayEmpty onChange={(e) => setFiltro("convenio", e.target.value)}>
-                <MenuItem value=""><em>Todos</em></MenuItem>
-                {opts.convenios.map((v) => <MenuItem key={v} value={v}>{v}</MenuItem>)}
-              </Select>
-            </FormControl>
-            <FormControl size="small" sx={{ minWidth: 140 }}>
-              <InputLabel shrink>Estado</InputLabel>
-              <Select value={filtros.estado} label="Estado" notched displayEmpty onChange={(e) => { setFiltro("estado", e.target.value); setFiltro("municipio", ""); }}>
-                <MenuItem value=""><em>Todos</em></MenuItem>
-                {opts.estados.map((v) => <MenuItem key={v} value={v}>{v}</MenuItem>)}
-              </Select>
-            </FormControl>
-            <FormControl size="small" sx={{ minWidth: 150 }} disabled={!filtros.estado}>
-              <InputLabel shrink>Municipio</InputLabel>
-              <Select value={filtros.municipio} label="Municipio" notched displayEmpty onChange={(e) => setFiltro("municipio", e.target.value)}>
-                <MenuItem value=""><em>Todos</em></MenuItem>
-                {opts.municipios.map((v) => <MenuItem key={v} value={v}>{v}</MenuItem>)}
-              </Select>
-            </FormControl>
-            <FormControlLabel control={<Switch checked={filtros.soloConTel} onChange={(e) => setFiltro("soloConTel", e.target.checked)} size="small" />} label="Solo con teléfono" sx={{ ml: 0.5 }} />
-          </Box>
-        </Collapse>
 
         {/* DataGrid */}
         {filtered.length === 0 ? (
