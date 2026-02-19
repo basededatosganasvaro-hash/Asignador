@@ -125,6 +125,29 @@ async function main() {
   await addColumnIfNotExists("bloqueado_hasta", "TIMESTAMP");
   await addColumnIfNotExists("debe_cambiar_password", "BOOLEAN", "false");
 
+  // Crear tabla cupo_diario si no existe
+  const tablaCupo = await prisma.$queryRaw<{ table_name: string }[]>`
+    SELECT table_name FROM information_schema.tables
+    WHERE table_name = 'cupo_diario' AND table_schema = 'public'
+  `;
+  if (tablaCupo.length === 0) {
+    console.log("Creando tabla cupo_diario...");
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE cupo_diario (
+        id SERIAL PRIMARY KEY,
+        usuario_id INT NOT NULL REFERENCES usuarios(id),
+        fecha DATE NOT NULL,
+        registros_usados INT DEFAULT 0 NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+        UNIQUE(usuario_id, fecha)
+      )
+    `);
+    await prisma.$executeRawUnsafe(`CREATE INDEX idx_cupo_diario_usuario_fecha ON cupo_diario(usuario_id, fecha)`);
+    console.log("  Tabla cupo_diario creada");
+  } else {
+    console.log("Tabla cupo_diario ya existe.");
+  }
+
   console.log("\nMigración completada.");
 }
 
