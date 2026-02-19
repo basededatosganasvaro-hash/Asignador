@@ -1,7 +1,7 @@
 import { Router, Request, Response } from "express";
-import { prisma } from "../lib/prisma";
-import { messageQueue } from "../services/message-queue";
-import { sessionManager } from "../services/session-manager";
+import { prisma } from "../lib/prisma.js";
+import { messageQueue } from "../services/message-queue.js";
+import { sessionManager } from "../services/session-manager.js";
 
 const router = Router();
 

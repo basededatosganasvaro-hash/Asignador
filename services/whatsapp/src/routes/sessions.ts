@@ -1,5 +1,5 @@
 import { Router, Request, Response } from "express";
-import { sessionManager } from "../services/session-manager";
+import { sessionManager } from "../services/session-manager.js";
 
 const router = Router();
 

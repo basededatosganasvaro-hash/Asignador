@@ -9,9 +9,9 @@ import { Boom } from "@hapi/boom";
 import pino from "pino";
 import path from "path";
 import fs from "fs";
-import { prisma } from "../lib/prisma";
-import { config } from "../config";
-import { encrypt, decrypt } from "./crypto";
+import { prisma } from "../lib/prisma.js";
+import { config } from "../config.js";
+import { encrypt, decrypt } from "./crypto.js";
 
 const logger = pino({ level: "warn" });
 

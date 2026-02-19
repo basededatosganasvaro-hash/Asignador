@@ -1,8 +1,8 @@
-import { prisma } from "../lib/prisma";
-import { sessionManager } from "./session-manager";
-import { attachInterceptor } from "./interceptor";
-import { humanDelay, burstSize, burstPause, typingDelay, sleep } from "../lib/anti-spam";
-import { config } from "../config";
+import { prisma } from "../lib/prisma.js";
+import { sessionManager } from "./session-manager.js";
+import { attachInterceptor } from "./interceptor.js";
+import { humanDelay, burstSize, burstPause, typingDelay, sleep } from "../lib/anti-spam.js";
+import { config } from "../config.js";
 import { proto } from "@whiskeysockets/baileys";
 
 interface QueueItem {

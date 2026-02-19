@@ -2,6 +2,7 @@
   "name": "wa-service",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "npx prisma generate --schema=./schema.prisma && tsc",

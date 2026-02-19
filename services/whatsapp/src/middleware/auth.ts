@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import { config } from "../config";
+import { config } from "../config.js";
 
 export function authMiddleware(req: Request, res: Response, next: NextFunction) {
   const secret = req.headers["x-service-secret"] as string;

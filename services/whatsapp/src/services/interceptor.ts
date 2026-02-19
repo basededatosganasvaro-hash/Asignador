@@ -1,5 +1,5 @@
 import { WASocket } from "@whiskeysockets/baileys";
-import { prisma } from "../lib/prisma";
+import { prisma } from "../lib/prisma.js";
 
 /**
  * Interceptor: se engancha a los eventos de Baileys para capturar
