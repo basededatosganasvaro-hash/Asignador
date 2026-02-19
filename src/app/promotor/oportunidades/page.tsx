@@ -10,10 +10,13 @@ import {
 } from "@mui/material";
 import { DataGrid, GridColDef, GridRenderCellParams, GridToolbarColumnsButton, GridToolbarFilterButton } from "@mui/x-data-grid";
 import VisibilityIcon from "@mui/icons-material/Visibility";
+import WhatsAppIcon from "@mui/icons-material/WhatsApp";
 import PhoneIcon from "@mui/icons-material/Phone";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
 import AssignmentIndIcon from "@mui/icons-material/AssignmentInd";
+import { useSession } from "next-auth/react";
+import { buildWhatsAppUrl, WA_MENSAJES_DEFAULT } from "@/lib/whatsapp";
 import ImportCaptacionDialog from "@/components/ImportCaptacionDialog";
 import CaptacionModal from "@/components/CaptacionModal";
 import SolicitarAsignacionDialog from "@/components/SolicitarAsignacionDialog";
@@ -212,6 +215,9 @@ function ConfettiEffect({ onDone }: { onDone: () => void }) {
 // ════════════════════════════════════════════
 
 export default function OportunidadesPage() {
+  const { data: session } = useSession();
+  const promotorNombre = session?.user?.nombre || "su promotor";
+  const [plantillas, setPlantillas] = useState<Record<string, string>>({ ...WA_MENSAJES_DEFAULT });
   const [rows, setRows] = useState<Oportunidad[]>([]);
   const [etapas, setEtapas] = useState<Etapa[]>([]);
   const [loading, setLoading] = useState(true);
@@ -261,12 +267,16 @@ export default function OportunidadesPage() {
   });
 
   const fetchData = useCallback(async () => {
-    const [resOps, resEtapas] = await Promise.all([
+    const [resOps, resEtapas, resPlantillas] = await Promise.all([
       fetch("/api/oportunidades"),
       fetch("/api/embudo/etapas"),
+      fetch("/api/promotor/plantillas-whatsapp"),
     ]);
     setRows(await resOps.json());
     setEtapas(await resEtapas.json());
+    if (resPlantillas.ok) {
+      setPlantillas(await resPlantillas.json());
+    }
     setLoading(false);
   }, []);
 
@@ -491,21 +501,39 @@ export default function OportunidadesPage() {
       ),
     },
     {
-      field: "__ver", headerName: "", width: 70, sortable: false,
-      renderCell: (p) => (
-        <Tooltip title="Ver detalle del cliente">
-          <IconButton
-            size="small"
-            color="primary"
-            onClick={(e) => { e.stopPropagation(); openVerDialog(p.row.id); }}
-          >
-            <VisibilityIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
-      ),
+      field: "__acciones", headerName: "", width: 100, sortable: false,
+      renderCell: (p) => {
+        const etapaNombre = p.row.origen === "CAPTACION" ? "Capturados" : (p.row.etapa?.nombre || "Asignado");
+        const waUrl = buildWhatsAppUrl(p.row.tel_1 || "", p.row.nombres || "", etapaNombre, promotorNombre, plantillas);
+        return (
+          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+            <Tooltip title="Ver detalle">
+              <IconButton
+                size="small"
+                color="primary"
+                onClick={(e) => { e.stopPropagation(); openVerDialog(p.row.id); }}
+              >
+                <VisibilityIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title={waUrl ? "Enviar WhatsApp" : "Sin teléfono"}>
+              <span>
+                <IconButton
+                  size="small"
+                  disabled={!waUrl}
+                  onClick={(e) => { e.stopPropagation(); if (waUrl) window.open(waUrl, "_blank"); }}
+                  sx={{ color: waUrl ? "#25D366" : undefined }}
+                >
+                  <WhatsAppIcon fontSize="small" />
+                </IconButton>
+              </span>
+            </Tooltip>
+          </Box>
+        );
+      },
     },
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  ], [transMap, transitioning, observaciones, cardFiltro]);
+  ], [transMap, transitioning, observaciones, cardFiltro, promotorNombre, plantillas]);
 
   if (loading) return (
     <Box sx={{ display: "flex", justifyContent: "center", mt: 8 }}><CircularProgress /></Box>

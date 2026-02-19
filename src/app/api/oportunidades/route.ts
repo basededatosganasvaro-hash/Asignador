@@ -61,7 +61,7 @@ export async function GET() {
       const cliente = clienteMap[op.cliente_id] ?? {};
       const edits = editMap[op.cliente_id] ?? {};
       // Merge: edits override original client data
-      const merged = { ...cliente, ...edits };
+      const { id: _clienteId, ...mergedSinId } = { ...cliente, ...edits };
       return {
         id: op.id,
         cliente_id: op.cliente_id,
@@ -70,15 +70,15 @@ export async function GET() {
         origen: op.origen,
         num_operacion: op.num_operacion ?? null,
         created_at: op.created_at,
-        // All client fields (flat)
-        ...merged,
+        // All client fields (flat, sin id para no sobreescribir op.id)
+        ...mergedSinId,
         // Ensure key display fields have fallbacks
-        nombres: (merged.nombres as string) ?? "—",
-        convenio: (merged.convenio as string) ?? "—",
-        estado: (merged.estado as string) ?? "—",
-        municipio: (merged.municipio as string) ?? "—",
-        tipo_cliente: (merged.tipo_cliente as string) ?? "—",
-        tel_1: (merged.tel_1 as string) ?? null,
+        nombres: (mergedSinId.nombres as string) ?? "—",
+        convenio: (mergedSinId.convenio as string) ?? "—",
+        estado: (mergedSinId.estado as string) ?? "—",
+        municipio: (mergedSinId.municipio as string) ?? "—",
+        tipo_cliente: (mergedSinId.tipo_cliente as string) ?? "—",
+        tel_1: (mergedSinId.tel_1 as string) ?? null,
       };
     } else {
       // Cliente captado — datos desde captacion.datos_json

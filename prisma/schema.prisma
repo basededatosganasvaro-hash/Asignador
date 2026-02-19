@@ -100,6 +100,7 @@ model usuarios {
   ventas                  ventas[]
   captaciones             captaciones[]
   cupo_diario             cupo_diario[]
+  plantillas_whatsapp     plantillas_whatsapp[]
 
   @@index([username])
   @@index([rol])
@@ -316,6 +317,22 @@ model captaciones {
   oportunidad oportunidades @relation(fields: [oportunidad_id], references: [id])
   usuario     usuarios      @relation(fields: [usuario_id], references: [id])
 
+  @@index([usuario_id])
+}
+
+// =============================================
+// PLANTILLAS WHATSAPP (por usuario)
+// =============================================
+
+model plantillas_whatsapp {
+  id         Int    @id @default(autoincrement())
+  usuario_id Int
+  etapa      String @db.VarChar(50)
+  mensaje    String
+
+  usuario usuarios @relation(fields: [usuario_id], references: [id])
+
+  @@unique([usuario_id, etapa])
   @@index([usuario_id])
 }
 
