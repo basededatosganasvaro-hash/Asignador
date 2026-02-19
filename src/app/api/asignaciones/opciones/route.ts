@@ -62,19 +62,30 @@ export async function GET(req: Request) {
   // Base where para excluir activos + cooldown
   const baseExclude = excludeArray.length > 0 ? { id: { notIn: excludeArray } } : {};
 
-  // Cupo restante del día (timezone Mexico, consistente con POST)
+  // Cupo restante del día (timezone Mexico)
   const nowMx = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Mexico_City" }));
   const today = new Date(nowMx.getFullYear(), nowMx.getMonth(), nowMx.getDate());
+  const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
 
   const config = await prisma.configuracion.findUnique({
     where: { clave: "max_registros_por_dia" },
   });
   const maxPerDay = parseInt(config?.valor || "300");
 
-  const cupo = await prisma.cupo_diario.findUnique({
-    where: { usuario_id_fecha: { usuario_id: userId, fecha: today } },
-  });
-  const cupoRestante = Math.max(0, maxPerDay - (cupo?.total_asignado ?? 0));
+  // Intentar cupo_diario, fallback a lotes si la tabla no existe aún
+  let cupoRestante: number;
+  try {
+    const cupo = await prisma.cupo_diario.findUnique({
+      where: { usuario_id_fecha: { usuario_id: userId, fecha: today } },
+    });
+    cupoRestante = Math.max(0, maxPerDay - (cupo?.total_asignado ?? 0));
+  } catch {
+    const lotesHoy = await prisma.lotes.findMany({
+      where: { usuario_id: userId, fecha: { gte: today, lt: tomorrow } },
+      select: { cantidad: true },
+    });
+    cupoRestante = Math.max(0, maxPerDay - lotesHoy.reduce((s, l) => s + l.cantidad, 0));
+  }
 
   // Queries en paralelo — cada una filtra por los upstream ya seleccionados
   // NOTA: las queries de distinct NO usan baseExclude (sería lento con NOT IN miles de IDs)

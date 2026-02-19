@@ -21,11 +21,21 @@ export async function GET() {
   });
   const limite = parseInt(config?.valor || "300");
 
-  const cupo = await prisma.cupo_diario.findUnique({
-    where: { usuario_id_fecha: { usuario_id: userId, fecha: today } },
-  });
-
-  const totalAsignado = cupo?.total_asignado ?? 0;
+  let totalAsignado = 0;
+  try {
+    const cupo = await prisma.cupo_diario.findUnique({
+      where: { usuario_id_fecha: { usuario_id: userId, fecha: today } },
+    });
+    totalAsignado = cupo?.total_asignado ?? 0;
+  } catch {
+    // Fallback: tabla cupo_diario no existe aún
+    const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
+    const lotesHoy = await prisma.lotes.findMany({
+      where: { usuario_id: userId, fecha: { gte: today, lt: tomorrow } },
+      select: { cantidad: true },
+    });
+    totalAsignado = lotesHoy.reduce((s, l) => s + l.cantidad, 0);
+  }
   const restante = Math.max(0, limite - totalAsignado);
 
   return NextResponse.json({

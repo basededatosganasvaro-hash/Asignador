@@ -118,11 +118,24 @@ export async function POST(request: Request) {
     });
     const maxPerDay = parseInt(config?.valor || "300");
 
-    // 3. Verificar cupo antes de hacer trabajo pesado (lectura rápida, sin lock)
-    const cupoExistente = await prisma.cupo_diario.findUnique({
-      where: { usuario_id_fecha: { usuario_id: userId, fecha: today } },
-    });
-    const yaAsignados = cupoExistente?.total_asignado ?? 0;
+    // 3. Verificar cupo antes de hacer trabajo pesado (lectura rápida)
+    const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
+    let yaAsignados = 0;
+    let usaCupoDiario = false;
+    try {
+      const cupoExistente = await prisma.cupo_diario.findUnique({
+        where: { usuario_id_fecha: { usuario_id: userId, fecha: today } },
+      });
+      yaAsignados = cupoExistente?.total_asignado ?? 0;
+      usaCupoDiario = true;
+    } catch {
+      // Fallback: tabla cupo_diario no existe aún, contar desde lotes
+      const lotesHoy = await prisma.lotes.findMany({
+        where: { usuario_id: userId, fecha: { gte: today, lt: tomorrow } },
+        select: { cantidad: true },
+      });
+      yaAsignados = lotesHoy.reduce((s, l) => s + l.cantidad, 0);
+    }
     const cupoDisponible = maxPerDay - yaAsignados;
 
     if (cupoDisponible <= 0) {
@@ -205,45 +218,49 @@ export async function POST(request: Request) {
       ? new Date(Date.now() + etapaAsignado.timer_horas * 60 * 60 * 1000)
       : null;
 
-    // 8. Transacción atómica: verificar cupo con lock + crear lote + actualizar cupo
+    // 8. Transacción atómica: crear lote + oportunidades + historial + actualizar cupo
+    const registrosFinales = records.slice(0, Math.min(records.length, cupoDisponible));
+
     const result = await prisma.$transaction(
       async (tx) => {
-        // 8a. Upsert cupo_diario y luego lock con FOR UPDATE
-        await tx.cupo_diario.upsert({
-          where: { usuario_id_fecha: { usuario_id: userId, fecha: today } },
-          create: { usuario_id: userId, fecha: today, total_asignado: 0, limite: maxPerDay },
-          update: {},
-        });
+        // 8a. Verificar cupo con lock (si tabla existe)
+        let cupoFinal = cupoDisponible;
+        if (usaCupoDiario) {
+          await tx.cupo_diario.upsert({
+            where: { usuario_id_fecha: { usuario_id: userId, fecha: today } },
+            create: { usuario_id: userId, fecha: today, total_asignado: 0, limite: maxPerDay },
+            update: {},
+          });
 
-        const cupoRows = await tx.$queryRaw<{ id: number; total_asignado: number; limite: number }[]>`
-          SELECT id, total_asignado, limite FROM cupo_diario
-          WHERE usuario_id = ${userId} AND fecha = ${today}
-          FOR UPDATE
-        `;
+          const cupoRows = await tx.$queryRaw<{ id: number; total_asignado: number; limite: number }[]>`
+            SELECT id, total_asignado, limite FROM cupo_diario
+            WHERE usuario_id = ${userId} AND fecha = ${today}
+            FOR UPDATE
+          `;
 
-        const cupo = cupoRows[0];
-        const disponible = cupo.limite - cupo.total_asignado;
+          const cupo = cupoRows[0];
+          cupoFinal = cupo.limite - cupo.total_asignado;
 
-        if (disponible <= 0) {
-          throw new Error("CUPO_AGOTADO");
+          if (cupoFinal <= 0) {
+            throw new Error("CUPO_AGOTADO");
+          }
         }
 
-        // Ajustar cantidad real si excede lo disponible
-        const cantidadReal = Math.min(records.length, disponible);
-        const registrosFinales = records.slice(0, cantidadReal);
+        const cantidadReal = Math.min(registrosFinales.length, cupoFinal);
+        const registrosReales = registrosFinales.slice(0, cantidadReal);
 
         // 8b. Crear lote
         const lote = await tx.lotes.create({
           data: {
             usuario_id: userId,
             fecha: today,
-            cantidad: registrosFinales.length,
+            cantidad: registrosReales.length,
           },
         });
 
         // 8c. Crear oportunidades
         await tx.oportunidades.createMany({
-          data: registrosFinales.map((r) => ({
+          data: registrosReales.map((r) => ({
             cliente_id: r.id,
             usuario_id: userId,
             etapa_id: etapaAsignado?.id ?? null,
@@ -269,13 +286,19 @@ export async function POST(request: Request) {
           })),
         });
 
-        // 8e. Actualizar cupo atómicamente
-        await tx.cupo_diario.update({
-          where: { id: cupo.id },
-          data: { total_asignado: cupo.total_asignado + registrosFinales.length },
-        });
+        // 8e. Actualizar cupo atómicamente (si tabla existe)
+        if (usaCupoDiario) {
+          const cupoRows = await tx.$queryRaw<{ id: number; total_asignado: number }[]>`
+            SELECT id, total_asignado FROM cupo_diario
+            WHERE usuario_id = ${userId} AND fecha = ${today}
+          `;
+          await tx.cupo_diario.update({
+            where: { id: cupoRows[0].id },
+            data: { total_asignado: cupoRows[0].total_asignado + registrosReales.length },
+          });
+        }
 
-        return { lote, cantidadReal: registrosFinales.length, cupoRestante: disponible - registrosFinales.length };
+        return { lote, cantidadReal: registrosReales.length, cupoRestante: cupoFinal - registrosReales.length };
       },
       {
         isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
