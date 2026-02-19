@@ -69,8 +69,7 @@ class SessionManager {
       const sock = makeWASocket({
         auth: state,
         logger,
-        printQRInTerminal: true,
-        browser: ["Sistema Asignacion", "Chrome", "1.0.0"],
+        browser: ["Ubuntu", "Chrome", "20.0.04"],
       });
       console.log(`[SessionManager] WASocket created for user ${userId}`);
 
