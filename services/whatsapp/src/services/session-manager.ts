@@ -3,7 +3,7 @@ import makeWASocket, {
   DisconnectReason,
   WASocket,
   ConnectionState,
-  AuthenticationState,
+  fetchLatestBaileysVersion,
 } from "@whiskeysockets/baileys";
 import { Boom } from "@hapi/boom";
 import pino from "pino";
@@ -66,8 +66,13 @@ class SessionManager {
       const { state, saveCreds } = await useMultiFileAuthState(sessionDir);
       console.log(`[SessionManager] Auth state loaded for user ${userId}`);
 
+      // Obtener versión correcta del protocolo WA
+      const { version, isLatest } = await fetchLatestBaileysVersion();
+      console.log(`[SessionManager] Using WA version ${version.join(".")}, isLatest: ${isLatest}`);
+
       const sock = makeWASocket({
         auth: state,
+        version,
         logger,
         browser: ["Ubuntu", "Chrome", "20.0.04"],
       });
