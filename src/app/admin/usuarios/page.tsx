@@ -27,6 +27,7 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 interface Usuario {
   id: number;
   nombre: string;
+  username?: string;
   email: string;
   rol: string;
   activo: boolean;
@@ -71,6 +72,7 @@ export default function UsuariosPage() {
 
   const [formData, setFormData] = useState({
     nombre: "",
+    username: "",
     email: "",
     password: "",
     rol: "promotor",
@@ -103,7 +105,7 @@ export default function UsuariosPage() {
 
   const handleOpenCreate = async () => {
     setEditingUser(null);
-    setFormData({ nombre: "", email: "", password: "", rol: "promotor", region_id: "", sucursal_id: "", equipo_id: "" });
+    setFormData({ nombre: "", username: "", email: "", password: "", rol: "promotor", region_id: "", sucursal_id: "", equipo_id: "" });
     await fetchOrgData();
     setDialogOpen(true);
   };
@@ -112,6 +114,7 @@ export default function UsuariosPage() {
     setEditingUser(user);
     setFormData({
       nombre: user.nombre,
+      username: user.username || "",
       email: user.email,
       password: "",
       rol: user.rol,
@@ -129,6 +132,7 @@ export default function UsuariosPage() {
 
     const body: Record<string, string | number | null> = {
       nombre: formData.nombre,
+      username: formData.username,
       email: formData.email,
       rol: formData.rol,
       region_id: formData.region_id ? Number(formData.region_id) : null,
@@ -167,6 +171,7 @@ export default function UsuariosPage() {
 
   const columns: GridColDef[] = [
     { field: "nombre", headerName: "Nombre", flex: 1 },
+    { field: "username", headerName: "Usuario", width: 130 },
     { field: "email", headerName: "Email", flex: 1 },
     {
       field: "rol",
@@ -261,6 +266,13 @@ export default function UsuariosPage() {
             fullWidth label="Nombre" value={formData.nombre}
             onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
             margin="normal" required
+          />
+          <TextField
+            fullWidth label="Nombre de usuario" value={formData.username}
+            onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+            margin="normal" required
+            helperText="Mínimo 4 caracteres. Solo letras, números, puntos y guiones."
+            inputProps={{ minLength: 4, maxLength: 50 }}
           />
           <TextField
             fullWidth label="Email" type="email" value={formData.email}

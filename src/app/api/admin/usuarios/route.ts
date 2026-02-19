@@ -8,27 +8,36 @@ export async function GET() {
   const { error } = await requireAdmin();
   if (error) return error;
 
-  const usuarios = await prisma.usuarios.findMany({
-    select: {
-      id: true,
-      nombre: true,
-      username: true,
-      email: true,
-      rol: true,
-      activo: true,
-      created_at: true,
-      equipo_id: true,
-      sucursal_id: true,
-      region_id: true,
-      equipo: { select: { id: true, nombre: true } },
-      sucursal: { select: { id: true, nombre: true } },
-      region: { select: { id: true, nombre: true } },
-      _count: { select: { lotes: true, oportunidades: true } },
-    },
-    orderBy: { created_at: "desc" },
-  });
+  try {
+    const usuarios = await prisma.usuarios.findMany({
+      select: {
+        id: true,
+        nombre: true,
+        username: true,
+        email: true,
+        rol: true,
+        activo: true,
+        created_at: true,
+        equipo_id: true,
+        sucursal_id: true,
+        region_id: true,
+        equipo: { select: { id: true, nombre: true } },
+        sucursal: { select: { id: true, nombre: true } },
+        region: { select: { id: true, nombre: true } },
+        _count: { select: { lotes: true, oportunidades: true } },
+      },
+      orderBy: { created_at: "desc" },
+    });
 
-  return NextResponse.json(usuarios);
+    return NextResponse.json(usuarios);
+  } catch {
+    // Fallback: si la columna username no existe aún en la BD
+    const usuarios = await prisma.$queryRaw`
+      SELECT id, nombre, email, rol, activo, created_at, equipo_id, sucursal_id, region_id
+      FROM usuarios ORDER BY created_at DESC
+    `;
+    return NextResponse.json(usuarios);
+  }
 }
 
 export async function POST(request: Request) {
