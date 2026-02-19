@@ -8,13 +8,13 @@ const router = Router();
 /** POST /campaigns — Crear y lanzar campaña */
 router.post("/", async (req: Request, res: Response) => {
   const {
-    usuario_id,
     nombre,
     mensaje_base,
     variaciones,
     etapa_filtro,
     destinatarios, // Array de { oportunidad_id, numero_destino, nombre_cliente }
   } = req.body;
+  const usuario_id = Number(req.body.usuario_id);
 
   if (!usuario_id || !mensaje_base || !destinatarios?.length) {
     res.status(400).json({ error: "Faltan campos requeridos" });
