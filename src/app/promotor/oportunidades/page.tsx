@@ -8,19 +8,21 @@ import {
   DialogActions, TextField, Snackbar, Paper, Divider, Grid,
   LinearProgress,
 } from "@mui/material";
-import { DataGrid, GridColDef, GridRenderCellParams, GridToolbarColumnsButton, GridToolbarFilterButton } from "@mui/x-data-grid";
+import { DataGrid, GridColDef, GridRenderCellParams, GridRowSelectionModel, GridToolbarColumnsButton, GridToolbarFilterButton } from "@mui/x-data-grid";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import WhatsAppIcon from "@mui/icons-material/WhatsApp";
 import PhoneIcon from "@mui/icons-material/Phone";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
 import AssignmentIndIcon from "@mui/icons-material/AssignmentInd";
+import CampaignIcon from "@mui/icons-material/Campaign";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { buildWhatsAppUrl, WA_MENSAJES_DEFAULT } from "@/lib/whatsapp";
+import { buildWhatsAppUrl, formatPhoneForWA, WA_MENSAJES_DEFAULT } from "@/lib/whatsapp";
 import ImportCaptacionDialog from "@/components/ImportCaptacionDialog";
 import CaptacionModal from "@/components/CaptacionModal";
 import SolicitarAsignacionDialog from "@/components/SolicitarAsignacionDialog";
+import CampanaCrearDialog from "@/components/CampanaCrearDialog";
 
 // ════════════════════════════════════════════
 // TIPOS
@@ -257,6 +259,8 @@ export default function OportunidadesPage() {
   const [importOpen, setImportOpen] = useState(false);
   const [captacionOpen, setCaptacionOpen] = useState(false);
   const [asignacionOpen, setAsignacionOpen] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<GridRowSelectionModel>([]);
+  const [campanaOpen, setCampanaOpen] = useState(false);
 
   // Modal Ver detalle
   const [verDialog, setVerDialog] = useState<{ open: boolean; loading: boolean; data: OportunidadDetalle | null }>({
@@ -537,6 +541,24 @@ export default function OportunidadesPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   ], [transMap, transitioning, observaciones, cardFiltro, promotorNombre, plantillas]);
 
+  // Destinatarios para la campaña: filas seleccionadas con teléfono
+  const destinatariosSeleccionados = useMemo(() => {
+    const selectedSet = new Set(selectedIds.map(Number));
+    return rows
+      .filter((r) => selectedSet.has(r.id) && r.tel_1)
+      .map((r) => ({
+        oportunidad_id: r.id,
+        numero_destino: formatPhoneForWA(r.tel_1 as string),
+        nombre_cliente: r.nombres,
+      }));
+  }, [rows, selectedIds]);
+
+  // Mensaje inicial sugerido según la etapa activa
+  const mensajeInicial = useMemo(() => {
+    if (!cardFiltro) return plantillas["Asignado"] || "";
+    return plantillas[cardFiltro === "capturados" ? "Capturados" : cardFiltro] || plantillas["Asignado"] || "";
+  }, [cardFiltro, plantillas]);
+
   if (loading) return (
     <Box sx={{ display: "flex", justifyContent: "center", mt: 8 }}><CircularProgress /></Box>
   );
@@ -682,16 +704,33 @@ export default function OportunidadesPage() {
             columns={columns}
             pageSizeOptions={[25, 50, 100]}
             initialState={{ pagination: { paginationModel: { pageSize: 25 } } }}
+            checkboxSelection
             disableRowSelectionOnClick
+            rowSelectionModel={selectedIds}
+            onRowSelectionModelChange={setSelectedIds}
             autoHeight
             rowHeight={56}
             columnVisibilityModel={columnVisibility}
             onColumnVisibilityModelChange={handleColumnVisibilityChange}
             slots={{
               toolbar: () => (
-                <Box sx={{ display: "flex", gap: 1, px: 1, py: 0.5, borderBottom: "1px solid", borderColor: "grey.100" }}>
+                <Box sx={{ display: "flex", gap: 1, px: 1, py: 0.5, borderBottom: "1px solid", borderColor: "grey.100", alignItems: "center" }}>
                   <GridToolbarColumnsButton />
                   <GridToolbarFilterButton />
+                  {selectedIds.length > 0 && (
+                    <Button
+                      size="small"
+                      variant="contained"
+                      startIcon={<CampaignIcon />}
+                      onClick={() => setCampanaOpen(true)}
+                      sx={{
+                        ml: "auto", textTransform: "none", fontWeight: 600,
+                        bgcolor: "#25D366", "&:hover": { bgcolor: "#1da851" },
+                      }}
+                    >
+                      WhatsApp Masivo ({selectedIds.length})
+                    </Button>
+                  )}
                 </Box>
               ),
             }}
@@ -866,6 +905,18 @@ export default function OportunidadesPage() {
         open={importOpen}
         onClose={() => setImportOpen(false)}
         onSuccess={() => { setImportOpen(false); fetchData(); }}
+      />
+
+      <CampanaCrearDialog
+        open={campanaOpen}
+        onClose={() => setCampanaOpen(false)}
+        onSuccess={() => {
+          setCampanaOpen(false);
+          setSelectedIds([]);
+          setSnackbar({ open: true, message: "Campaña creada exitosamente", severity: "success" });
+        }}
+        destinatarios={destinatariosSeleccionados}
+        mensajeInicial={mensajeInicial}
       />
 
       <Snackbar open={snackbar.open} autoHideDuration={3000} onClose={() => setSnackbar((p) => ({ ...p, open: false }))}>
