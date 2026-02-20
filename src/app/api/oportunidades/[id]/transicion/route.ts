@@ -17,7 +17,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const userId = Number(session!.user.id);
   const rol = session!.user.rol;
   const body = await req.json();
-  const { transicion_id, nota, canal, num_operacion } = body;
+  const { transicion_id, nota, canal, num_operacion, monto } = body;
 
   if (!transicion_id) {
     return NextResponse.json({ error: "transicion_id es requerido" }, { status: 400 });
@@ -112,6 +112,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
           oportunidad_id: Number(id),
           usuario_id: userId,
           num_operacion,
+          monto: monto ? parseFloat(String(monto)) : null,
           validada: false,
         },
       });

@@ -157,8 +157,8 @@ const CARD_COLORS: Record<string, string> = {
   Asignado: "#42A5F5",
   Contactado: "#FFA726",
   Interesado: "#AB47BC",
-  "Negociación": "#66BB6A",
-  Venta: "#FFD700",
+  "Negociación": "#7E57C2",
+  Venta: "#2E7D32",
 };
 
 // ════════════════════════════════════════════
@@ -268,8 +268,8 @@ export default function OportunidadesPage() {
   });
 
   // Dialog num_operacion para Venta
-  const [ventaDialog, setVentaDialog] = useState<{ open: boolean; opId: number; transId: number; numOp: string; saving: boolean }>({
-    open: false, opId: 0, transId: 0, numOp: "", saving: false,
+  const [ventaDialog, setVentaDialog] = useState<{ open: boolean; opId: number; transId: number; numOp: string; monto: string; saving: boolean }>({
+    open: false, opId: 0, transId: 0, numOp: "", monto: "", saving: false,
   });
 
   const fetchData = useCallback(async () => {
@@ -317,6 +317,13 @@ export default function OportunidadesPage() {
 
   const totalOps = rows.length;
 
+  // ─── Monto total de ventas ───
+  const totalVentaMonto = useMemo(() => {
+    return rows
+      .filter((r) => r.etapa?.nombre === "Venta")
+      .reduce((sum, r) => sum + (Number(r.monto_venta) || 0), 0);
+  }, [rows]);
+
   // ─── FILTRADO por card activa ───
   const filtered = useMemo(() => {
     if (cardFiltro === "capturados") {
@@ -333,14 +340,14 @@ export default function OportunidadesPage() {
     if (!trans) return;
 
     if (trans.etapa_destino?.tipo === "FINAL" && trans.etapa_destino?.nombre === "Venta") {
-      setVentaDialog({ open: true, opId, transId: transicionId, numOp: "", saving: false });
+      setVentaDialog({ open: true, opId, transId: transicionId, numOp: "", monto: "", saving: false });
       return;
     }
 
     await executeTransicion(opId, transicionId);
   };
 
-  const executeTransicion = async (opId: number, transicionId: number, numOperacion?: string) => {
+  const executeTransicion = async (opId: number, transicionId: number, numOperacion?: string, monto?: string) => {
     setTransitioning(opId);
     const res = await fetch(`/api/oportunidades/${opId}/transicion`, {
       method: "POST",
@@ -349,6 +356,7 @@ export default function OportunidadesPage() {
         transicion_id: transicionId,
         nota: observaciones[opId] || undefined,
         num_operacion: numOperacion || undefined,
+        monto: monto ? parseFloat(monto) : undefined,
       }),
     });
     setTransitioning(null);
@@ -373,8 +381,8 @@ export default function OportunidadesPage() {
 
   const handleVentaConfirm = async () => {
     setVentaDialog((p) => ({ ...p, saving: true }));
-    await executeTransicion(ventaDialog.opId, ventaDialog.transId, ventaDialog.numOp);
-    setVentaDialog({ open: false, opId: 0, transId: 0, numOp: "", saving: false });
+    await executeTransicion(ventaDialog.opId, ventaDialog.transId, ventaDialog.numOp, ventaDialog.monto);
+    setVentaDialog({ open: false, opId: 0, transId: 0, numOp: "", monto: "", saving: false });
   };
 
   // ─── Modal Ver detalle ───
@@ -473,14 +481,28 @@ export default function OportunidadesPage() {
         );
       },
     },
-    ...(cardFiltro === "Venta" ? [{
-      field: "num_operacion",
-      headerName: "No. Operacion",
-      width: 150,
-      renderCell: (p: GridRenderCellParams) => (
-        <Typography variant="body2" fontWeight={500}>{p.value || "—"}</Typography>
-      ),
-    } satisfies GridColDef] : []),
+    ...(cardFiltro === "Venta" ? [
+      {
+        field: "num_operacion",
+        headerName: "No. Operacion",
+        width: 150,
+        renderCell: (p: GridRenderCellParams) => (
+          <Typography variant="body2" fontWeight={500}>{p.value || "—"}</Typography>
+        ),
+      } satisfies GridColDef,
+      {
+        field: "monto_venta",
+        headerName: "Monto",
+        width: 130,
+        renderCell: (p: GridRenderCellParams) => (
+          <Typography variant="body2" fontWeight={700} sx={{ color: "#2E7D32" }}>
+            {p.value != null
+              ? Number(p.value).toLocaleString("es-MX", { style: "currency", currency: "MXN" })
+              : "—"}
+          </Typography>
+        ),
+      } satisfies GridColDef,
+    ] : []),
     // All client extra columns (hidden by default)
     ...CLIENTE_EXTRA_COLUMNS.map((col) => ({
       field: col.field,
@@ -653,6 +675,11 @@ export default function OportunidadesPage() {
               <Typography variant="h4" fontWeight={800} sx={{ lineHeight: 1.1, color: isSelected ? "white" : item.color }}>
                 {count}
               </Typography>
+              {item.key === "Venta" && totalVentaMonto > 0 && (
+                <Typography variant="caption" fontWeight={700} sx={{ color: isSelected ? "rgba(255,255,255,0.9)" : item.color, display: "block", mt: 0.3 }}>
+                  {totalVentaMonto.toLocaleString("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 0 })}
+                </Typography>
+              )}
               <LinearProgress
                 variant="determinate"
                 value={pct}
@@ -691,6 +718,18 @@ export default function OportunidadesPage() {
           <Typography variant="body2" color="text.secondary" sx={{ flex: 1 }}>
             {filtered.length} resultado{filtered.length !== 1 ? "s" : ""}
           </Typography>
+
+          {selectedIds.length > 0 && (
+            <Button
+              size="small"
+              variant="contained"
+              startIcon={<CampaignIcon />}
+              onClick={() => setCampanaOpen(true)}
+              sx={{ textTransform: "none", fontWeight: 600, bgcolor: "#25D366", "&:hover": { bgcolor: "#1da851" } }}
+            >
+              WhatsApp Masivo ({selectedIds.length})
+            </Button>
+          )}
         </Box>
 
         {/* DataGrid */}
@@ -716,23 +755,9 @@ export default function OportunidadesPage() {
             onColumnVisibilityModelChange={handleColumnVisibilityChange}
             slots={{
               toolbar: () => (
-                <Box sx={{ display: "flex", gap: 1, px: 1, py: 0.5, borderBottom: "1px solid", borderColor: "grey.100", alignItems: "center" }}>
+                <Box sx={{ display: "flex", gap: 1, px: 1, py: 0.5, borderBottom: "1px solid", borderColor: "grey.100" }}>
                   <GridToolbarColumnsButton />
                   <GridToolbarFilterButton />
-                  {selectedIds.length > 0 && (
-                    <Button
-                      size="small"
-                      variant="contained"
-                      startIcon={<CampaignIcon />}
-                      onClick={() => setCampanaOpen(true)}
-                      sx={{
-                        ml: "auto", textTransform: "none", fontWeight: 600,
-                        bgcolor: "#25D366", "&:hover": { bgcolor: "#1da851" },
-                      }}
-                    >
-                      WhatsApp Masivo ({selectedIds.length})
-                    </Button>
-                  )}
                 </Box>
               ),
             }}
@@ -755,7 +780,7 @@ export default function OportunidadesPage() {
       <Dialog open={ventaDialog.open} onClose={() => setVentaDialog((p) => ({ ...p, open: false }))} maxWidth="xs" fullWidth PaperProps={{ sx: { borderRadius: 3 } }}>
         <DialogTitle>
           <Typography variant="h6" fontWeight={700}>Registrar Venta</Typography>
-          <Typography variant="body2" color="text.secondary">Ingresa el número de operación para completar la venta</Typography>
+          <Typography variant="body2" color="text.secondary">Completa los datos para registrar la venta</Typography>
         </DialogTitle>
         <DialogContent>
           <TextField
@@ -768,6 +793,20 @@ export default function OportunidadesPage() {
             size="small"
             required
           />
+          <TextField
+            fullWidth
+            label="Monto de la venta (MXN)"
+            type="number"
+            inputProps={{ min: 0, step: "0.01" }}
+            value={ventaDialog.monto}
+            onChange={(e) => setVentaDialog((p) => ({ ...p, monto: e.target.value }))}
+            margin="dense"
+            size="small"
+            required
+            InputProps={{
+              startAdornment: <Typography variant="body2" sx={{ mr: 0.5, color: "text.secondary" }}>$</Typography>,
+            }}
+          />
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
           <Button onClick={() => setVentaDialog((p) => ({ ...p, open: false }))} color="error" variant="outlined">Cancelar</Button>
@@ -775,7 +814,7 @@ export default function OportunidadesPage() {
             variant="contained"
             color="success"
             onClick={handleVentaConfirm}
-            disabled={ventaDialog.saving || !ventaDialog.numOp.trim()}
+            disabled={ventaDialog.saving || !ventaDialog.numOp.trim() || !ventaDialog.monto}
           >
             {ventaDialog.saving ? <CircularProgress size={20} color="inherit" /> : "Registrar Venta"}
           </Button>

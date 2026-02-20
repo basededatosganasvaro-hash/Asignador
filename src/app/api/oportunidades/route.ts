@@ -23,6 +23,7 @@ export async function GET() {
     include: {
       etapa: { select: { id: true, nombre: true, tipo: true, color: true } },
       captacion: { select: { convenio: true, datos_json: true } },
+      venta: { select: { monto: true } },
     },
     orderBy: [{ timer_vence: "asc" }, { created_at: "asc" }],
   });
@@ -69,6 +70,7 @@ export async function GET() {
         timer_vence: op.timer_vence,
         origen: op.origen,
         num_operacion: op.num_operacion ?? null,
+        monto_venta: op.venta?.monto ? Number(op.venta.monto) : null,
         created_at: op.created_at,
         // All client fields (flat, sin id para no sobreescribir op.id)
         ...mergedSinId,
@@ -93,6 +95,7 @@ export async function GET() {
         timer_vence: op.timer_vence,
         origen: op.origen,
         num_operacion: op.num_operacion ?? null,
+        monto_venta: op.venta?.monto ? Number(op.venta.monto) : null,
         created_at: op.created_at,
         ...datos,
         nombres,
