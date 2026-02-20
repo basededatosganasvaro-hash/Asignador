@@ -24,6 +24,11 @@ export async function GET() {
       etapa: { select: { id: true, nombre: true, tipo: true, color: true } },
       captacion: { select: { convenio: true, datos_json: true } },
       venta: { select: { monto: true } },
+      wa_mensajes: {
+        select: { estado: true, enviado_at: true },
+        orderBy: { created_at: "desc" },
+        take: 1,
+      },
     },
     orderBy: [{ timer_vence: "asc" }, { created_at: "asc" }],
   });
@@ -58,6 +63,12 @@ export async function GET() {
   }
 
   const result = oportunidades.map((op) => {
+    const ultimoWa = op.wa_mensajes[0] ?? null;
+    const waFields = {
+      wa_estado: ultimoWa?.estado ?? null,
+      wa_enviado_at: ultimoWa?.enviado_at ?? null,
+    };
+
     if (op.cliente_id !== null) {
       const cliente = clienteMap[op.cliente_id] ?? {};
       const edits = editMap[op.cliente_id] ?? {};
@@ -71,6 +82,7 @@ export async function GET() {
         origen: op.origen,
         num_operacion: op.num_operacion ?? null,
         monto_venta: op.venta?.monto ? Number(op.venta.monto) : null,
+        ...waFields,
         created_at: op.created_at,
         // All client fields (flat, sin id para no sobreescribir op.id)
         ...mergedSinId,
@@ -96,6 +108,7 @@ export async function GET() {
         origen: op.origen,
         num_operacion: op.num_operacion ?? null,
         monto_venta: op.venta?.monto ? Number(op.venta.monto) : null,
+        ...waFields,
         created_at: op.created_at,
         ...datos,
         nombres,

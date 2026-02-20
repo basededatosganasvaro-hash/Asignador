@@ -513,6 +513,24 @@ export default function OportunidadesPage() {
       ),
     } satisfies GridColDef)),
     {
+      field: "wa_estado", headerName: "WA", width: 90, sortable: false,
+      renderCell: (p: GridRenderCellParams) => {
+        const estado = p.value as string | null;
+        if (!estado) return <Typography variant="body2" color="text.disabled" sx={{ fontSize: 11 }}>—</Typography>;
+        const colorMap: Record<string, string> = {
+          PENDIENTE: "#9e9e9e", ENVIANDO: "#ff9800", ENVIADO: "#2196f3",
+          ENTREGADO: "#4caf50", LEIDO: "#00bcd4", FALLIDO: "#f44336",
+        };
+        return (
+          <Chip
+            label={estado}
+            size="small"
+            sx={{ bgcolor: colorMap[estado] || "grey.500", color: "white", fontWeight: 700, fontSize: 10, height: 20 }}
+          />
+        );
+      },
+    },
+    {
       field: "__obs", headerName: "Observaciones", flex: 1, minWidth: 150, sortable: false,
       renderCell: (p) => (
         <TextField
