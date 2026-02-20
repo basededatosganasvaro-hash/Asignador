@@ -68,7 +68,7 @@ export async function POST(request: Request) {
   const password_hash = await bcrypt.hash(password, 10);
 
   const usuario = await prisma.usuarios.create({
-    data: { nombre, username, email, password_hash, rol, equipo_id, sucursal_id, region_id, telegram_id: telegram_id ? BigInt(telegram_id) : null },
+    data: { nombre, username, email, password_hash, rol, equipo_id, sucursal_id, region_id, telegram_id: telegram_id ? BigInt(telegram_id) : null, debe_cambiar_password: true },
     select: {
       id: true,
       nombre: true,

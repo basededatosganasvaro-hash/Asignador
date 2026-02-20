@@ -102,6 +102,15 @@ export const authOptions: NextAuthOptions = {
         token.rol = (user as { rol: string }).rol;
         token.nombre = (user as { nombre: string }).nombre;
         token.debe_cambiar_password = (user as { debe_cambiar_password: boolean }).debe_cambiar_password;
+      } else if (token.id) {
+        // Refrescar debe_cambiar_password desde BD en cada request
+        const dbUser = await prisma.usuarios.findUnique({
+          where: { id: parseInt(token.id as string) },
+          select: { debe_cambiar_password: true },
+        });
+        if (dbUser) {
+          token.debe_cambiar_password = dbUser.debe_cambiar_password;
+        }
       }
       return token;
     },

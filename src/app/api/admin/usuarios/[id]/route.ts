@@ -67,7 +67,9 @@ export async function PUT(
   if (parsed.data.region_id !== undefined) data.region_id = parsed.data.region_id;
   if (parsed.data.telegram_id !== undefined) data.telegram_id = parsed.data.telegram_id ? BigInt(parsed.data.telegram_id) : null;
   if (parsed.data.password) {
-    data.password_hash = await bcrypt.hash(parsed.data.password, 10);
+    const hashed = await bcrypt.hash(parsed.data.password, 10);
+    console.log(`[PASSWORD RESET] Usuario ID=${id} — hash generado: ${hashed.substring(0, 20)}...`);
+    data.password_hash = hashed;
     data.debe_cambiar_password = true; // Forzar cambio en próximo login
     data.intentos_fallidos = 0;
     data.bloqueado_hasta = null;
