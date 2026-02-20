@@ -16,7 +16,7 @@ import {
 import LockResetIcon from "@mui/icons-material/LockReset";
 
 export default function CambiarPasswordPage() {
-  const { data: session } = useSession();
+  const { data: session, update } = useSession();
   const router = useRouter();
   const [passwordActual, setPasswordActual] = useState("");
   const [passwordNueva, setPasswordNueva] = useState("");
@@ -61,6 +61,7 @@ export default function CambiarPasswordPage() {
       }
 
       setSuccess(true);
+      await update();
       setTimeout(() => {
         router.push("/");
         router.refresh();
