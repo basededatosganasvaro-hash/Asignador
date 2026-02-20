@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import {
   Box,
   Typography,
@@ -17,12 +17,14 @@ import {
   Alert,
   Snackbar,
   IconButton,
+  InputAdornment,
 } from "@mui/material";
 import { DataGrid, GridColDef } from "@mui/x-data-grid";
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
 import BlockIcon from "@mui/icons-material/Block";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import SearchIcon from "@mui/icons-material/Search";
 
 interface Usuario {
   id: number;
@@ -70,6 +72,19 @@ export default function UsuariosPage() {
   const [regiones, setRegiones] = useState<OrgItem[]>([]);
   const [sucursales, setSucursales] = useState<OrgItem[]>([]);
   const [equipos, setEquipos] = useState<OrgItem[]>([]);
+
+  const [busqueda, setBusqueda] = useState("");
+
+  const usuariosFiltrados = useMemo(() => {
+    if (!busqueda.trim()) return usuarios;
+    const term = busqueda.toLowerCase();
+    return usuarios.filter(
+      (u) =>
+        u.nombre.toLowerCase().includes(term) ||
+        (u.username && u.username.toLowerCase().includes(term)) ||
+        (u.equipo?.nombre && u.equipo.nombre.toLowerCase().includes(term))
+    );
+  }, [usuarios, busqueda]);
 
   const [formData, setFormData] = useState({
     nombre: "",
@@ -256,9 +271,26 @@ export default function UsuariosPage() {
         </Button>
       </Box>
 
+      <TextField
+        placeholder="Buscar por nombre, usuario o equipo..."
+        size="small"
+        value={busqueda}
+        onChange={(e) => setBusqueda(e.target.value)}
+        sx={{ mb: 2, width: 400 }}
+        slotProps={{
+          input: {
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon />
+              </InputAdornment>
+            ),
+          },
+        }}
+      />
+
       <Box sx={{ bgcolor: "white", borderRadius: 2 }}>
         <DataGrid
-          rows={usuarios}
+          rows={usuariosFiltrados}
           columns={columns}
           loading={loading}
           pageSizeOptions={[10, 25]}
