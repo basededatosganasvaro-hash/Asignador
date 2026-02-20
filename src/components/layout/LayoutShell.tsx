@@ -16,8 +16,7 @@ export default function LayoutShell({ rol, children }: { rol: string; children: 
         component="main"
         sx={{
           flexGrow: 1,
-          p: 3,
-          ml: `${DRAWER_COLLAPSED}px`,
+          p: 2,
           bgcolor: "background.default",
           minHeight: "100vh",
         }}

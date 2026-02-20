@@ -698,17 +698,17 @@ export default function OportunidadesPage() {
 
   // ─── Cards para el pipeline ───
   const cardItems: { key: FiltroCard; label: string; color: string }[] = [
+    { key: "capacidades", label: "Capacidades", color: CARD_COLORS.capacidades },
     { key: "capturados", label: "Capturados", color: CARD_COLORS.capturados },
     ...etapasAvance.map((e) => ({ key: e.nombre as FiltroCard, label: e.nombre, color: CARD_COLORS[e.nombre] || e.color })),
-    { key: "capacidades", label: "Capacidades", color: CARD_COLORS.capacidades },
   ];
 
   return (
-    <Box>
+    <Box sx={{ display: "flex", flexDirection: "column", height: "calc(100vh - 64px)" }}>
       {confetti && <ConfettiEffect onDone={() => setConfetti(false)} />}
 
       {/* Header */}
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 2, flexWrap: "wrap", gap: 1 }}>
+      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1.5, flexWrap: "wrap", gap: 1, flexShrink: 0 }}>
         <Box>
           <Typography variant="h5" fontWeight={600}>Mi Asignación</Typography>
           <Typography variant="body2" color="text.secondary">
@@ -751,7 +751,7 @@ export default function OportunidadesPage() {
       {/* ═══════ 7 CARDS PIPELINE ═══════ */}
       <Box
         sx={{
-          display: "flex", gap: 1.5, mb: 3, overflowX: "auto", pb: 0.5,
+          display: "flex", gap: 1.5, mb: 1.5, overflowX: "auto", pb: 0.5, flexShrink: 0,
           "&::-webkit-scrollbar": { height: 4 },
           "&::-webkit-scrollbar-thumb": { bgcolor: "grey.300", borderRadius: 2 },
         }}
@@ -821,9 +821,9 @@ export default function OportunidadesPage() {
       </Box>
 
       {/* ═══════ FILTROS + GRID ═══════ */}
-      <Card elevation={0} sx={{ border: "1px solid", borderColor: "divider", borderRadius: 3, overflow: "hidden" }}>
+      <Card elevation={0} sx={{ border: "1px solid", borderColor: "divider", borderRadius: 3, overflow: "hidden", flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
         {/* Barra superior */}
-        <Box sx={{ display: "flex", alignItems: "center", gap: 2, flexWrap: "wrap", px: 2.5, py: 1, bgcolor: "grey.50", borderBottom: "1px solid", borderColor: "divider" }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 2, flexWrap: "wrap", px: 2.5, py: 1, bgcolor: "grey.50", borderBottom: "1px solid", borderColor: "divider", flexShrink: 0 }}>
           {cardFiltro && (
             <Chip
               label={cardFiltro === "capturados" ? "Capturados" : cardFiltro === "capacidades" ? "Capacidades" : cardFiltro}
@@ -872,7 +872,6 @@ export default function OportunidadesPage() {
             onRowSelectionModelChange={(model: GridRowSelectionModel) =>
               setSelectedIds(Array.from(model.ids).map(Number))
             }
-            autoHeight
             rowHeight={40}
             columnVisibilityModel={columnVisibility}
             onColumnVisibilityModelChange={handleColumnVisibilityChange}
@@ -887,6 +886,7 @@ export default function OportunidadesPage() {
             sx={{
               border: "none",
               fontSize: 12,
+              flex: 1,
               "& .MuiDataGrid-columnHeader": {
                 bgcolor: "background.paper", fontSize: 10, fontWeight: 700,
                 color: "text.secondary", textTransform: "uppercase", letterSpacing: "0.05em",
