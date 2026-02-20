@@ -8,7 +8,7 @@ import {
   DialogActions, TextField, Snackbar, Paper, Divider, Grid,
   LinearProgress,
 } from "@mui/material";
-import { DataGrid, GridColDef, GridRenderCellParams, GridRowSelectionModel, GridToolbarColumnsButton, GridToolbarFilterButton } from "@mui/x-data-grid";
+import { DataGrid, GridColDef, GridRenderCellParams, GridRowSelectionModel, GridRowId, GridToolbarColumnsButton, GridToolbarFilterButton } from "@mui/x-data-grid";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import WhatsAppIcon from "@mui/icons-material/WhatsApp";
 import PhoneIcon from "@mui/icons-material/Phone";
@@ -259,7 +259,7 @@ export default function OportunidadesPage() {
   const [importOpen, setImportOpen] = useState(false);
   const [captacionOpen, setCaptacionOpen] = useState(false);
   const [asignacionOpen, setAsignacionOpen] = useState(false);
-  const [selectedIds, setSelectedIds] = useState<GridRowSelectionModel>([]);
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [campanaOpen, setCampanaOpen] = useState(false);
 
   // Modal Ver detalle
@@ -706,8 +706,10 @@ export default function OportunidadesPage() {
             initialState={{ pagination: { paginationModel: { pageSize: 25 } } }}
             checkboxSelection
             disableRowSelectionOnClick
-            rowSelectionModel={selectedIds}
-            onRowSelectionModelChange={setSelectedIds}
+            rowSelectionModel={{ type: "include" as const, ids: new Set<GridRowId>(selectedIds) }}
+            onRowSelectionModelChange={(model: GridRowSelectionModel) =>
+              setSelectedIds(Array.from(model.ids).map(Number))
+            }
             autoHeight
             rowHeight={56}
             columnVisibilityModel={columnVisibility}
