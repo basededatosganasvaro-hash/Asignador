@@ -2,12 +2,11 @@
  * Script de importación: crea usuarios y equipos del sistema a partir de BD Capacidades.
  *
  * Lógica:
- * 1. Lee todos los users de BD Capacidades con role agente o supervisor
- * 2. Crea equipos únicos a partir del campo users.equipo (sin sucursal)
- * 3. Verifica cuáles usuarios ya existen en BD Sistema (por telegram_id)
- * 4. Solo CREA los que no existen — NO elimina usuarios/equipos existentes
- * 5. Asigna equipo_id al usuario si hay match por nombre
- * 6. Username generado, password = username, debe_cambiar_password = true
+ * 1. Lee equipos de BD Capacidades (tabla equipos) y crea en BD Sistema los que no existan
+ * 2. Lee usuarios_equipos → asigna equipo_id a agentes
+ * 3. Lee supervisor_equipos → asigna supervisor_id en equipos de BD Sistema
+ * 4. Crea usuarios nuevos (por telegram_id) con username generado
+ * 5. Actualiza equipo_id de usuarios existentes si no tienen equipo asignado
  *
  * Ejecutar: npx tsx prisma/import-users-capacidades.ts
  */
@@ -36,7 +35,61 @@ function generarUsername(nombre: string): string {
 async function main() {
   console.log("=== Importación de usuarios desde BD Capacidades ===\n");
 
-  // 1. Leer usuarios de BD Capacidades (agentes y supervisores)
+  // ============================================
+  // 1. EQUIPOS: leer de BD Capacidades y crear en BD Sistema
+  // ============================================
+  const equiposCapacidades = await prismaCapacidades.equipos.findMany();
+  console.log(`Equipos en BD Capacidades: ${equiposCapacidades.length}`);
+
+  // Cargar equipos existentes en BD Sistema
+  const equiposExistentes = await prisma.equipos.findMany({
+    select: { id: true, nombre: true },
+  });
+  const equipoMap = new Map<string, number>(); // key lowercase → id en BD Sistema
+  for (const eq of equiposExistentes) {
+    equipoMap.set(eq.nombre.toLowerCase().trim(), eq.id);
+  }
+
+  let equiposCreados = 0;
+  for (const eqCap of equiposCapacidades) {
+    const key = eqCap.nombre.toLowerCase().trim();
+    if (!equipoMap.has(key)) {
+      const nuevo = await prisma.equipos.create({
+        data: { nombre: eqCap.nombre.trim() },
+      });
+      equipoMap.set(key, nuevo.id);
+      equiposCreados++;
+    }
+  }
+  console.log(`Equipos creados: ${equiposCreados}`);
+  console.log(`Equipos ya existían: ${equiposCapacidades.length - equiposCreados}\n`);
+
+  // ============================================
+  // 2. RELACIONES EQUIPO: leer usuarios_equipos y supervisor_equipos
+  // ============================================
+  const usuariosEquipos = await prismaCapacidades.usuarios_equipos.findMany();
+  const supervisorEquipos = await prismaCapacidades.supervisor_equipos.findMany();
+  console.log(`Relaciones agente↔equipo en BD Capacidades: ${usuariosEquipos.length}`);
+  console.log(`Relaciones supervisor↔equipo en BD Capacidades: ${supervisorEquipos.length}\n`);
+
+  // Mapas: telegram_id → equipo_nombre (tomamos el primero si hay varios)
+  const agenteEquipoMap = new Map<bigint, string>();
+  for (const ue of usuariosEquipos) {
+    if (!agenteEquipoMap.has(ue.agente_telegram_id)) {
+      agenteEquipoMap.set(ue.agente_telegram_id, ue.equipo_nombre);
+    }
+  }
+
+  const supervisorEquipoMap = new Map<bigint, string>();
+  for (const se of supervisorEquipos) {
+    if (!supervisorEquipoMap.has(se.supervisor_telegram_id)) {
+      supervisorEquipoMap.set(se.supervisor_telegram_id, se.equipo_nombre);
+    }
+  }
+
+  // ============================================
+  // 3. USUARIOS: leer de BD Capacidades
+  // ============================================
   const usersCapacidades = await prismaCapacidades.users.findMany({
     where: {
       role: { in: ["agente", "supervisor"] },
@@ -50,69 +103,61 @@ async function main() {
   console.log(`  - Agentes: ${agentes.length}`);
   console.log(`  - Supervisores: ${supervisores.length}\n`);
 
-  // 2. Crear equipos únicos desde BD Capacidades
-  const nombresEquiposCap = new Set<string>();
-  for (const u of usersCapacidades) {
-    if (u.equipo?.trim()) {
-      nombresEquiposCap.add(u.equipo.trim());
-    }
-  }
-  console.log(`Equipos únicos en BD Capacidades: ${nombresEquiposCap.size}`);
-
-  // Cargar equipos existentes en BD Sistema
-  const equiposExistentes = await prisma.equipos.findMany({
-    select: { id: true, nombre: true },
-  });
-  const equipoMap = new Map<string, number>();
-  for (const eq of equiposExistentes) {
-    equipoMap.set(eq.nombre.toLowerCase().trim(), eq.id);
-  }
-
-  // Crear equipos que no existen
-  let equiposCreados = 0;
-  for (const nombreEquipo of nombresEquiposCap) {
-    const key = nombreEquipo.toLowerCase().trim();
-    if (!equipoMap.has(key)) {
-      const nuevo = await prisma.equipos.create({
-        data: { nombre: nombreEquipo },
-      });
-      equipoMap.set(key, nuevo.id);
-      equiposCreados++;
-    }
-  }
-  console.log(`Equipos creados: ${equiposCreados}`);
-  console.log(`Equipos ya existían: ${nombresEquiposCap.size - equiposCreados}\n`);
-
-  // 3. Cargar todos los usuarios existentes para evitar duplicados
+  // ============================================
+  // 4. Cargar usuarios existentes para evitar duplicados
+  // ============================================
   const existentes = await prisma.usuarios.findMany({
-    select: { username: true, email: true, telegram_id: true },
+    select: { id: true, username: true, email: true, telegram_id: true, equipo_id: true },
   });
 
   const usados = new Set<string>();
   const usadosEmail = new Set<string>();
-  const telegramIdsExistentes = new Set<bigint>();
+  const telegramIdToUsuario = new Map<bigint, { id: number; equipo_id: number | null }>();
 
   for (const u of existentes) {
     usados.add(u.username);
     usadosEmail.add(u.email);
     if (u.telegram_id !== null) {
-      telegramIdsExistentes.add(u.telegram_id);
+      telegramIdToUsuario.set(u.telegram_id, { id: u.id, equipo_id: u.equipo_id });
     }
   }
 
   console.log(`Usuarios existentes en BD Sistema: ${existentes.length}`);
-  console.log(`  - Con telegram_id: ${telegramIdsExistentes.size}\n`);
+  console.log(`  - Con telegram_id: ${telegramIdToUsuario.size}\n`);
 
-  // 4. Crear solo los usuarios que no existen
+  // ============================================
+  // 5. Crear usuarios nuevos + actualizar equipo de existentes
+  // ============================================
   let creados = 0;
   let yaExistian = 0;
   let sinNombre = 0;
   let conEquipo = 0;
+  let equipoActualizado = 0;
 
   for (const user of usersCapacidades) {
+    // Resolver equipo para este usuario
+    const equipoNombre =
+      user.role === "supervisor"
+        ? supervisorEquipoMap.get(user.user_id)
+        : agenteEquipoMap.get(user.user_id);
+
+    let equipo_id: number | null = null;
+    if (equipoNombre) {
+      equipo_id = equipoMap.get(equipoNombre.toLowerCase().trim()) ?? null;
+    }
+
     // Verificar si ya existe por telegram_id
-    if (telegramIdsExistentes.has(user.user_id)) {
+    const existente = telegramIdToUsuario.get(user.user_id);
+    if (existente) {
       yaExistian++;
+      // Actualizar equipo_id si no tiene y encontramos match
+      if (equipo_id && !existente.equipo_id) {
+        await prisma.usuarios.update({
+          where: { id: existente.id },
+          data: { equipo_id },
+        });
+        equipoActualizado++;
+      }
       continue;
     }
 
@@ -148,13 +193,7 @@ async function main() {
     // Rol mapeado
     const rol = user.role === "supervisor" ? "supervisor" : "promotor";
 
-    // Match equipo por nombre
-    let equipo_id: number | null = null;
-    if (user.equipo?.trim()) {
-      const key = user.equipo.trim().toLowerCase();
-      equipo_id = equipoMap.get(key) ?? null;
-      if (equipo_id) conEquipo++;
-    }
+    if (equipo_id) conEquipo++;
 
     // Password = username (bcrypt)
     const password_hash = await bcrypt.hash(username, 10);
@@ -176,10 +215,34 @@ async function main() {
     creados++;
   }
 
+  // ============================================
+  // 6. Asignar supervisor_id en equipos de BD Sistema
+  // ============================================
+  let supervisoresAsignados = 0;
+  for (const [supervisorTelegramId, equipoNombre] of supervisorEquipoMap) {
+    const equipoIdSistema = equipoMap.get(equipoNombre.toLowerCase().trim());
+    if (!equipoIdSistema) continue;
+
+    // Buscar supervisor en BD Sistema por telegram_id
+    const supervisor = await prisma.usuarios.findUnique({
+      where: { telegram_id: supervisorTelegramId },
+      select: { id: true },
+    });
+    if (!supervisor) continue;
+
+    // Actualizar equipo con supervisor_id
+    await prisma.equipos.update({
+      where: { id: equipoIdSistema },
+      data: { supervisor_id: supervisor.id },
+    });
+    supervisoresAsignados++;
+  }
+
   console.log(`\n=== Resultado ===`);
   console.log(`Equipos creados: ${equiposCreados}`);
+  console.log(`Supervisores asignados a equipos: ${supervisoresAsignados}`);
   console.log(`Usuarios creados: ${creados} (${conEquipo} con equipo asignado)`);
-  console.log(`Ya existían (por telegram_id): ${yaExistian}`);
+  console.log(`Ya existían (por telegram_id): ${yaExistian} (${equipoActualizado} con equipo actualizado)`);
   console.log(`Omitidos (sin nombre): ${sinNombre}`);
   console.log(`Total en sistema: ${existentes.length + creados}`);
   console.log(`\nImportación completada.`);

@@ -131,6 +131,27 @@ exports.Prisma.UsersScalarFieldEnum = {
   created_at: 'created_at'
 };
 
+exports.Prisma.EquiposScalarFieldEnum = {
+  nombre: 'nombre',
+  capacidad_max: 'capacidad_max',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+};
+
+exports.Prisma.Usuarios_equiposScalarFieldEnum = {
+  id: 'id',
+  agente_telegram_id: 'agente_telegram_id',
+  equipo_nombre: 'equipo_nombre',
+  created_at: 'created_at'
+};
+
+exports.Prisma.Supervisor_equiposScalarFieldEnum = {
+  id: 'id',
+  supervisor_telegram_id: 'supervisor_telegram_id',
+  equipo_nombre: 'equipo_nombre',
+  created_at: 'created_at'
+};
+
 exports.Prisma.SolicitudesScalarFieldEnum = {
   id: 'id',
   user_id: 'user_id',
@@ -168,6 +189,9 @@ exports.Prisma.NullsOrder = {
 
 exports.Prisma.ModelName = {
   users: 'users',
+  equipos: 'equipos',
+  usuarios_equipos: 'usuarios_equipos',
+  supervisor_equipos: 'supervisor_equipos',
   solicitudes: 'solicitudes'
 };
 

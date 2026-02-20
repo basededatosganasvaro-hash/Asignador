@@ -19,6 +19,21 @@ export type PrismaPromise<T> = $Public.PrismaPromise<T>
  */
 export type users = $Result.DefaultSelection<Prisma.$usersPayload>
 /**
+ * Model equipos
+ * 
+ */
+export type equipos = $Result.DefaultSelection<Prisma.$equiposPayload>
+/**
+ * Model usuarios_equipos
+ * 
+ */
+export type usuarios_equipos = $Result.DefaultSelection<Prisma.$usuarios_equiposPayload>
+/**
+ * Model supervisor_equipos
+ * 
+ */
+export type supervisor_equipos = $Result.DefaultSelection<Prisma.$supervisor_equiposPayload>
+/**
  * Model solicitudes
  * 
  */
@@ -156,6 +171,36 @@ export class PrismaClient<
     * ```
     */
   get users(): Prisma.usersDelegate<ExtArgs>;
+
+  /**
+   * `prisma.equipos`: Exposes CRUD operations for the **equipos** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more Equipos
+    * const equipos = await prisma.equipos.findMany()
+    * ```
+    */
+  get equipos(): Prisma.equiposDelegate<ExtArgs>;
+
+  /**
+   * `prisma.usuarios_equipos`: Exposes CRUD operations for the **usuarios_equipos** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more Usuarios_equipos
+    * const usuarios_equipos = await prisma.usuarios_equipos.findMany()
+    * ```
+    */
+  get usuarios_equipos(): Prisma.usuarios_equiposDelegate<ExtArgs>;
+
+  /**
+   * `prisma.supervisor_equipos`: Exposes CRUD operations for the **supervisor_equipos** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more Supervisor_equipos
+    * const supervisor_equipos = await prisma.supervisor_equipos.findMany()
+    * ```
+    */
+  get supervisor_equipos(): Prisma.supervisor_equiposDelegate<ExtArgs>;
 
   /**
    * `prisma.solicitudes`: Exposes CRUD operations for the **solicitudes** model.
@@ -608,6 +653,9 @@ export namespace Prisma {
 
   export const ModelName: {
     users: 'users',
+    equipos: 'equipos',
+    usuarios_equipos: 'usuarios_equipos',
+    supervisor_equipos: 'supervisor_equipos',
     solicitudes: 'solicitudes'
   };
 
@@ -624,7 +672,7 @@ export namespace Prisma {
 
   export type TypeMap<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, ClientOptions = {}> = {
     meta: {
-      modelProps: "users" | "solicitudes"
+      modelProps: "users" | "equipos" | "usuarios_equipos" | "supervisor_equipos" | "solicitudes"
       txIsolationLevel: Prisma.TransactionIsolationLevel
     }
     model: {
@@ -695,6 +743,216 @@ export namespace Prisma {
           count: {
             args: Prisma.usersCountArgs<ExtArgs>
             result: $Utils.Optional<UsersCountAggregateOutputType> | number
+          }
+        }
+      }
+      equipos: {
+        payload: Prisma.$equiposPayload<ExtArgs>
+        fields: Prisma.equiposFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.equiposFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$equiposPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.equiposFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$equiposPayload>
+          }
+          findFirst: {
+            args: Prisma.equiposFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$equiposPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.equiposFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$equiposPayload>
+          }
+          findMany: {
+            args: Prisma.equiposFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$equiposPayload>[]
+          }
+          create: {
+            args: Prisma.equiposCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$equiposPayload>
+          }
+          createMany: {
+            args: Prisma.equiposCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.equiposCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$equiposPayload>[]
+          }
+          delete: {
+            args: Prisma.equiposDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$equiposPayload>
+          }
+          update: {
+            args: Prisma.equiposUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$equiposPayload>
+          }
+          deleteMany: {
+            args: Prisma.equiposDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.equiposUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          upsert: {
+            args: Prisma.equiposUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$equiposPayload>
+          }
+          aggregate: {
+            args: Prisma.EquiposAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateEquipos>
+          }
+          groupBy: {
+            args: Prisma.equiposGroupByArgs<ExtArgs>
+            result: $Utils.Optional<EquiposGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.equiposCountArgs<ExtArgs>
+            result: $Utils.Optional<EquiposCountAggregateOutputType> | number
+          }
+        }
+      }
+      usuarios_equipos: {
+        payload: Prisma.$usuarios_equiposPayload<ExtArgs>
+        fields: Prisma.usuarios_equiposFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.usuarios_equiposFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$usuarios_equiposPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.usuarios_equiposFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$usuarios_equiposPayload>
+          }
+          findFirst: {
+            args: Prisma.usuarios_equiposFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$usuarios_equiposPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.usuarios_equiposFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$usuarios_equiposPayload>
+          }
+          findMany: {
+            args: Prisma.usuarios_equiposFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$usuarios_equiposPayload>[]
+          }
+          create: {
+            args: Prisma.usuarios_equiposCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$usuarios_equiposPayload>
+          }
+          createMany: {
+            args: Prisma.usuarios_equiposCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.usuarios_equiposCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$usuarios_equiposPayload>[]
+          }
+          delete: {
+            args: Prisma.usuarios_equiposDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$usuarios_equiposPayload>
+          }
+          update: {
+            args: Prisma.usuarios_equiposUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$usuarios_equiposPayload>
+          }
+          deleteMany: {
+            args: Prisma.usuarios_equiposDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.usuarios_equiposUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          upsert: {
+            args: Prisma.usuarios_equiposUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$usuarios_equiposPayload>
+          }
+          aggregate: {
+            args: Prisma.Usuarios_equiposAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateUsuarios_equipos>
+          }
+          groupBy: {
+            args: Prisma.usuarios_equiposGroupByArgs<ExtArgs>
+            result: $Utils.Optional<Usuarios_equiposGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.usuarios_equiposCountArgs<ExtArgs>
+            result: $Utils.Optional<Usuarios_equiposCountAggregateOutputType> | number
+          }
+        }
+      }
+      supervisor_equipos: {
+        payload: Prisma.$supervisor_equiposPayload<ExtArgs>
+        fields: Prisma.supervisor_equiposFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.supervisor_equiposFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$supervisor_equiposPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.supervisor_equiposFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$supervisor_equiposPayload>
+          }
+          findFirst: {
+            args: Prisma.supervisor_equiposFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$supervisor_equiposPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.supervisor_equiposFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$supervisor_equiposPayload>
+          }
+          findMany: {
+            args: Prisma.supervisor_equiposFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$supervisor_equiposPayload>[]
+          }
+          create: {
+            args: Prisma.supervisor_equiposCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$supervisor_equiposPayload>
+          }
+          createMany: {
+            args: Prisma.supervisor_equiposCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.supervisor_equiposCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$supervisor_equiposPayload>[]
+          }
+          delete: {
+            args: Prisma.supervisor_equiposDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$supervisor_equiposPayload>
+          }
+          update: {
+            args: Prisma.supervisor_equiposUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$supervisor_equiposPayload>
+          }
+          deleteMany: {
+            args: Prisma.supervisor_equiposDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.supervisor_equiposUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          upsert: {
+            args: Prisma.supervisor_equiposUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$supervisor_equiposPayload>
+          }
+          aggregate: {
+            args: Prisma.Supervisor_equiposAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateSupervisor_equipos>
+          }
+          groupBy: {
+            args: Prisma.supervisor_equiposGroupByArgs<ExtArgs>
+            result: $Utils.Optional<Supervisor_equiposGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.supervisor_equiposCountArgs<ExtArgs>
+            result: $Utils.Optional<Supervisor_equiposCountAggregateOutputType> | number
           }
         }
       }
@@ -1854,6 +2112,2714 @@ export namespace Prisma {
 
 
   /**
+   * Model equipos
+   */
+
+  export type AggregateEquipos = {
+    _count: EquiposCountAggregateOutputType | null
+    _avg: EquiposAvgAggregateOutputType | null
+    _sum: EquiposSumAggregateOutputType | null
+    _min: EquiposMinAggregateOutputType | null
+    _max: EquiposMaxAggregateOutputType | null
+  }
+
+  export type EquiposAvgAggregateOutputType = {
+    capacidad_max: number | null
+  }
+
+  export type EquiposSumAggregateOutputType = {
+    capacidad_max: number | null
+  }
+
+  export type EquiposMinAggregateOutputType = {
+    nombre: string | null
+    capacidad_max: number | null
+    created_at: Date | null
+    updated_at: Date | null
+  }
+
+  export type EquiposMaxAggregateOutputType = {
+    nombre: string | null
+    capacidad_max: number | null
+    created_at: Date | null
+    updated_at: Date | null
+  }
+
+  export type EquiposCountAggregateOutputType = {
+    nombre: number
+    capacidad_max: number
+    created_at: number
+    updated_at: number
+    _all: number
+  }
+
+
+  export type EquiposAvgAggregateInputType = {
+    capacidad_max?: true
+  }
+
+  export type EquiposSumAggregateInputType = {
+    capacidad_max?: true
+  }
+
+  export type EquiposMinAggregateInputType = {
+    nombre?: true
+    capacidad_max?: true
+    created_at?: true
+    updated_at?: true
+  }
+
+  export type EquiposMaxAggregateInputType = {
+    nombre?: true
+    capacidad_max?: true
+    created_at?: true
+    updated_at?: true
+  }
+
+  export type EquiposCountAggregateInputType = {
+    nombre?: true
+    capacidad_max?: true
+    created_at?: true
+    updated_at?: true
+    _all?: true
+  }
+
+  export type EquiposAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which equipos to aggregate.
+     */
+    where?: equiposWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of equipos to fetch.
+     */
+    orderBy?: equiposOrderByWithRelationInput | equiposOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: equiposWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` equipos from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` equipos.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned equipos
+    **/
+    _count?: true | EquiposCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to average
+    **/
+    _avg?: EquiposAvgAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to sum
+    **/
+    _sum?: EquiposSumAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: EquiposMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: EquiposMaxAggregateInputType
+  }
+
+  export type GetEquiposAggregateType<T extends EquiposAggregateArgs> = {
+        [P in keyof T & keyof AggregateEquipos]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateEquipos[P]>
+      : GetScalarType<T[P], AggregateEquipos[P]>
+  }
+
+
+
+
+  export type equiposGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: equiposWhereInput
+    orderBy?: equiposOrderByWithAggregationInput | equiposOrderByWithAggregationInput[]
+    by: EquiposScalarFieldEnum[] | EquiposScalarFieldEnum
+    having?: equiposScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: EquiposCountAggregateInputType | true
+    _avg?: EquiposAvgAggregateInputType
+    _sum?: EquiposSumAggregateInputType
+    _min?: EquiposMinAggregateInputType
+    _max?: EquiposMaxAggregateInputType
+  }
+
+  export type EquiposGroupByOutputType = {
+    nombre: string
+    capacidad_max: number | null
+    created_at: Date | null
+    updated_at: Date | null
+    _count: EquiposCountAggregateOutputType | null
+    _avg: EquiposAvgAggregateOutputType | null
+    _sum: EquiposSumAggregateOutputType | null
+    _min: EquiposMinAggregateOutputType | null
+    _max: EquiposMaxAggregateOutputType | null
+  }
+
+  type GetEquiposGroupByPayload<T extends equiposGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<EquiposGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof EquiposGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], EquiposGroupByOutputType[P]>
+            : GetScalarType<T[P], EquiposGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type equiposSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    nombre?: boolean
+    capacidad_max?: boolean
+    created_at?: boolean
+    updated_at?: boolean
+  }, ExtArgs["result"]["equipos"]>
+
+  export type equiposSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    nombre?: boolean
+    capacidad_max?: boolean
+    created_at?: boolean
+    updated_at?: boolean
+  }, ExtArgs["result"]["equipos"]>
+
+  export type equiposSelectScalar = {
+    nombre?: boolean
+    capacidad_max?: boolean
+    created_at?: boolean
+    updated_at?: boolean
+  }
+
+
+  export type $equiposPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "equipos"
+    objects: {}
+    scalars: $Extensions.GetPayloadResult<{
+      nombre: string
+      capacidad_max: number | null
+      created_at: Date | null
+      updated_at: Date | null
+    }, ExtArgs["result"]["equipos"]>
+    composites: {}
+  }
+
+  type equiposGetPayload<S extends boolean | null | undefined | equiposDefaultArgs> = $Result.GetResult<Prisma.$equiposPayload, S>
+
+  type equiposCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = 
+    Omit<equiposFindManyArgs, 'select' | 'include' | 'distinct'> & {
+      select?: EquiposCountAggregateInputType | true
+    }
+
+  export interface equiposDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['equipos'], meta: { name: 'equipos' } }
+    /**
+     * Find zero or one Equipos that matches the filter.
+     * @param {equiposFindUniqueArgs} args - Arguments to find a Equipos
+     * @example
+     * // Get one Equipos
+     * const equipos = await prisma.equipos.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends equiposFindUniqueArgs>(args: SelectSubset<T, equiposFindUniqueArgs<ExtArgs>>): Prisma__equiposClient<$Result.GetResult<Prisma.$equiposPayload<ExtArgs>, T, "findUnique"> | null, null, ExtArgs>
+
+    /**
+     * Find one Equipos that matches the filter or throw an error with `error.code='P2025'` 
+     * if no matches were found.
+     * @param {equiposFindUniqueOrThrowArgs} args - Arguments to find a Equipos
+     * @example
+     * // Get one Equipos
+     * const equipos = await prisma.equipos.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends equiposFindUniqueOrThrowArgs>(args: SelectSubset<T, equiposFindUniqueOrThrowArgs<ExtArgs>>): Prisma__equiposClient<$Result.GetResult<Prisma.$equiposPayload<ExtArgs>, T, "findUniqueOrThrow">, never, ExtArgs>
+
+    /**
+     * Find the first Equipos that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {equiposFindFirstArgs} args - Arguments to find a Equipos
+     * @example
+     * // Get one Equipos
+     * const equipos = await prisma.equipos.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends equiposFindFirstArgs>(args?: SelectSubset<T, equiposFindFirstArgs<ExtArgs>>): Prisma__equiposClient<$Result.GetResult<Prisma.$equiposPayload<ExtArgs>, T, "findFirst"> | null, null, ExtArgs>
+
+    /**
+     * Find the first Equipos that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {equiposFindFirstOrThrowArgs} args - Arguments to find a Equipos
+     * @example
+     * // Get one Equipos
+     * const equipos = await prisma.equipos.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends equiposFindFirstOrThrowArgs>(args?: SelectSubset<T, equiposFindFirstOrThrowArgs<ExtArgs>>): Prisma__equiposClient<$Result.GetResult<Prisma.$equiposPayload<ExtArgs>, T, "findFirstOrThrow">, never, ExtArgs>
+
+    /**
+     * Find zero or more Equipos that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {equiposFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all Equipos
+     * const equipos = await prisma.equipos.findMany()
+     * 
+     * // Get first 10 Equipos
+     * const equipos = await prisma.equipos.findMany({ take: 10 })
+     * 
+     * // Only select the `nombre`
+     * const equiposWithNombreOnly = await prisma.equipos.findMany({ select: { nombre: true } })
+     * 
+     */
+    findMany<T extends equiposFindManyArgs>(args?: SelectSubset<T, equiposFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$equiposPayload<ExtArgs>, T, "findMany">>
+
+    /**
+     * Create a Equipos.
+     * @param {equiposCreateArgs} args - Arguments to create a Equipos.
+     * @example
+     * // Create one Equipos
+     * const Equipos = await prisma.equipos.create({
+     *   data: {
+     *     // ... data to create a Equipos
+     *   }
+     * })
+     * 
+     */
+    create<T extends equiposCreateArgs>(args: SelectSubset<T, equiposCreateArgs<ExtArgs>>): Prisma__equiposClient<$Result.GetResult<Prisma.$equiposPayload<ExtArgs>, T, "create">, never, ExtArgs>
+
+    /**
+     * Create many Equipos.
+     * @param {equiposCreateManyArgs} args - Arguments to create many Equipos.
+     * @example
+     * // Create many Equipos
+     * const equipos = await prisma.equipos.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends equiposCreateManyArgs>(args?: SelectSubset<T, equiposCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many Equipos and returns the data saved in the database.
+     * @param {equiposCreateManyAndReturnArgs} args - Arguments to create many Equipos.
+     * @example
+     * // Create many Equipos
+     * const equipos = await prisma.equipos.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many Equipos and only return the `nombre`
+     * const equiposWithNombreOnly = await prisma.equipos.createManyAndReturn({ 
+     *   select: { nombre: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends equiposCreateManyAndReturnArgs>(args?: SelectSubset<T, equiposCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$equiposPayload<ExtArgs>, T, "createManyAndReturn">>
+
+    /**
+     * Delete a Equipos.
+     * @param {equiposDeleteArgs} args - Arguments to delete one Equipos.
+     * @example
+     * // Delete one Equipos
+     * const Equipos = await prisma.equipos.delete({
+     *   where: {
+     *     // ... filter to delete one Equipos
+     *   }
+     * })
+     * 
+     */
+    delete<T extends equiposDeleteArgs>(args: SelectSubset<T, equiposDeleteArgs<ExtArgs>>): Prisma__equiposClient<$Result.GetResult<Prisma.$equiposPayload<ExtArgs>, T, "delete">, never, ExtArgs>
+
+    /**
+     * Update one Equipos.
+     * @param {equiposUpdateArgs} args - Arguments to update one Equipos.
+     * @example
+     * // Update one Equipos
+     * const equipos = await prisma.equipos.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends equiposUpdateArgs>(args: SelectSubset<T, equiposUpdateArgs<ExtArgs>>): Prisma__equiposClient<$Result.GetResult<Prisma.$equiposPayload<ExtArgs>, T, "update">, never, ExtArgs>
+
+    /**
+     * Delete zero or more Equipos.
+     * @param {equiposDeleteManyArgs} args - Arguments to filter Equipos to delete.
+     * @example
+     * // Delete a few Equipos
+     * const { count } = await prisma.equipos.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends equiposDeleteManyArgs>(args?: SelectSubset<T, equiposDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more Equipos.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {equiposUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many Equipos
+     * const equipos = await prisma.equipos.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends equiposUpdateManyArgs>(args: SelectSubset<T, equiposUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create or update one Equipos.
+     * @param {equiposUpsertArgs} args - Arguments to update or create a Equipos.
+     * @example
+     * // Update or create a Equipos
+     * const equipos = await prisma.equipos.upsert({
+     *   create: {
+     *     // ... data to create a Equipos
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the Equipos we want to update
+     *   }
+     * })
+     */
+    upsert<T extends equiposUpsertArgs>(args: SelectSubset<T, equiposUpsertArgs<ExtArgs>>): Prisma__equiposClient<$Result.GetResult<Prisma.$equiposPayload<ExtArgs>, T, "upsert">, never, ExtArgs>
+
+
+    /**
+     * Count the number of Equipos.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {equiposCountArgs} args - Arguments to filter Equipos to count.
+     * @example
+     * // Count the number of Equipos
+     * const count = await prisma.equipos.count({
+     *   where: {
+     *     // ... the filter for the Equipos we want to count
+     *   }
+     * })
+    **/
+    count<T extends equiposCountArgs>(
+      args?: Subset<T, equiposCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], EquiposCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a Equipos.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {EquiposAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends EquiposAggregateArgs>(args: Subset<T, EquiposAggregateArgs>): Prisma.PrismaPromise<GetEquiposAggregateType<T>>
+
+    /**
+     * Group by Equipos.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {equiposGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends equiposGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: equiposGroupByArgs['orderBy'] }
+        : { orderBy?: equiposGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, equiposGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetEquiposGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the equipos model
+   */
+  readonly fields: equiposFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for equipos.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__equiposClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the equipos model
+   */ 
+  interface equiposFieldRefs {
+    readonly nombre: FieldRef<"equipos", 'String'>
+    readonly capacidad_max: FieldRef<"equipos", 'Int'>
+    readonly created_at: FieldRef<"equipos", 'DateTime'>
+    readonly updated_at: FieldRef<"equipos", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * equipos findUnique
+   */
+  export type equiposFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the equipos
+     */
+    select?: equiposSelect<ExtArgs> | null
+    /**
+     * Filter, which equipos to fetch.
+     */
+    where: equiposWhereUniqueInput
+  }
+
+  /**
+   * equipos findUniqueOrThrow
+   */
+  export type equiposFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the equipos
+     */
+    select?: equiposSelect<ExtArgs> | null
+    /**
+     * Filter, which equipos to fetch.
+     */
+    where: equiposWhereUniqueInput
+  }
+
+  /**
+   * equipos findFirst
+   */
+  export type equiposFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the equipos
+     */
+    select?: equiposSelect<ExtArgs> | null
+    /**
+     * Filter, which equipos to fetch.
+     */
+    where?: equiposWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of equipos to fetch.
+     */
+    orderBy?: equiposOrderByWithRelationInput | equiposOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for equipos.
+     */
+    cursor?: equiposWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` equipos from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` equipos.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of equipos.
+     */
+    distinct?: EquiposScalarFieldEnum | EquiposScalarFieldEnum[]
+  }
+
+  /**
+   * equipos findFirstOrThrow
+   */
+  export type equiposFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the equipos
+     */
+    select?: equiposSelect<ExtArgs> | null
+    /**
+     * Filter, which equipos to fetch.
+     */
+    where?: equiposWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of equipos to fetch.
+     */
+    orderBy?: equiposOrderByWithRelationInput | equiposOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for equipos.
+     */
+    cursor?: equiposWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` equipos from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` equipos.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of equipos.
+     */
+    distinct?: EquiposScalarFieldEnum | EquiposScalarFieldEnum[]
+  }
+
+  /**
+   * equipos findMany
+   */
+  export type equiposFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the equipos
+     */
+    select?: equiposSelect<ExtArgs> | null
+    /**
+     * Filter, which equipos to fetch.
+     */
+    where?: equiposWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of equipos to fetch.
+     */
+    orderBy?: equiposOrderByWithRelationInput | equiposOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing equipos.
+     */
+    cursor?: equiposWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` equipos from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` equipos.
+     */
+    skip?: number
+    distinct?: EquiposScalarFieldEnum | EquiposScalarFieldEnum[]
+  }
+
+  /**
+   * equipos create
+   */
+  export type equiposCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the equipos
+     */
+    select?: equiposSelect<ExtArgs> | null
+    /**
+     * The data needed to create a equipos.
+     */
+    data: XOR<equiposCreateInput, equiposUncheckedCreateInput>
+  }
+
+  /**
+   * equipos createMany
+   */
+  export type equiposCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many equipos.
+     */
+    data: equiposCreateManyInput | equiposCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * equipos createManyAndReturn
+   */
+  export type equiposCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the equipos
+     */
+    select?: equiposSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * The data used to create many equipos.
+     */
+    data: equiposCreateManyInput | equiposCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * equipos update
+   */
+  export type equiposUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the equipos
+     */
+    select?: equiposSelect<ExtArgs> | null
+    /**
+     * The data needed to update a equipos.
+     */
+    data: XOR<equiposUpdateInput, equiposUncheckedUpdateInput>
+    /**
+     * Choose, which equipos to update.
+     */
+    where: equiposWhereUniqueInput
+  }
+
+  /**
+   * equipos updateMany
+   */
+  export type equiposUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update equipos.
+     */
+    data: XOR<equiposUpdateManyMutationInput, equiposUncheckedUpdateManyInput>
+    /**
+     * Filter which equipos to update
+     */
+    where?: equiposWhereInput
+  }
+
+  /**
+   * equipos upsert
+   */
+  export type equiposUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the equipos
+     */
+    select?: equiposSelect<ExtArgs> | null
+    /**
+     * The filter to search for the equipos to update in case it exists.
+     */
+    where: equiposWhereUniqueInput
+    /**
+     * In case the equipos found by the `where` argument doesn't exist, create a new equipos with this data.
+     */
+    create: XOR<equiposCreateInput, equiposUncheckedCreateInput>
+    /**
+     * In case the equipos was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<equiposUpdateInput, equiposUncheckedUpdateInput>
+  }
+
+  /**
+   * equipos delete
+   */
+  export type equiposDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the equipos
+     */
+    select?: equiposSelect<ExtArgs> | null
+    /**
+     * Filter which equipos to delete.
+     */
+    where: equiposWhereUniqueInput
+  }
+
+  /**
+   * equipos deleteMany
+   */
+  export type equiposDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which equipos to delete
+     */
+    where?: equiposWhereInput
+  }
+
+  /**
+   * equipos without action
+   */
+  export type equiposDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the equipos
+     */
+    select?: equiposSelect<ExtArgs> | null
+  }
+
+
+  /**
+   * Model usuarios_equipos
+   */
+
+  export type AggregateUsuarios_equipos = {
+    _count: Usuarios_equiposCountAggregateOutputType | null
+    _avg: Usuarios_equiposAvgAggregateOutputType | null
+    _sum: Usuarios_equiposSumAggregateOutputType | null
+    _min: Usuarios_equiposMinAggregateOutputType | null
+    _max: Usuarios_equiposMaxAggregateOutputType | null
+  }
+
+  export type Usuarios_equiposAvgAggregateOutputType = {
+    id: number | null
+    agente_telegram_id: number | null
+  }
+
+  export type Usuarios_equiposSumAggregateOutputType = {
+    id: number | null
+    agente_telegram_id: bigint | null
+  }
+
+  export type Usuarios_equiposMinAggregateOutputType = {
+    id: number | null
+    agente_telegram_id: bigint | null
+    equipo_nombre: string | null
+    created_at: Date | null
+  }
+
+  export type Usuarios_equiposMaxAggregateOutputType = {
+    id: number | null
+    agente_telegram_id: bigint | null
+    equipo_nombre: string | null
+    created_at: Date | null
+  }
+
+  export type Usuarios_equiposCountAggregateOutputType = {
+    id: number
+    agente_telegram_id: number
+    equipo_nombre: number
+    created_at: number
+    _all: number
+  }
+
+
+  export type Usuarios_equiposAvgAggregateInputType = {
+    id?: true
+    agente_telegram_id?: true
+  }
+
+  export type Usuarios_equiposSumAggregateInputType = {
+    id?: true
+    agente_telegram_id?: true
+  }
+
+  export type Usuarios_equiposMinAggregateInputType = {
+    id?: true
+    agente_telegram_id?: true
+    equipo_nombre?: true
+    created_at?: true
+  }
+
+  export type Usuarios_equiposMaxAggregateInputType = {
+    id?: true
+    agente_telegram_id?: true
+    equipo_nombre?: true
+    created_at?: true
+  }
+
+  export type Usuarios_equiposCountAggregateInputType = {
+    id?: true
+    agente_telegram_id?: true
+    equipo_nombre?: true
+    created_at?: true
+    _all?: true
+  }
+
+  export type Usuarios_equiposAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which usuarios_equipos to aggregate.
+     */
+    where?: usuarios_equiposWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of usuarios_equipos to fetch.
+     */
+    orderBy?: usuarios_equiposOrderByWithRelationInput | usuarios_equiposOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: usuarios_equiposWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` usuarios_equipos from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` usuarios_equipos.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned usuarios_equipos
+    **/
+    _count?: true | Usuarios_equiposCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to average
+    **/
+    _avg?: Usuarios_equiposAvgAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to sum
+    **/
+    _sum?: Usuarios_equiposSumAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: Usuarios_equiposMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: Usuarios_equiposMaxAggregateInputType
+  }
+
+  export type GetUsuarios_equiposAggregateType<T extends Usuarios_equiposAggregateArgs> = {
+        [P in keyof T & keyof AggregateUsuarios_equipos]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateUsuarios_equipos[P]>
+      : GetScalarType<T[P], AggregateUsuarios_equipos[P]>
+  }
+
+
+
+
+  export type usuarios_equiposGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: usuarios_equiposWhereInput
+    orderBy?: usuarios_equiposOrderByWithAggregationInput | usuarios_equiposOrderByWithAggregationInput[]
+    by: Usuarios_equiposScalarFieldEnum[] | Usuarios_equiposScalarFieldEnum
+    having?: usuarios_equiposScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: Usuarios_equiposCountAggregateInputType | true
+    _avg?: Usuarios_equiposAvgAggregateInputType
+    _sum?: Usuarios_equiposSumAggregateInputType
+    _min?: Usuarios_equiposMinAggregateInputType
+    _max?: Usuarios_equiposMaxAggregateInputType
+  }
+
+  export type Usuarios_equiposGroupByOutputType = {
+    id: number
+    agente_telegram_id: bigint
+    equipo_nombre: string
+    created_at: Date | null
+    _count: Usuarios_equiposCountAggregateOutputType | null
+    _avg: Usuarios_equiposAvgAggregateOutputType | null
+    _sum: Usuarios_equiposSumAggregateOutputType | null
+    _min: Usuarios_equiposMinAggregateOutputType | null
+    _max: Usuarios_equiposMaxAggregateOutputType | null
+  }
+
+  type GetUsuarios_equiposGroupByPayload<T extends usuarios_equiposGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<Usuarios_equiposGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof Usuarios_equiposGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], Usuarios_equiposGroupByOutputType[P]>
+            : GetScalarType<T[P], Usuarios_equiposGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type usuarios_equiposSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    agente_telegram_id?: boolean
+    equipo_nombre?: boolean
+    created_at?: boolean
+  }, ExtArgs["result"]["usuarios_equipos"]>
+
+  export type usuarios_equiposSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    agente_telegram_id?: boolean
+    equipo_nombre?: boolean
+    created_at?: boolean
+  }, ExtArgs["result"]["usuarios_equipos"]>
+
+  export type usuarios_equiposSelectScalar = {
+    id?: boolean
+    agente_telegram_id?: boolean
+    equipo_nombre?: boolean
+    created_at?: boolean
+  }
+
+
+  export type $usuarios_equiposPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "usuarios_equipos"
+    objects: {}
+    scalars: $Extensions.GetPayloadResult<{
+      id: number
+      agente_telegram_id: bigint
+      equipo_nombre: string
+      created_at: Date | null
+    }, ExtArgs["result"]["usuarios_equipos"]>
+    composites: {}
+  }
+
+  type usuarios_equiposGetPayload<S extends boolean | null | undefined | usuarios_equiposDefaultArgs> = $Result.GetResult<Prisma.$usuarios_equiposPayload, S>
+
+  type usuarios_equiposCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = 
+    Omit<usuarios_equiposFindManyArgs, 'select' | 'include' | 'distinct'> & {
+      select?: Usuarios_equiposCountAggregateInputType | true
+    }
+
+  export interface usuarios_equiposDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['usuarios_equipos'], meta: { name: 'usuarios_equipos' } }
+    /**
+     * Find zero or one Usuarios_equipos that matches the filter.
+     * @param {usuarios_equiposFindUniqueArgs} args - Arguments to find a Usuarios_equipos
+     * @example
+     * // Get one Usuarios_equipos
+     * const usuarios_equipos = await prisma.usuarios_equipos.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends usuarios_equiposFindUniqueArgs>(args: SelectSubset<T, usuarios_equiposFindUniqueArgs<ExtArgs>>): Prisma__usuarios_equiposClient<$Result.GetResult<Prisma.$usuarios_equiposPayload<ExtArgs>, T, "findUnique"> | null, null, ExtArgs>
+
+    /**
+     * Find one Usuarios_equipos that matches the filter or throw an error with `error.code='P2025'` 
+     * if no matches were found.
+     * @param {usuarios_equiposFindUniqueOrThrowArgs} args - Arguments to find a Usuarios_equipos
+     * @example
+     * // Get one Usuarios_equipos
+     * const usuarios_equipos = await prisma.usuarios_equipos.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends usuarios_equiposFindUniqueOrThrowArgs>(args: SelectSubset<T, usuarios_equiposFindUniqueOrThrowArgs<ExtArgs>>): Prisma__usuarios_equiposClient<$Result.GetResult<Prisma.$usuarios_equiposPayload<ExtArgs>, T, "findUniqueOrThrow">, never, ExtArgs>
+
+    /**
+     * Find the first Usuarios_equipos that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {usuarios_equiposFindFirstArgs} args - Arguments to find a Usuarios_equipos
+     * @example
+     * // Get one Usuarios_equipos
+     * const usuarios_equipos = await prisma.usuarios_equipos.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends usuarios_equiposFindFirstArgs>(args?: SelectSubset<T, usuarios_equiposFindFirstArgs<ExtArgs>>): Prisma__usuarios_equiposClient<$Result.GetResult<Prisma.$usuarios_equiposPayload<ExtArgs>, T, "findFirst"> | null, null, ExtArgs>
+
+    /**
+     * Find the first Usuarios_equipos that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {usuarios_equiposFindFirstOrThrowArgs} args - Arguments to find a Usuarios_equipos
+     * @example
+     * // Get one Usuarios_equipos
+     * const usuarios_equipos = await prisma.usuarios_equipos.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends usuarios_equiposFindFirstOrThrowArgs>(args?: SelectSubset<T, usuarios_equiposFindFirstOrThrowArgs<ExtArgs>>): Prisma__usuarios_equiposClient<$Result.GetResult<Prisma.$usuarios_equiposPayload<ExtArgs>, T, "findFirstOrThrow">, never, ExtArgs>
+
+    /**
+     * Find zero or more Usuarios_equipos that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {usuarios_equiposFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all Usuarios_equipos
+     * const usuarios_equipos = await prisma.usuarios_equipos.findMany()
+     * 
+     * // Get first 10 Usuarios_equipos
+     * const usuarios_equipos = await prisma.usuarios_equipos.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const usuarios_equiposWithIdOnly = await prisma.usuarios_equipos.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends usuarios_equiposFindManyArgs>(args?: SelectSubset<T, usuarios_equiposFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$usuarios_equiposPayload<ExtArgs>, T, "findMany">>
+
+    /**
+     * Create a Usuarios_equipos.
+     * @param {usuarios_equiposCreateArgs} args - Arguments to create a Usuarios_equipos.
+     * @example
+     * // Create one Usuarios_equipos
+     * const Usuarios_equipos = await prisma.usuarios_equipos.create({
+     *   data: {
+     *     // ... data to create a Usuarios_equipos
+     *   }
+     * })
+     * 
+     */
+    create<T extends usuarios_equiposCreateArgs>(args: SelectSubset<T, usuarios_equiposCreateArgs<ExtArgs>>): Prisma__usuarios_equiposClient<$Result.GetResult<Prisma.$usuarios_equiposPayload<ExtArgs>, T, "create">, never, ExtArgs>
+
+    /**
+     * Create many Usuarios_equipos.
+     * @param {usuarios_equiposCreateManyArgs} args - Arguments to create many Usuarios_equipos.
+     * @example
+     * // Create many Usuarios_equipos
+     * const usuarios_equipos = await prisma.usuarios_equipos.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends usuarios_equiposCreateManyArgs>(args?: SelectSubset<T, usuarios_equiposCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many Usuarios_equipos and returns the data saved in the database.
+     * @param {usuarios_equiposCreateManyAndReturnArgs} args - Arguments to create many Usuarios_equipos.
+     * @example
+     * // Create many Usuarios_equipos
+     * const usuarios_equipos = await prisma.usuarios_equipos.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many Usuarios_equipos and only return the `id`
+     * const usuarios_equiposWithIdOnly = await prisma.usuarios_equipos.createManyAndReturn({ 
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends usuarios_equiposCreateManyAndReturnArgs>(args?: SelectSubset<T, usuarios_equiposCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$usuarios_equiposPayload<ExtArgs>, T, "createManyAndReturn">>
+
+    /**
+     * Delete a Usuarios_equipos.
+     * @param {usuarios_equiposDeleteArgs} args - Arguments to delete one Usuarios_equipos.
+     * @example
+     * // Delete one Usuarios_equipos
+     * const Usuarios_equipos = await prisma.usuarios_equipos.delete({
+     *   where: {
+     *     // ... filter to delete one Usuarios_equipos
+     *   }
+     * })
+     * 
+     */
+    delete<T extends usuarios_equiposDeleteArgs>(args: SelectSubset<T, usuarios_equiposDeleteArgs<ExtArgs>>): Prisma__usuarios_equiposClient<$Result.GetResult<Prisma.$usuarios_equiposPayload<ExtArgs>, T, "delete">, never, ExtArgs>
+
+    /**
+     * Update one Usuarios_equipos.
+     * @param {usuarios_equiposUpdateArgs} args - Arguments to update one Usuarios_equipos.
+     * @example
+     * // Update one Usuarios_equipos
+     * const usuarios_equipos = await prisma.usuarios_equipos.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends usuarios_equiposUpdateArgs>(args: SelectSubset<T, usuarios_equiposUpdateArgs<ExtArgs>>): Prisma__usuarios_equiposClient<$Result.GetResult<Prisma.$usuarios_equiposPayload<ExtArgs>, T, "update">, never, ExtArgs>
+
+    /**
+     * Delete zero or more Usuarios_equipos.
+     * @param {usuarios_equiposDeleteManyArgs} args - Arguments to filter Usuarios_equipos to delete.
+     * @example
+     * // Delete a few Usuarios_equipos
+     * const { count } = await prisma.usuarios_equipos.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends usuarios_equiposDeleteManyArgs>(args?: SelectSubset<T, usuarios_equiposDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more Usuarios_equipos.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {usuarios_equiposUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many Usuarios_equipos
+     * const usuarios_equipos = await prisma.usuarios_equipos.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends usuarios_equiposUpdateManyArgs>(args: SelectSubset<T, usuarios_equiposUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create or update one Usuarios_equipos.
+     * @param {usuarios_equiposUpsertArgs} args - Arguments to update or create a Usuarios_equipos.
+     * @example
+     * // Update or create a Usuarios_equipos
+     * const usuarios_equipos = await prisma.usuarios_equipos.upsert({
+     *   create: {
+     *     // ... data to create a Usuarios_equipos
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the Usuarios_equipos we want to update
+     *   }
+     * })
+     */
+    upsert<T extends usuarios_equiposUpsertArgs>(args: SelectSubset<T, usuarios_equiposUpsertArgs<ExtArgs>>): Prisma__usuarios_equiposClient<$Result.GetResult<Prisma.$usuarios_equiposPayload<ExtArgs>, T, "upsert">, never, ExtArgs>
+
+
+    /**
+     * Count the number of Usuarios_equipos.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {usuarios_equiposCountArgs} args - Arguments to filter Usuarios_equipos to count.
+     * @example
+     * // Count the number of Usuarios_equipos
+     * const count = await prisma.usuarios_equipos.count({
+     *   where: {
+     *     // ... the filter for the Usuarios_equipos we want to count
+     *   }
+     * })
+    **/
+    count<T extends usuarios_equiposCountArgs>(
+      args?: Subset<T, usuarios_equiposCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], Usuarios_equiposCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a Usuarios_equipos.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {Usuarios_equiposAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends Usuarios_equiposAggregateArgs>(args: Subset<T, Usuarios_equiposAggregateArgs>): Prisma.PrismaPromise<GetUsuarios_equiposAggregateType<T>>
+
+    /**
+     * Group by Usuarios_equipos.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {usuarios_equiposGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends usuarios_equiposGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: usuarios_equiposGroupByArgs['orderBy'] }
+        : { orderBy?: usuarios_equiposGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, usuarios_equiposGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetUsuarios_equiposGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the usuarios_equipos model
+   */
+  readonly fields: usuarios_equiposFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for usuarios_equipos.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__usuarios_equiposClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the usuarios_equipos model
+   */ 
+  interface usuarios_equiposFieldRefs {
+    readonly id: FieldRef<"usuarios_equipos", 'Int'>
+    readonly agente_telegram_id: FieldRef<"usuarios_equipos", 'BigInt'>
+    readonly equipo_nombre: FieldRef<"usuarios_equipos", 'String'>
+    readonly created_at: FieldRef<"usuarios_equipos", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * usuarios_equipos findUnique
+   */
+  export type usuarios_equiposFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the usuarios_equipos
+     */
+    select?: usuarios_equiposSelect<ExtArgs> | null
+    /**
+     * Filter, which usuarios_equipos to fetch.
+     */
+    where: usuarios_equiposWhereUniqueInput
+  }
+
+  /**
+   * usuarios_equipos findUniqueOrThrow
+   */
+  export type usuarios_equiposFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the usuarios_equipos
+     */
+    select?: usuarios_equiposSelect<ExtArgs> | null
+    /**
+     * Filter, which usuarios_equipos to fetch.
+     */
+    where: usuarios_equiposWhereUniqueInput
+  }
+
+  /**
+   * usuarios_equipos findFirst
+   */
+  export type usuarios_equiposFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the usuarios_equipos
+     */
+    select?: usuarios_equiposSelect<ExtArgs> | null
+    /**
+     * Filter, which usuarios_equipos to fetch.
+     */
+    where?: usuarios_equiposWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of usuarios_equipos to fetch.
+     */
+    orderBy?: usuarios_equiposOrderByWithRelationInput | usuarios_equiposOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for usuarios_equipos.
+     */
+    cursor?: usuarios_equiposWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` usuarios_equipos from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` usuarios_equipos.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of usuarios_equipos.
+     */
+    distinct?: Usuarios_equiposScalarFieldEnum | Usuarios_equiposScalarFieldEnum[]
+  }
+
+  /**
+   * usuarios_equipos findFirstOrThrow
+   */
+  export type usuarios_equiposFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the usuarios_equipos
+     */
+    select?: usuarios_equiposSelect<ExtArgs> | null
+    /**
+     * Filter, which usuarios_equipos to fetch.
+     */
+    where?: usuarios_equiposWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of usuarios_equipos to fetch.
+     */
+    orderBy?: usuarios_equiposOrderByWithRelationInput | usuarios_equiposOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for usuarios_equipos.
+     */
+    cursor?: usuarios_equiposWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` usuarios_equipos from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` usuarios_equipos.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of usuarios_equipos.
+     */
+    distinct?: Usuarios_equiposScalarFieldEnum | Usuarios_equiposScalarFieldEnum[]
+  }
+
+  /**
+   * usuarios_equipos findMany
+   */
+  export type usuarios_equiposFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the usuarios_equipos
+     */
+    select?: usuarios_equiposSelect<ExtArgs> | null
+    /**
+     * Filter, which usuarios_equipos to fetch.
+     */
+    where?: usuarios_equiposWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of usuarios_equipos to fetch.
+     */
+    orderBy?: usuarios_equiposOrderByWithRelationInput | usuarios_equiposOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing usuarios_equipos.
+     */
+    cursor?: usuarios_equiposWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` usuarios_equipos from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` usuarios_equipos.
+     */
+    skip?: number
+    distinct?: Usuarios_equiposScalarFieldEnum | Usuarios_equiposScalarFieldEnum[]
+  }
+
+  /**
+   * usuarios_equipos create
+   */
+  export type usuarios_equiposCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the usuarios_equipos
+     */
+    select?: usuarios_equiposSelect<ExtArgs> | null
+    /**
+     * The data needed to create a usuarios_equipos.
+     */
+    data: XOR<usuarios_equiposCreateInput, usuarios_equiposUncheckedCreateInput>
+  }
+
+  /**
+   * usuarios_equipos createMany
+   */
+  export type usuarios_equiposCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many usuarios_equipos.
+     */
+    data: usuarios_equiposCreateManyInput | usuarios_equiposCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * usuarios_equipos createManyAndReturn
+   */
+  export type usuarios_equiposCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the usuarios_equipos
+     */
+    select?: usuarios_equiposSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * The data used to create many usuarios_equipos.
+     */
+    data: usuarios_equiposCreateManyInput | usuarios_equiposCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * usuarios_equipos update
+   */
+  export type usuarios_equiposUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the usuarios_equipos
+     */
+    select?: usuarios_equiposSelect<ExtArgs> | null
+    /**
+     * The data needed to update a usuarios_equipos.
+     */
+    data: XOR<usuarios_equiposUpdateInput, usuarios_equiposUncheckedUpdateInput>
+    /**
+     * Choose, which usuarios_equipos to update.
+     */
+    where: usuarios_equiposWhereUniqueInput
+  }
+
+  /**
+   * usuarios_equipos updateMany
+   */
+  export type usuarios_equiposUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update usuarios_equipos.
+     */
+    data: XOR<usuarios_equiposUpdateManyMutationInput, usuarios_equiposUncheckedUpdateManyInput>
+    /**
+     * Filter which usuarios_equipos to update
+     */
+    where?: usuarios_equiposWhereInput
+  }
+
+  /**
+   * usuarios_equipos upsert
+   */
+  export type usuarios_equiposUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the usuarios_equipos
+     */
+    select?: usuarios_equiposSelect<ExtArgs> | null
+    /**
+     * The filter to search for the usuarios_equipos to update in case it exists.
+     */
+    where: usuarios_equiposWhereUniqueInput
+    /**
+     * In case the usuarios_equipos found by the `where` argument doesn't exist, create a new usuarios_equipos with this data.
+     */
+    create: XOR<usuarios_equiposCreateInput, usuarios_equiposUncheckedCreateInput>
+    /**
+     * In case the usuarios_equipos was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<usuarios_equiposUpdateInput, usuarios_equiposUncheckedUpdateInput>
+  }
+
+  /**
+   * usuarios_equipos delete
+   */
+  export type usuarios_equiposDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the usuarios_equipos
+     */
+    select?: usuarios_equiposSelect<ExtArgs> | null
+    /**
+     * Filter which usuarios_equipos to delete.
+     */
+    where: usuarios_equiposWhereUniqueInput
+  }
+
+  /**
+   * usuarios_equipos deleteMany
+   */
+  export type usuarios_equiposDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which usuarios_equipos to delete
+     */
+    where?: usuarios_equiposWhereInput
+  }
+
+  /**
+   * usuarios_equipos without action
+   */
+  export type usuarios_equiposDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the usuarios_equipos
+     */
+    select?: usuarios_equiposSelect<ExtArgs> | null
+  }
+
+
+  /**
+   * Model supervisor_equipos
+   */
+
+  export type AggregateSupervisor_equipos = {
+    _count: Supervisor_equiposCountAggregateOutputType | null
+    _avg: Supervisor_equiposAvgAggregateOutputType | null
+    _sum: Supervisor_equiposSumAggregateOutputType | null
+    _min: Supervisor_equiposMinAggregateOutputType | null
+    _max: Supervisor_equiposMaxAggregateOutputType | null
+  }
+
+  export type Supervisor_equiposAvgAggregateOutputType = {
+    id: number | null
+    supervisor_telegram_id: number | null
+  }
+
+  export type Supervisor_equiposSumAggregateOutputType = {
+    id: number | null
+    supervisor_telegram_id: bigint | null
+  }
+
+  export type Supervisor_equiposMinAggregateOutputType = {
+    id: number | null
+    supervisor_telegram_id: bigint | null
+    equipo_nombre: string | null
+    created_at: Date | null
+  }
+
+  export type Supervisor_equiposMaxAggregateOutputType = {
+    id: number | null
+    supervisor_telegram_id: bigint | null
+    equipo_nombre: string | null
+    created_at: Date | null
+  }
+
+  export type Supervisor_equiposCountAggregateOutputType = {
+    id: number
+    supervisor_telegram_id: number
+    equipo_nombre: number
+    created_at: number
+    _all: number
+  }
+
+
+  export type Supervisor_equiposAvgAggregateInputType = {
+    id?: true
+    supervisor_telegram_id?: true
+  }
+
+  export type Supervisor_equiposSumAggregateInputType = {
+    id?: true
+    supervisor_telegram_id?: true
+  }
+
+  export type Supervisor_equiposMinAggregateInputType = {
+    id?: true
+    supervisor_telegram_id?: true
+    equipo_nombre?: true
+    created_at?: true
+  }
+
+  export type Supervisor_equiposMaxAggregateInputType = {
+    id?: true
+    supervisor_telegram_id?: true
+    equipo_nombre?: true
+    created_at?: true
+  }
+
+  export type Supervisor_equiposCountAggregateInputType = {
+    id?: true
+    supervisor_telegram_id?: true
+    equipo_nombre?: true
+    created_at?: true
+    _all?: true
+  }
+
+  export type Supervisor_equiposAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which supervisor_equipos to aggregate.
+     */
+    where?: supervisor_equiposWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of supervisor_equipos to fetch.
+     */
+    orderBy?: supervisor_equiposOrderByWithRelationInput | supervisor_equiposOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: supervisor_equiposWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` supervisor_equipos from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` supervisor_equipos.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned supervisor_equipos
+    **/
+    _count?: true | Supervisor_equiposCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to average
+    **/
+    _avg?: Supervisor_equiposAvgAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to sum
+    **/
+    _sum?: Supervisor_equiposSumAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: Supervisor_equiposMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: Supervisor_equiposMaxAggregateInputType
+  }
+
+  export type GetSupervisor_equiposAggregateType<T extends Supervisor_equiposAggregateArgs> = {
+        [P in keyof T & keyof AggregateSupervisor_equipos]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateSupervisor_equipos[P]>
+      : GetScalarType<T[P], AggregateSupervisor_equipos[P]>
+  }
+
+
+
+
+  export type supervisor_equiposGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: supervisor_equiposWhereInput
+    orderBy?: supervisor_equiposOrderByWithAggregationInput | supervisor_equiposOrderByWithAggregationInput[]
+    by: Supervisor_equiposScalarFieldEnum[] | Supervisor_equiposScalarFieldEnum
+    having?: supervisor_equiposScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: Supervisor_equiposCountAggregateInputType | true
+    _avg?: Supervisor_equiposAvgAggregateInputType
+    _sum?: Supervisor_equiposSumAggregateInputType
+    _min?: Supervisor_equiposMinAggregateInputType
+    _max?: Supervisor_equiposMaxAggregateInputType
+  }
+
+  export type Supervisor_equiposGroupByOutputType = {
+    id: number
+    supervisor_telegram_id: bigint
+    equipo_nombre: string
+    created_at: Date | null
+    _count: Supervisor_equiposCountAggregateOutputType | null
+    _avg: Supervisor_equiposAvgAggregateOutputType | null
+    _sum: Supervisor_equiposSumAggregateOutputType | null
+    _min: Supervisor_equiposMinAggregateOutputType | null
+    _max: Supervisor_equiposMaxAggregateOutputType | null
+  }
+
+  type GetSupervisor_equiposGroupByPayload<T extends supervisor_equiposGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<Supervisor_equiposGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof Supervisor_equiposGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], Supervisor_equiposGroupByOutputType[P]>
+            : GetScalarType<T[P], Supervisor_equiposGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type supervisor_equiposSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    supervisor_telegram_id?: boolean
+    equipo_nombre?: boolean
+    created_at?: boolean
+  }, ExtArgs["result"]["supervisor_equipos"]>
+
+  export type supervisor_equiposSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    supervisor_telegram_id?: boolean
+    equipo_nombre?: boolean
+    created_at?: boolean
+  }, ExtArgs["result"]["supervisor_equipos"]>
+
+  export type supervisor_equiposSelectScalar = {
+    id?: boolean
+    supervisor_telegram_id?: boolean
+    equipo_nombre?: boolean
+    created_at?: boolean
+  }
+
+
+  export type $supervisor_equiposPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "supervisor_equipos"
+    objects: {}
+    scalars: $Extensions.GetPayloadResult<{
+      id: number
+      supervisor_telegram_id: bigint
+      equipo_nombre: string
+      created_at: Date | null
+    }, ExtArgs["result"]["supervisor_equipos"]>
+    composites: {}
+  }
+
+  type supervisor_equiposGetPayload<S extends boolean | null | undefined | supervisor_equiposDefaultArgs> = $Result.GetResult<Prisma.$supervisor_equiposPayload, S>
+
+  type supervisor_equiposCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = 
+    Omit<supervisor_equiposFindManyArgs, 'select' | 'include' | 'distinct'> & {
+      select?: Supervisor_equiposCountAggregateInputType | true
+    }
+
+  export interface supervisor_equiposDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['supervisor_equipos'], meta: { name: 'supervisor_equipos' } }
+    /**
+     * Find zero or one Supervisor_equipos that matches the filter.
+     * @param {supervisor_equiposFindUniqueArgs} args - Arguments to find a Supervisor_equipos
+     * @example
+     * // Get one Supervisor_equipos
+     * const supervisor_equipos = await prisma.supervisor_equipos.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends supervisor_equiposFindUniqueArgs>(args: SelectSubset<T, supervisor_equiposFindUniqueArgs<ExtArgs>>): Prisma__supervisor_equiposClient<$Result.GetResult<Prisma.$supervisor_equiposPayload<ExtArgs>, T, "findUnique"> | null, null, ExtArgs>
+
+    /**
+     * Find one Supervisor_equipos that matches the filter or throw an error with `error.code='P2025'` 
+     * if no matches were found.
+     * @param {supervisor_equiposFindUniqueOrThrowArgs} args - Arguments to find a Supervisor_equipos
+     * @example
+     * // Get one Supervisor_equipos
+     * const supervisor_equipos = await prisma.supervisor_equipos.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends supervisor_equiposFindUniqueOrThrowArgs>(args: SelectSubset<T, supervisor_equiposFindUniqueOrThrowArgs<ExtArgs>>): Prisma__supervisor_equiposClient<$Result.GetResult<Prisma.$supervisor_equiposPayload<ExtArgs>, T, "findUniqueOrThrow">, never, ExtArgs>
+
+    /**
+     * Find the first Supervisor_equipos that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {supervisor_equiposFindFirstArgs} args - Arguments to find a Supervisor_equipos
+     * @example
+     * // Get one Supervisor_equipos
+     * const supervisor_equipos = await prisma.supervisor_equipos.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends supervisor_equiposFindFirstArgs>(args?: SelectSubset<T, supervisor_equiposFindFirstArgs<ExtArgs>>): Prisma__supervisor_equiposClient<$Result.GetResult<Prisma.$supervisor_equiposPayload<ExtArgs>, T, "findFirst"> | null, null, ExtArgs>
+
+    /**
+     * Find the first Supervisor_equipos that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {supervisor_equiposFindFirstOrThrowArgs} args - Arguments to find a Supervisor_equipos
+     * @example
+     * // Get one Supervisor_equipos
+     * const supervisor_equipos = await prisma.supervisor_equipos.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends supervisor_equiposFindFirstOrThrowArgs>(args?: SelectSubset<T, supervisor_equiposFindFirstOrThrowArgs<ExtArgs>>): Prisma__supervisor_equiposClient<$Result.GetResult<Prisma.$supervisor_equiposPayload<ExtArgs>, T, "findFirstOrThrow">, never, ExtArgs>
+
+    /**
+     * Find zero or more Supervisor_equipos that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {supervisor_equiposFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all Supervisor_equipos
+     * const supervisor_equipos = await prisma.supervisor_equipos.findMany()
+     * 
+     * // Get first 10 Supervisor_equipos
+     * const supervisor_equipos = await prisma.supervisor_equipos.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const supervisor_equiposWithIdOnly = await prisma.supervisor_equipos.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends supervisor_equiposFindManyArgs>(args?: SelectSubset<T, supervisor_equiposFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$supervisor_equiposPayload<ExtArgs>, T, "findMany">>
+
+    /**
+     * Create a Supervisor_equipos.
+     * @param {supervisor_equiposCreateArgs} args - Arguments to create a Supervisor_equipos.
+     * @example
+     * // Create one Supervisor_equipos
+     * const Supervisor_equipos = await prisma.supervisor_equipos.create({
+     *   data: {
+     *     // ... data to create a Supervisor_equipos
+     *   }
+     * })
+     * 
+     */
+    create<T extends supervisor_equiposCreateArgs>(args: SelectSubset<T, supervisor_equiposCreateArgs<ExtArgs>>): Prisma__supervisor_equiposClient<$Result.GetResult<Prisma.$supervisor_equiposPayload<ExtArgs>, T, "create">, never, ExtArgs>
+
+    /**
+     * Create many Supervisor_equipos.
+     * @param {supervisor_equiposCreateManyArgs} args - Arguments to create many Supervisor_equipos.
+     * @example
+     * // Create many Supervisor_equipos
+     * const supervisor_equipos = await prisma.supervisor_equipos.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends supervisor_equiposCreateManyArgs>(args?: SelectSubset<T, supervisor_equiposCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many Supervisor_equipos and returns the data saved in the database.
+     * @param {supervisor_equiposCreateManyAndReturnArgs} args - Arguments to create many Supervisor_equipos.
+     * @example
+     * // Create many Supervisor_equipos
+     * const supervisor_equipos = await prisma.supervisor_equipos.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many Supervisor_equipos and only return the `id`
+     * const supervisor_equiposWithIdOnly = await prisma.supervisor_equipos.createManyAndReturn({ 
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends supervisor_equiposCreateManyAndReturnArgs>(args?: SelectSubset<T, supervisor_equiposCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$supervisor_equiposPayload<ExtArgs>, T, "createManyAndReturn">>
+
+    /**
+     * Delete a Supervisor_equipos.
+     * @param {supervisor_equiposDeleteArgs} args - Arguments to delete one Supervisor_equipos.
+     * @example
+     * // Delete one Supervisor_equipos
+     * const Supervisor_equipos = await prisma.supervisor_equipos.delete({
+     *   where: {
+     *     // ... filter to delete one Supervisor_equipos
+     *   }
+     * })
+     * 
+     */
+    delete<T extends supervisor_equiposDeleteArgs>(args: SelectSubset<T, supervisor_equiposDeleteArgs<ExtArgs>>): Prisma__supervisor_equiposClient<$Result.GetResult<Prisma.$supervisor_equiposPayload<ExtArgs>, T, "delete">, never, ExtArgs>
+
+    /**
+     * Update one Supervisor_equipos.
+     * @param {supervisor_equiposUpdateArgs} args - Arguments to update one Supervisor_equipos.
+     * @example
+     * // Update one Supervisor_equipos
+     * const supervisor_equipos = await prisma.supervisor_equipos.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends supervisor_equiposUpdateArgs>(args: SelectSubset<T, supervisor_equiposUpdateArgs<ExtArgs>>): Prisma__supervisor_equiposClient<$Result.GetResult<Prisma.$supervisor_equiposPayload<ExtArgs>, T, "update">, never, ExtArgs>
+
+    /**
+     * Delete zero or more Supervisor_equipos.
+     * @param {supervisor_equiposDeleteManyArgs} args - Arguments to filter Supervisor_equipos to delete.
+     * @example
+     * // Delete a few Supervisor_equipos
+     * const { count } = await prisma.supervisor_equipos.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends supervisor_equiposDeleteManyArgs>(args?: SelectSubset<T, supervisor_equiposDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more Supervisor_equipos.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {supervisor_equiposUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many Supervisor_equipos
+     * const supervisor_equipos = await prisma.supervisor_equipos.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends supervisor_equiposUpdateManyArgs>(args: SelectSubset<T, supervisor_equiposUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create or update one Supervisor_equipos.
+     * @param {supervisor_equiposUpsertArgs} args - Arguments to update or create a Supervisor_equipos.
+     * @example
+     * // Update or create a Supervisor_equipos
+     * const supervisor_equipos = await prisma.supervisor_equipos.upsert({
+     *   create: {
+     *     // ... data to create a Supervisor_equipos
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the Supervisor_equipos we want to update
+     *   }
+     * })
+     */
+    upsert<T extends supervisor_equiposUpsertArgs>(args: SelectSubset<T, supervisor_equiposUpsertArgs<ExtArgs>>): Prisma__supervisor_equiposClient<$Result.GetResult<Prisma.$supervisor_equiposPayload<ExtArgs>, T, "upsert">, never, ExtArgs>
+
+
+    /**
+     * Count the number of Supervisor_equipos.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {supervisor_equiposCountArgs} args - Arguments to filter Supervisor_equipos to count.
+     * @example
+     * // Count the number of Supervisor_equipos
+     * const count = await prisma.supervisor_equipos.count({
+     *   where: {
+     *     // ... the filter for the Supervisor_equipos we want to count
+     *   }
+     * })
+    **/
+    count<T extends supervisor_equiposCountArgs>(
+      args?: Subset<T, supervisor_equiposCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], Supervisor_equiposCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a Supervisor_equipos.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {Supervisor_equiposAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends Supervisor_equiposAggregateArgs>(args: Subset<T, Supervisor_equiposAggregateArgs>): Prisma.PrismaPromise<GetSupervisor_equiposAggregateType<T>>
+
+    /**
+     * Group by Supervisor_equipos.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {supervisor_equiposGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends supervisor_equiposGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: supervisor_equiposGroupByArgs['orderBy'] }
+        : { orderBy?: supervisor_equiposGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, supervisor_equiposGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetSupervisor_equiposGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the supervisor_equipos model
+   */
+  readonly fields: supervisor_equiposFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for supervisor_equipos.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__supervisor_equiposClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the supervisor_equipos model
+   */ 
+  interface supervisor_equiposFieldRefs {
+    readonly id: FieldRef<"supervisor_equipos", 'Int'>
+    readonly supervisor_telegram_id: FieldRef<"supervisor_equipos", 'BigInt'>
+    readonly equipo_nombre: FieldRef<"supervisor_equipos", 'String'>
+    readonly created_at: FieldRef<"supervisor_equipos", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * supervisor_equipos findUnique
+   */
+  export type supervisor_equiposFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the supervisor_equipos
+     */
+    select?: supervisor_equiposSelect<ExtArgs> | null
+    /**
+     * Filter, which supervisor_equipos to fetch.
+     */
+    where: supervisor_equiposWhereUniqueInput
+  }
+
+  /**
+   * supervisor_equipos findUniqueOrThrow
+   */
+  export type supervisor_equiposFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the supervisor_equipos
+     */
+    select?: supervisor_equiposSelect<ExtArgs> | null
+    /**
+     * Filter, which supervisor_equipos to fetch.
+     */
+    where: supervisor_equiposWhereUniqueInput
+  }
+
+  /**
+   * supervisor_equipos findFirst
+   */
+  export type supervisor_equiposFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the supervisor_equipos
+     */
+    select?: supervisor_equiposSelect<ExtArgs> | null
+    /**
+     * Filter, which supervisor_equipos to fetch.
+     */
+    where?: supervisor_equiposWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of supervisor_equipos to fetch.
+     */
+    orderBy?: supervisor_equiposOrderByWithRelationInput | supervisor_equiposOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for supervisor_equipos.
+     */
+    cursor?: supervisor_equiposWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` supervisor_equipos from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` supervisor_equipos.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of supervisor_equipos.
+     */
+    distinct?: Supervisor_equiposScalarFieldEnum | Supervisor_equiposScalarFieldEnum[]
+  }
+
+  /**
+   * supervisor_equipos findFirstOrThrow
+   */
+  export type supervisor_equiposFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the supervisor_equipos
+     */
+    select?: supervisor_equiposSelect<ExtArgs> | null
+    /**
+     * Filter, which supervisor_equipos to fetch.
+     */
+    where?: supervisor_equiposWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of supervisor_equipos to fetch.
+     */
+    orderBy?: supervisor_equiposOrderByWithRelationInput | supervisor_equiposOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for supervisor_equipos.
+     */
+    cursor?: supervisor_equiposWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` supervisor_equipos from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` supervisor_equipos.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of supervisor_equipos.
+     */
+    distinct?: Supervisor_equiposScalarFieldEnum | Supervisor_equiposScalarFieldEnum[]
+  }
+
+  /**
+   * supervisor_equipos findMany
+   */
+  export type supervisor_equiposFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the supervisor_equipos
+     */
+    select?: supervisor_equiposSelect<ExtArgs> | null
+    /**
+     * Filter, which supervisor_equipos to fetch.
+     */
+    where?: supervisor_equiposWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of supervisor_equipos to fetch.
+     */
+    orderBy?: supervisor_equiposOrderByWithRelationInput | supervisor_equiposOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing supervisor_equipos.
+     */
+    cursor?: supervisor_equiposWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` supervisor_equipos from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` supervisor_equipos.
+     */
+    skip?: number
+    distinct?: Supervisor_equiposScalarFieldEnum | Supervisor_equiposScalarFieldEnum[]
+  }
+
+  /**
+   * supervisor_equipos create
+   */
+  export type supervisor_equiposCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the supervisor_equipos
+     */
+    select?: supervisor_equiposSelect<ExtArgs> | null
+    /**
+     * The data needed to create a supervisor_equipos.
+     */
+    data: XOR<supervisor_equiposCreateInput, supervisor_equiposUncheckedCreateInput>
+  }
+
+  /**
+   * supervisor_equipos createMany
+   */
+  export type supervisor_equiposCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many supervisor_equipos.
+     */
+    data: supervisor_equiposCreateManyInput | supervisor_equiposCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * supervisor_equipos createManyAndReturn
+   */
+  export type supervisor_equiposCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the supervisor_equipos
+     */
+    select?: supervisor_equiposSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * The data used to create many supervisor_equipos.
+     */
+    data: supervisor_equiposCreateManyInput | supervisor_equiposCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * supervisor_equipos update
+   */
+  export type supervisor_equiposUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the supervisor_equipos
+     */
+    select?: supervisor_equiposSelect<ExtArgs> | null
+    /**
+     * The data needed to update a supervisor_equipos.
+     */
+    data: XOR<supervisor_equiposUpdateInput, supervisor_equiposUncheckedUpdateInput>
+    /**
+     * Choose, which supervisor_equipos to update.
+     */
+    where: supervisor_equiposWhereUniqueInput
+  }
+
+  /**
+   * supervisor_equipos updateMany
+   */
+  export type supervisor_equiposUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update supervisor_equipos.
+     */
+    data: XOR<supervisor_equiposUpdateManyMutationInput, supervisor_equiposUncheckedUpdateManyInput>
+    /**
+     * Filter which supervisor_equipos to update
+     */
+    where?: supervisor_equiposWhereInput
+  }
+
+  /**
+   * supervisor_equipos upsert
+   */
+  export type supervisor_equiposUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the supervisor_equipos
+     */
+    select?: supervisor_equiposSelect<ExtArgs> | null
+    /**
+     * The filter to search for the supervisor_equipos to update in case it exists.
+     */
+    where: supervisor_equiposWhereUniqueInput
+    /**
+     * In case the supervisor_equipos found by the `where` argument doesn't exist, create a new supervisor_equipos with this data.
+     */
+    create: XOR<supervisor_equiposCreateInput, supervisor_equiposUncheckedCreateInput>
+    /**
+     * In case the supervisor_equipos was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<supervisor_equiposUpdateInput, supervisor_equiposUncheckedUpdateInput>
+  }
+
+  /**
+   * supervisor_equipos delete
+   */
+  export type supervisor_equiposDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the supervisor_equipos
+     */
+    select?: supervisor_equiposSelect<ExtArgs> | null
+    /**
+     * Filter which supervisor_equipos to delete.
+     */
+    where: supervisor_equiposWhereUniqueInput
+  }
+
+  /**
+   * supervisor_equipos deleteMany
+   */
+  export type supervisor_equiposDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which supervisor_equipos to delete
+     */
+    where?: supervisor_equiposWhereInput
+  }
+
+  /**
+   * supervisor_equipos without action
+   */
+  export type supervisor_equiposDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the supervisor_equipos
+     */
+    select?: supervisor_equiposSelect<ExtArgs> | null
+  }
+
+
+  /**
    * Model solicitudes
    */
 
@@ -2935,6 +5901,36 @@ export namespace Prisma {
   export type UsersScalarFieldEnum = (typeof UsersScalarFieldEnum)[keyof typeof UsersScalarFieldEnum]
 
 
+  export const EquiposScalarFieldEnum: {
+    nombre: 'nombre',
+    capacidad_max: 'capacidad_max',
+    created_at: 'created_at',
+    updated_at: 'updated_at'
+  };
+
+  export type EquiposScalarFieldEnum = (typeof EquiposScalarFieldEnum)[keyof typeof EquiposScalarFieldEnum]
+
+
+  export const Usuarios_equiposScalarFieldEnum: {
+    id: 'id',
+    agente_telegram_id: 'agente_telegram_id',
+    equipo_nombre: 'equipo_nombre',
+    created_at: 'created_at'
+  };
+
+  export type Usuarios_equiposScalarFieldEnum = (typeof Usuarios_equiposScalarFieldEnum)[keyof typeof Usuarios_equiposScalarFieldEnum]
+
+
+  export const Supervisor_equiposScalarFieldEnum: {
+    id: 'id',
+    supervisor_telegram_id: 'supervisor_telegram_id',
+    equipo_nombre: 'equipo_nombre',
+    created_at: 'created_at'
+  };
+
+  export type Supervisor_equiposScalarFieldEnum = (typeof Supervisor_equiposScalarFieldEnum)[keyof typeof Supervisor_equiposScalarFieldEnum]
+
+
   export const SolicitudesScalarFieldEnum: {
     id: 'id',
     user_id: 'user_id',
@@ -3118,6 +6114,155 @@ export namespace Prisma {
     created_at?: DateTimeNullableWithAggregatesFilter<"users"> | Date | string | null
   }
 
+  export type equiposWhereInput = {
+    AND?: equiposWhereInput | equiposWhereInput[]
+    OR?: equiposWhereInput[]
+    NOT?: equiposWhereInput | equiposWhereInput[]
+    nombre?: StringFilter<"equipos"> | string
+    capacidad_max?: IntNullableFilter<"equipos"> | number | null
+    created_at?: DateTimeNullableFilter<"equipos"> | Date | string | null
+    updated_at?: DateTimeNullableFilter<"equipos"> | Date | string | null
+  }
+
+  export type equiposOrderByWithRelationInput = {
+    nombre?: SortOrder
+    capacidad_max?: SortOrderInput | SortOrder
+    created_at?: SortOrderInput | SortOrder
+    updated_at?: SortOrderInput | SortOrder
+  }
+
+  export type equiposWhereUniqueInput = Prisma.AtLeast<{
+    nombre?: string
+    AND?: equiposWhereInput | equiposWhereInput[]
+    OR?: equiposWhereInput[]
+    NOT?: equiposWhereInput | equiposWhereInput[]
+    capacidad_max?: IntNullableFilter<"equipos"> | number | null
+    created_at?: DateTimeNullableFilter<"equipos"> | Date | string | null
+    updated_at?: DateTimeNullableFilter<"equipos"> | Date | string | null
+  }, "nombre">
+
+  export type equiposOrderByWithAggregationInput = {
+    nombre?: SortOrder
+    capacidad_max?: SortOrderInput | SortOrder
+    created_at?: SortOrderInput | SortOrder
+    updated_at?: SortOrderInput | SortOrder
+    _count?: equiposCountOrderByAggregateInput
+    _avg?: equiposAvgOrderByAggregateInput
+    _max?: equiposMaxOrderByAggregateInput
+    _min?: equiposMinOrderByAggregateInput
+    _sum?: equiposSumOrderByAggregateInput
+  }
+
+  export type equiposScalarWhereWithAggregatesInput = {
+    AND?: equiposScalarWhereWithAggregatesInput | equiposScalarWhereWithAggregatesInput[]
+    OR?: equiposScalarWhereWithAggregatesInput[]
+    NOT?: equiposScalarWhereWithAggregatesInput | equiposScalarWhereWithAggregatesInput[]
+    nombre?: StringWithAggregatesFilter<"equipos"> | string
+    capacidad_max?: IntNullableWithAggregatesFilter<"equipos"> | number | null
+    created_at?: DateTimeNullableWithAggregatesFilter<"equipos"> | Date | string | null
+    updated_at?: DateTimeNullableWithAggregatesFilter<"equipos"> | Date | string | null
+  }
+
+  export type usuarios_equiposWhereInput = {
+    AND?: usuarios_equiposWhereInput | usuarios_equiposWhereInput[]
+    OR?: usuarios_equiposWhereInput[]
+    NOT?: usuarios_equiposWhereInput | usuarios_equiposWhereInput[]
+    id?: IntFilter<"usuarios_equipos"> | number
+    agente_telegram_id?: BigIntFilter<"usuarios_equipos"> | bigint | number
+    equipo_nombre?: StringFilter<"usuarios_equipos"> | string
+    created_at?: DateTimeNullableFilter<"usuarios_equipos"> | Date | string | null
+  }
+
+  export type usuarios_equiposOrderByWithRelationInput = {
+    id?: SortOrder
+    agente_telegram_id?: SortOrder
+    equipo_nombre?: SortOrder
+    created_at?: SortOrderInput | SortOrder
+  }
+
+  export type usuarios_equiposWhereUniqueInput = Prisma.AtLeast<{
+    id?: number
+    agente_telegram_id_equipo_nombre?: usuarios_equiposAgente_telegram_idEquipo_nombreCompoundUniqueInput
+    AND?: usuarios_equiposWhereInput | usuarios_equiposWhereInput[]
+    OR?: usuarios_equiposWhereInput[]
+    NOT?: usuarios_equiposWhereInput | usuarios_equiposWhereInput[]
+    agente_telegram_id?: BigIntFilter<"usuarios_equipos"> | bigint | number
+    equipo_nombre?: StringFilter<"usuarios_equipos"> | string
+    created_at?: DateTimeNullableFilter<"usuarios_equipos"> | Date | string | null
+  }, "id" | "agente_telegram_id_equipo_nombre">
+
+  export type usuarios_equiposOrderByWithAggregationInput = {
+    id?: SortOrder
+    agente_telegram_id?: SortOrder
+    equipo_nombre?: SortOrder
+    created_at?: SortOrderInput | SortOrder
+    _count?: usuarios_equiposCountOrderByAggregateInput
+    _avg?: usuarios_equiposAvgOrderByAggregateInput
+    _max?: usuarios_equiposMaxOrderByAggregateInput
+    _min?: usuarios_equiposMinOrderByAggregateInput
+    _sum?: usuarios_equiposSumOrderByAggregateInput
+  }
+
+  export type usuarios_equiposScalarWhereWithAggregatesInput = {
+    AND?: usuarios_equiposScalarWhereWithAggregatesInput | usuarios_equiposScalarWhereWithAggregatesInput[]
+    OR?: usuarios_equiposScalarWhereWithAggregatesInput[]
+    NOT?: usuarios_equiposScalarWhereWithAggregatesInput | usuarios_equiposScalarWhereWithAggregatesInput[]
+    id?: IntWithAggregatesFilter<"usuarios_equipos"> | number
+    agente_telegram_id?: BigIntWithAggregatesFilter<"usuarios_equipos"> | bigint | number
+    equipo_nombre?: StringWithAggregatesFilter<"usuarios_equipos"> | string
+    created_at?: DateTimeNullableWithAggregatesFilter<"usuarios_equipos"> | Date | string | null
+  }
+
+  export type supervisor_equiposWhereInput = {
+    AND?: supervisor_equiposWhereInput | supervisor_equiposWhereInput[]
+    OR?: supervisor_equiposWhereInput[]
+    NOT?: supervisor_equiposWhereInput | supervisor_equiposWhereInput[]
+    id?: IntFilter<"supervisor_equipos"> | number
+    supervisor_telegram_id?: BigIntFilter<"supervisor_equipos"> | bigint | number
+    equipo_nombre?: StringFilter<"supervisor_equipos"> | string
+    created_at?: DateTimeNullableFilter<"supervisor_equipos"> | Date | string | null
+  }
+
+  export type supervisor_equiposOrderByWithRelationInput = {
+    id?: SortOrder
+    supervisor_telegram_id?: SortOrder
+    equipo_nombre?: SortOrder
+    created_at?: SortOrderInput | SortOrder
+  }
+
+  export type supervisor_equiposWhereUniqueInput = Prisma.AtLeast<{
+    id?: number
+    supervisor_telegram_id_equipo_nombre?: supervisor_equiposSupervisor_telegram_idEquipo_nombreCompoundUniqueInput
+    AND?: supervisor_equiposWhereInput | supervisor_equiposWhereInput[]
+    OR?: supervisor_equiposWhereInput[]
+    NOT?: supervisor_equiposWhereInput | supervisor_equiposWhereInput[]
+    supervisor_telegram_id?: BigIntFilter<"supervisor_equipos"> | bigint | number
+    equipo_nombre?: StringFilter<"supervisor_equipos"> | string
+    created_at?: DateTimeNullableFilter<"supervisor_equipos"> | Date | string | null
+  }, "id" | "supervisor_telegram_id_equipo_nombre">
+
+  export type supervisor_equiposOrderByWithAggregationInput = {
+    id?: SortOrder
+    supervisor_telegram_id?: SortOrder
+    equipo_nombre?: SortOrder
+    created_at?: SortOrderInput | SortOrder
+    _count?: supervisor_equiposCountOrderByAggregateInput
+    _avg?: supervisor_equiposAvgOrderByAggregateInput
+    _max?: supervisor_equiposMaxOrderByAggregateInput
+    _min?: supervisor_equiposMinOrderByAggregateInput
+    _sum?: supervisor_equiposSumOrderByAggregateInput
+  }
+
+  export type supervisor_equiposScalarWhereWithAggregatesInput = {
+    AND?: supervisor_equiposScalarWhereWithAggregatesInput | supervisor_equiposScalarWhereWithAggregatesInput[]
+    OR?: supervisor_equiposScalarWhereWithAggregatesInput[]
+    NOT?: supervisor_equiposScalarWhereWithAggregatesInput | supervisor_equiposScalarWhereWithAggregatesInput[]
+    id?: IntWithAggregatesFilter<"supervisor_equipos"> | number
+    supervisor_telegram_id?: BigIntWithAggregatesFilter<"supervisor_equipos"> | bigint | number
+    equipo_nombre?: StringWithAggregatesFilter<"supervisor_equipos"> | string
+    created_at?: DateTimeNullableWithAggregatesFilter<"supervisor_equipos"> | Date | string | null
+  }
+
   export type solicitudesWhereInput = {
     AND?: solicitudesWhereInput | solicitudesWhereInput[]
     OR?: solicitudesWhereInput[]
@@ -3287,6 +6432,147 @@ export namespace Prisma {
     nombre?: NullableStringFieldUpdateOperationsInput | string | null
     role?: StringFieldUpdateOperationsInput | string
     equipo?: NullableStringFieldUpdateOperationsInput | string | null
+    created_at?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  }
+
+  export type equiposCreateInput = {
+    nombre: string
+    capacidad_max?: number | null
+    created_at?: Date | string | null
+    updated_at?: Date | string | null
+  }
+
+  export type equiposUncheckedCreateInput = {
+    nombre: string
+    capacidad_max?: number | null
+    created_at?: Date | string | null
+    updated_at?: Date | string | null
+  }
+
+  export type equiposUpdateInput = {
+    nombre?: StringFieldUpdateOperationsInput | string
+    capacidad_max?: NullableIntFieldUpdateOperationsInput | number | null
+    created_at?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    updated_at?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  }
+
+  export type equiposUncheckedUpdateInput = {
+    nombre?: StringFieldUpdateOperationsInput | string
+    capacidad_max?: NullableIntFieldUpdateOperationsInput | number | null
+    created_at?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    updated_at?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  }
+
+  export type equiposCreateManyInput = {
+    nombre: string
+    capacidad_max?: number | null
+    created_at?: Date | string | null
+    updated_at?: Date | string | null
+  }
+
+  export type equiposUpdateManyMutationInput = {
+    nombre?: StringFieldUpdateOperationsInput | string
+    capacidad_max?: NullableIntFieldUpdateOperationsInput | number | null
+    created_at?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    updated_at?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  }
+
+  export type equiposUncheckedUpdateManyInput = {
+    nombre?: StringFieldUpdateOperationsInput | string
+    capacidad_max?: NullableIntFieldUpdateOperationsInput | number | null
+    created_at?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    updated_at?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  }
+
+  export type usuarios_equiposCreateInput = {
+    agente_telegram_id: bigint | number
+    equipo_nombre: string
+    created_at?: Date | string | null
+  }
+
+  export type usuarios_equiposUncheckedCreateInput = {
+    id?: number
+    agente_telegram_id: bigint | number
+    equipo_nombre: string
+    created_at?: Date | string | null
+  }
+
+  export type usuarios_equiposUpdateInput = {
+    agente_telegram_id?: BigIntFieldUpdateOperationsInput | bigint | number
+    equipo_nombre?: StringFieldUpdateOperationsInput | string
+    created_at?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  }
+
+  export type usuarios_equiposUncheckedUpdateInput = {
+    id?: IntFieldUpdateOperationsInput | number
+    agente_telegram_id?: BigIntFieldUpdateOperationsInput | bigint | number
+    equipo_nombre?: StringFieldUpdateOperationsInput | string
+    created_at?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  }
+
+  export type usuarios_equiposCreateManyInput = {
+    id?: number
+    agente_telegram_id: bigint | number
+    equipo_nombre: string
+    created_at?: Date | string | null
+  }
+
+  export type usuarios_equiposUpdateManyMutationInput = {
+    agente_telegram_id?: BigIntFieldUpdateOperationsInput | bigint | number
+    equipo_nombre?: StringFieldUpdateOperationsInput | string
+    created_at?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  }
+
+  export type usuarios_equiposUncheckedUpdateManyInput = {
+    id?: IntFieldUpdateOperationsInput | number
+    agente_telegram_id?: BigIntFieldUpdateOperationsInput | bigint | number
+    equipo_nombre?: StringFieldUpdateOperationsInput | string
+    created_at?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  }
+
+  export type supervisor_equiposCreateInput = {
+    supervisor_telegram_id: bigint | number
+    equipo_nombre: string
+    created_at?: Date | string | null
+  }
+
+  export type supervisor_equiposUncheckedCreateInput = {
+    id?: number
+    supervisor_telegram_id: bigint | number
+    equipo_nombre: string
+    created_at?: Date | string | null
+  }
+
+  export type supervisor_equiposUpdateInput = {
+    supervisor_telegram_id?: BigIntFieldUpdateOperationsInput | bigint | number
+    equipo_nombre?: StringFieldUpdateOperationsInput | string
+    created_at?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  }
+
+  export type supervisor_equiposUncheckedUpdateInput = {
+    id?: IntFieldUpdateOperationsInput | number
+    supervisor_telegram_id?: BigIntFieldUpdateOperationsInput | bigint | number
+    equipo_nombre?: StringFieldUpdateOperationsInput | string
+    created_at?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  }
+
+  export type supervisor_equiposCreateManyInput = {
+    id?: number
+    supervisor_telegram_id: bigint | number
+    equipo_nombre: string
+    created_at?: Date | string | null
+  }
+
+  export type supervisor_equiposUpdateManyMutationInput = {
+    supervisor_telegram_id?: BigIntFieldUpdateOperationsInput | bigint | number
+    equipo_nombre?: StringFieldUpdateOperationsInput | string
+    created_at?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  }
+
+  export type supervisor_equiposUncheckedUpdateManyInput = {
+    id?: IntFieldUpdateOperationsInput | number
+    supervisor_telegram_id?: BigIntFieldUpdateOperationsInput | bigint | number
+    equipo_nombre?: StringFieldUpdateOperationsInput | string
     created_at?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   }
 
@@ -3578,6 +6864,62 @@ export namespace Prisma {
     _max?: NestedDateTimeNullableFilter<$PrismaModel>
   }
 
+  export type IntNullableFilter<$PrismaModel = never> = {
+    equals?: number | IntFieldRefInput<$PrismaModel> | null
+    in?: number[] | ListIntFieldRefInput<$PrismaModel> | null
+    notIn?: number[] | ListIntFieldRefInput<$PrismaModel> | null
+    lt?: number | IntFieldRefInput<$PrismaModel>
+    lte?: number | IntFieldRefInput<$PrismaModel>
+    gt?: number | IntFieldRefInput<$PrismaModel>
+    gte?: number | IntFieldRefInput<$PrismaModel>
+    not?: NestedIntNullableFilter<$PrismaModel> | number | null
+  }
+
+  export type equiposCountOrderByAggregateInput = {
+    nombre?: SortOrder
+    capacidad_max?: SortOrder
+    created_at?: SortOrder
+    updated_at?: SortOrder
+  }
+
+  export type equiposAvgOrderByAggregateInput = {
+    capacidad_max?: SortOrder
+  }
+
+  export type equiposMaxOrderByAggregateInput = {
+    nombre?: SortOrder
+    capacidad_max?: SortOrder
+    created_at?: SortOrder
+    updated_at?: SortOrder
+  }
+
+  export type equiposMinOrderByAggregateInput = {
+    nombre?: SortOrder
+    capacidad_max?: SortOrder
+    created_at?: SortOrder
+    updated_at?: SortOrder
+  }
+
+  export type equiposSumOrderByAggregateInput = {
+    capacidad_max?: SortOrder
+  }
+
+  export type IntNullableWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: number | IntFieldRefInput<$PrismaModel> | null
+    in?: number[] | ListIntFieldRefInput<$PrismaModel> | null
+    notIn?: number[] | ListIntFieldRefInput<$PrismaModel> | null
+    lt?: number | IntFieldRefInput<$PrismaModel>
+    lte?: number | IntFieldRefInput<$PrismaModel>
+    gt?: number | IntFieldRefInput<$PrismaModel>
+    gte?: number | IntFieldRefInput<$PrismaModel>
+    not?: NestedIntNullableWithAggregatesFilter<$PrismaModel> | number | null
+    _count?: NestedIntNullableFilter<$PrismaModel>
+    _avg?: NestedFloatNullableFilter<$PrismaModel>
+    _sum?: NestedIntNullableFilter<$PrismaModel>
+    _min?: NestedIntNullableFilter<$PrismaModel>
+    _max?: NestedIntNullableFilter<$PrismaModel>
+  }
+
   export type IntFilter<$PrismaModel = never> = {
     equals?: number | IntFieldRefInput<$PrismaModel>
     in?: number[] | ListIntFieldRefInput<$PrismaModel>
@@ -3589,6 +6931,94 @@ export namespace Prisma {
     not?: NestedIntFilter<$PrismaModel> | number
   }
 
+  export type usuarios_equiposAgente_telegram_idEquipo_nombreCompoundUniqueInput = {
+    agente_telegram_id: bigint | number
+    equipo_nombre: string
+  }
+
+  export type usuarios_equiposCountOrderByAggregateInput = {
+    id?: SortOrder
+    agente_telegram_id?: SortOrder
+    equipo_nombre?: SortOrder
+    created_at?: SortOrder
+  }
+
+  export type usuarios_equiposAvgOrderByAggregateInput = {
+    id?: SortOrder
+    agente_telegram_id?: SortOrder
+  }
+
+  export type usuarios_equiposMaxOrderByAggregateInput = {
+    id?: SortOrder
+    agente_telegram_id?: SortOrder
+    equipo_nombre?: SortOrder
+    created_at?: SortOrder
+  }
+
+  export type usuarios_equiposMinOrderByAggregateInput = {
+    id?: SortOrder
+    agente_telegram_id?: SortOrder
+    equipo_nombre?: SortOrder
+    created_at?: SortOrder
+  }
+
+  export type usuarios_equiposSumOrderByAggregateInput = {
+    id?: SortOrder
+    agente_telegram_id?: SortOrder
+  }
+
+  export type IntWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: number | IntFieldRefInput<$PrismaModel>
+    in?: number[] | ListIntFieldRefInput<$PrismaModel>
+    notIn?: number[] | ListIntFieldRefInput<$PrismaModel>
+    lt?: number | IntFieldRefInput<$PrismaModel>
+    lte?: number | IntFieldRefInput<$PrismaModel>
+    gt?: number | IntFieldRefInput<$PrismaModel>
+    gte?: number | IntFieldRefInput<$PrismaModel>
+    not?: NestedIntWithAggregatesFilter<$PrismaModel> | number
+    _count?: NestedIntFilter<$PrismaModel>
+    _avg?: NestedFloatFilter<$PrismaModel>
+    _sum?: NestedIntFilter<$PrismaModel>
+    _min?: NestedIntFilter<$PrismaModel>
+    _max?: NestedIntFilter<$PrismaModel>
+  }
+
+  export type supervisor_equiposSupervisor_telegram_idEquipo_nombreCompoundUniqueInput = {
+    supervisor_telegram_id: bigint | number
+    equipo_nombre: string
+  }
+
+  export type supervisor_equiposCountOrderByAggregateInput = {
+    id?: SortOrder
+    supervisor_telegram_id?: SortOrder
+    equipo_nombre?: SortOrder
+    created_at?: SortOrder
+  }
+
+  export type supervisor_equiposAvgOrderByAggregateInput = {
+    id?: SortOrder
+    supervisor_telegram_id?: SortOrder
+  }
+
+  export type supervisor_equiposMaxOrderByAggregateInput = {
+    id?: SortOrder
+    supervisor_telegram_id?: SortOrder
+    equipo_nombre?: SortOrder
+    created_at?: SortOrder
+  }
+
+  export type supervisor_equiposMinOrderByAggregateInput = {
+    id?: SortOrder
+    supervisor_telegram_id?: SortOrder
+    equipo_nombre?: SortOrder
+    created_at?: SortOrder
+  }
+
+  export type supervisor_equiposSumOrderByAggregateInput = {
+    id?: SortOrder
+    supervisor_telegram_id?: SortOrder
+  }
+
   export type FloatNullableFilter<$PrismaModel = never> = {
     equals?: number | FloatFieldRefInput<$PrismaModel> | null
     in?: number[] | ListFloatFieldRefInput<$PrismaModel> | null
@@ -3598,17 +7028,6 @@ export namespace Prisma {
     gt?: number | FloatFieldRefInput<$PrismaModel>
     gte?: number | FloatFieldRefInput<$PrismaModel>
     not?: NestedFloatNullableFilter<$PrismaModel> | number | null
-  }
-
-  export type IntNullableFilter<$PrismaModel = never> = {
-    equals?: number | IntFieldRefInput<$PrismaModel> | null
-    in?: number[] | ListIntFieldRefInput<$PrismaModel> | null
-    notIn?: number[] | ListIntFieldRefInput<$PrismaModel> | null
-    lt?: number | IntFieldRefInput<$PrismaModel>
-    lte?: number | IntFieldRefInput<$PrismaModel>
-    gt?: number | IntFieldRefInput<$PrismaModel>
-    gte?: number | IntFieldRefInput<$PrismaModel>
-    not?: NestedIntNullableFilter<$PrismaModel> | number | null
   }
 
   export type solicitudesCountOrderByAggregateInput = {
@@ -3682,22 +7101,6 @@ export namespace Prisma {
     imss_num_creditos?: SortOrder
   }
 
-  export type IntWithAggregatesFilter<$PrismaModel = never> = {
-    equals?: number | IntFieldRefInput<$PrismaModel>
-    in?: number[] | ListIntFieldRefInput<$PrismaModel>
-    notIn?: number[] | ListIntFieldRefInput<$PrismaModel>
-    lt?: number | IntFieldRefInput<$PrismaModel>
-    lte?: number | IntFieldRefInput<$PrismaModel>
-    gt?: number | IntFieldRefInput<$PrismaModel>
-    gte?: number | IntFieldRefInput<$PrismaModel>
-    not?: NestedIntWithAggregatesFilter<$PrismaModel> | number
-    _count?: NestedIntFilter<$PrismaModel>
-    _avg?: NestedFloatFilter<$PrismaModel>
-    _sum?: NestedIntFilter<$PrismaModel>
-    _min?: NestedIntFilter<$PrismaModel>
-    _max?: NestedIntFilter<$PrismaModel>
-  }
-
   export type FloatNullableWithAggregatesFilter<$PrismaModel = never> = {
     equals?: number | FloatFieldRefInput<$PrismaModel> | null
     in?: number[] | ListFloatFieldRefInput<$PrismaModel> | null
@@ -3712,22 +7115,6 @@ export namespace Prisma {
     _sum?: NestedFloatNullableFilter<$PrismaModel>
     _min?: NestedFloatNullableFilter<$PrismaModel>
     _max?: NestedFloatNullableFilter<$PrismaModel>
-  }
-
-  export type IntNullableWithAggregatesFilter<$PrismaModel = never> = {
-    equals?: number | IntFieldRefInput<$PrismaModel> | null
-    in?: number[] | ListIntFieldRefInput<$PrismaModel> | null
-    notIn?: number[] | ListIntFieldRefInput<$PrismaModel> | null
-    lt?: number | IntFieldRefInput<$PrismaModel>
-    lte?: number | IntFieldRefInput<$PrismaModel>
-    gt?: number | IntFieldRefInput<$PrismaModel>
-    gte?: number | IntFieldRefInput<$PrismaModel>
-    not?: NestedIntNullableWithAggregatesFilter<$PrismaModel> | number | null
-    _count?: NestedIntNullableFilter<$PrismaModel>
-    _avg?: NestedFloatNullableFilter<$PrismaModel>
-    _sum?: NestedIntNullableFilter<$PrismaModel>
-    _min?: NestedIntNullableFilter<$PrismaModel>
-    _max?: NestedIntNullableFilter<$PrismaModel>
   }
 
   export type BigIntFieldUpdateOperationsInput = {
@@ -3750,14 +7137,6 @@ export namespace Prisma {
     set?: Date | string | null
   }
 
-  export type NullableFloatFieldUpdateOperationsInput = {
-    set?: number | null
-    increment?: number
-    decrement?: number
-    multiply?: number
-    divide?: number
-  }
-
   export type NullableIntFieldUpdateOperationsInput = {
     set?: number | null
     increment?: number
@@ -3768,6 +7147,14 @@ export namespace Prisma {
 
   export type IntFieldUpdateOperationsInput = {
     set?: number
+    increment?: number
+    decrement?: number
+    multiply?: number
+    divide?: number
+  }
+
+  export type NullableFloatFieldUpdateOperationsInput = {
+    set?: number | null
     increment?: number
     decrement?: number
     multiply?: number
@@ -3921,6 +7308,22 @@ export namespace Prisma {
     _max?: NestedDateTimeNullableFilter<$PrismaModel>
   }
 
+  export type NestedIntNullableWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: number | IntFieldRefInput<$PrismaModel> | null
+    in?: number[] | ListIntFieldRefInput<$PrismaModel> | null
+    notIn?: number[] | ListIntFieldRefInput<$PrismaModel> | null
+    lt?: number | IntFieldRefInput<$PrismaModel>
+    lte?: number | IntFieldRefInput<$PrismaModel>
+    gt?: number | IntFieldRefInput<$PrismaModel>
+    gte?: number | IntFieldRefInput<$PrismaModel>
+    not?: NestedIntNullableWithAggregatesFilter<$PrismaModel> | number | null
+    _count?: NestedIntNullableFilter<$PrismaModel>
+    _avg?: NestedFloatNullableFilter<$PrismaModel>
+    _sum?: NestedIntNullableFilter<$PrismaModel>
+    _min?: NestedIntNullableFilter<$PrismaModel>
+    _max?: NestedIntNullableFilter<$PrismaModel>
+  }
+
   export type NestedFloatNullableFilter<$PrismaModel = never> = {
     equals?: number | FloatFieldRefInput<$PrismaModel> | null
     in?: number[] | ListFloatFieldRefInput<$PrismaModel> | null
@@ -3964,22 +7367,6 @@ export namespace Prisma {
     _max?: NestedFloatNullableFilter<$PrismaModel>
   }
 
-  export type NestedIntNullableWithAggregatesFilter<$PrismaModel = never> = {
-    equals?: number | IntFieldRefInput<$PrismaModel> | null
-    in?: number[] | ListIntFieldRefInput<$PrismaModel> | null
-    notIn?: number[] | ListIntFieldRefInput<$PrismaModel> | null
-    lt?: number | IntFieldRefInput<$PrismaModel>
-    lte?: number | IntFieldRefInput<$PrismaModel>
-    gt?: number | IntFieldRefInput<$PrismaModel>
-    gte?: number | IntFieldRefInput<$PrismaModel>
-    not?: NestedIntNullableWithAggregatesFilter<$PrismaModel> | number | null
-    _count?: NestedIntNullableFilter<$PrismaModel>
-    _avg?: NestedFloatNullableFilter<$PrismaModel>
-    _sum?: NestedIntNullableFilter<$PrismaModel>
-    _min?: NestedIntNullableFilter<$PrismaModel>
-    _max?: NestedIntNullableFilter<$PrismaModel>
-  }
-
 
 
   /**
@@ -3989,6 +7376,18 @@ export namespace Prisma {
      * @deprecated Use usersDefaultArgs instead
      */
     export type usersArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = usersDefaultArgs<ExtArgs>
+    /**
+     * @deprecated Use equiposDefaultArgs instead
+     */
+    export type equiposArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = equiposDefaultArgs<ExtArgs>
+    /**
+     * @deprecated Use usuarios_equiposDefaultArgs instead
+     */
+    export type usuarios_equiposArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = usuarios_equiposDefaultArgs<ExtArgs>
+    /**
+     * @deprecated Use supervisor_equiposDefaultArgs instead
+     */
+    export type supervisor_equiposArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = supervisor_equiposDefaultArgs<ExtArgs>
     /**
      * @deprecated Use solicitudesDefaultArgs instead
      */

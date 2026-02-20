@@ -22,6 +22,35 @@ model users {
   created_at DateTime? @default(now()) @db.Timestamp(6)
 }
 
+model equipos {
+  nombre        String    @id
+  capacidad_max Int?
+  created_at    DateTime? @default(now()) @db.Timestamp(6)
+  updated_at    DateTime? @default(now()) @db.Timestamp(6)
+}
+
+model usuarios_equipos {
+  id                 Int       @id @default(autoincrement())
+  agente_telegram_id BigInt
+  equipo_nombre      String
+  created_at         DateTime? @default(now()) @db.Timestamp(6)
+
+  @@unique([agente_telegram_id, equipo_nombre])
+  @@index([agente_telegram_id])
+  @@index([equipo_nombre])
+}
+
+model supervisor_equipos {
+  id                     Int       @id @default(autoincrement())
+  supervisor_telegram_id BigInt
+  equipo_nombre          String
+  created_at             DateTime? @default(now()) @db.Timestamp(6)
+
+  @@unique([supervisor_telegram_id, equipo_nombre])
+  @@index([supervisor_telegram_id])
+  @@index([equipo_nombre])
+}
+
 model solicitudes {
   id                    Int       @id @default(autoincrement())
   user_id               BigInt
