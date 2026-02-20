@@ -7,7 +7,7 @@
  * 3. Solo CREA los que no existen — NO elimina usuarios existentes
  * 4. Username generado, password = username, debe_cambiar_password = true
  *
- * Ejecutar: npx tsx scripts/import-users-capacidades.ts
+ * Ejecutar: npx tsx prisma/import-users-capacidades.ts
  */
 
 import { PrismaClient } from "@prisma/client";
