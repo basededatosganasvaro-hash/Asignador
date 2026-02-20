@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth-utils";
 import { createUserSchema } from "@/lib/validators";
+import { serializeBigInt } from "@/lib/utils";
 import bcrypt from "bcryptjs";
 
 export async function GET() {
@@ -21,6 +22,7 @@ export async function GET() {
         equipo_id: true,
         sucursal_id: true,
         region_id: true,
+        telegram_id: true,
         equipo: { select: { id: true, nombre: true } },
         sucursal: { select: { id: true, nombre: true } },
         region: { select: { id: true, nombre: true } },
@@ -29,7 +31,7 @@ export async function GET() {
       orderBy: { created_at: "desc" },
     });
 
-    return NextResponse.json(usuarios);
+    return NextResponse.json(serializeBigInt(usuarios));
   } catch {
     // Fallback: si la columna username no existe aún en la BD
     const usuarios = await prisma.$queryRaw`
@@ -54,7 +56,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const { nombre, username, email, password, rol, equipo_id, sucursal_id, region_id } = parsed.data;
+  const { nombre, username, email, password, rol, equipo_id, sucursal_id, region_id, telegram_id } = parsed.data;
 
   const existingEmail = await prisma.usuarios.findUnique({ where: { email } });
   if (existingEmail) {
@@ -75,7 +77,7 @@ export async function POST(request: Request) {
   const password_hash = await bcrypt.hash(password, 10);
 
   const usuario = await prisma.usuarios.create({
-    data: { nombre, username, email, password_hash, rol, equipo_id, sucursal_id, region_id },
+    data: { nombre, username, email, password_hash, rol, equipo_id, sucursal_id, region_id, telegram_id: telegram_id ? BigInt(telegram_id) : null },
     select: {
       id: true,
       nombre: true,
@@ -87,8 +89,9 @@ export async function POST(request: Request) {
       equipo_id: true,
       sucursal_id: true,
       region_id: true,
+      telegram_id: true,
     },
   });
 
-  return NextResponse.json(usuario, { status: 201 });
+  return NextResponse.json(serializeBigInt(usuario), { status: 201 });
 }

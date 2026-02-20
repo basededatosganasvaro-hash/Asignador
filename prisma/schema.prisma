@@ -75,6 +75,8 @@ model usuarios {
   rol           String   @default("promotor") @db.VarChar(30)
   // admin | gerente_regional | gerente_sucursal | supervisor | promotor
 
+  telegram_id BigInt?  @unique
+
   equipo_id   Int?
   sucursal_id Int?
   region_id   Int?

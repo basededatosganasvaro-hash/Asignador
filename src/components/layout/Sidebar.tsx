@@ -75,6 +75,7 @@ export default function Sidebar({ rol, open, onToggle }: SidebarProps) {
       {isPromotor ? (
         <List sx={{ px: open ? 1 : 0.5, pt: 1 }}>
           <NavItem label="Mi Asignación" href="/promotor/oportunidades" icon={<TrendingUpIcon />} pathname={pathname} open={open} />
+          <NavItem label="Capacidades" href="/promotor/capacidades" icon={<AssignmentIcon />} exact pathname={pathname} open={open} />
           <NavItem label="WhatsApp" href="/promotor/whatsapp" icon={<WhatsAppIcon />} exact pathname={pathname} open={open} />
           <NavItem label="Configuración" href="/promotor/configuracion" icon={<SettingsIcon />} exact pathname={pathname} open={open} />
         </List>

@@ -35,6 +35,7 @@ interface Usuario {
   region: { id: number; nombre: string } | null;
   sucursal: { id: number; nombre: string } | null;
   equipo: { id: number; nombre: string } | null;
+  telegram_id: string | null;
   _count: { lotes: number; oportunidades: number };
 }
 
@@ -79,6 +80,7 @@ export default function UsuariosPage() {
     region_id: "",
     sucursal_id: "",
     equipo_id: "",
+    telegram_id: "",
   });
 
   const fetchUsers = useCallback(async () => {
@@ -105,7 +107,7 @@ export default function UsuariosPage() {
 
   const handleOpenCreate = async () => {
     setEditingUser(null);
-    setFormData({ nombre: "", username: "", email: "", password: "", rol: "promotor", region_id: "", sucursal_id: "", equipo_id: "" });
+    setFormData({ nombre: "", username: "", email: "", password: "", rol: "promotor", region_id: "", sucursal_id: "", equipo_id: "", telegram_id: "" });
     await fetchOrgData();
     setDialogOpen(true);
   };
@@ -121,6 +123,7 @@ export default function UsuariosPage() {
       region_id: user.region?.id ? String(user.region.id) : "",
       sucursal_id: user.sucursal?.id ? String(user.sucursal.id) : "",
       equipo_id: user.equipo?.id ? String(user.equipo.id) : "",
+      telegram_id: user.telegram_id ? String(user.telegram_id) : "",
     });
     await fetchOrgData();
     setDialogOpen(true);
@@ -138,6 +141,7 @@ export default function UsuariosPage() {
       region_id: formData.region_id ? Number(formData.region_id) : null,
       sucursal_id: formData.sucursal_id ? Number(formData.sucursal_id) : null,
       equipo_id: formData.equipo_id ? Number(formData.equipo_id) : null,
+      telegram_id: formData.telegram_id ? Number(formData.telegram_id) : null,
     };
     if (formData.password) body.password = formData.password;
 
@@ -185,6 +189,12 @@ export default function UsuariosPage() {
           variant="outlined"
         />
       ),
+    },
+    {
+      field: "telegram_id",
+      headerName: "Telegram ID",
+      width: 140,
+      valueGetter: (_value: unknown, row: Usuario) => row.telegram_id ?? "—",
     },
     {
       field: "sucursal",
@@ -296,6 +306,12 @@ export default function UsuariosPage() {
               <MenuItem value="admin">Admin</MenuItem>
             </Select>
           </FormControl>
+          <TextField
+            fullWidth label="Telegram ID (opcional)" value={formData.telegram_id}
+            onChange={(e) => setFormData({ ...formData, telegram_id: e.target.value })}
+            margin="normal" type="number"
+            helperText="ID de Telegram del usuario (para vincular capacidades)"
+          />
           <FormControl fullWidth margin="normal">
             <InputLabel>Región (opcional)</InputLabel>
             <Select value={formData.region_id} label="Región (opcional)" onChange={(e) => setFormData({ ...formData, region_id: e.target.value })}>

@@ -14,6 +14,7 @@ export const createUserSchema = z.object({
   equipo_id: z.number().int().positive().optional().nullable(),
   sucursal_id: z.number().int().positive().optional().nullable(),
   region_id: z.number().int().positive().optional().nullable(),
+  telegram_id: z.number().int().positive().optional().nullable(),
 });
 
 export const updateUserSchema = z.object({
@@ -26,6 +27,7 @@ export const updateUserSchema = z.object({
   equipo_id: z.number().int().positive().optional().nullable(),
   sucursal_id: z.number().int().positive().optional().nullable(),
   region_id: z.number().int().positive().optional().nullable(),
+  telegram_id: z.number().int().positive().optional().nullable(),
 });
 
 // ============ CONFIGURACION ============

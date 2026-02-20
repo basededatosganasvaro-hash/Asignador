@@ -1,0 +1,45 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma-capacidades"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_CAPACIDADES_URL")
+}
+
+// =============================================
+// BD CAPACIDADES — SOLO LECTURA DESDE EL SISTEMA
+// Bot de Telegram para solicitudes IMSS
+// =============================================
+
+model users {
+  user_id    BigInt    @id
+  username   String?
+  nombre     String?
+  role       String
+  equipo     String?
+  created_at DateTime? @default(now()) @db.Timestamp(6)
+}
+
+model solicitudes {
+  id                    Int       @id @default(autoincrement())
+  user_id               BigInt
+  convenio              String
+  nombre_cliente        String?
+  numero_empleado       String?
+  rfc                   String?
+  curp                  String?
+  nss                   String?
+  estado                String?   @default("pendiente")
+  respuesta             String?
+  fecha_solicitud       DateTime? @default(now()) @db.Timestamp(6)
+  imss_capacidad_actual Float?    @db.Real
+  imss_num_creditos     Int?
+  imss_telefonos        String?
+  imss_creditos_json    String?
+  equipo                String?
+
+  @@index([user_id])
+  @@index([estado])
+}

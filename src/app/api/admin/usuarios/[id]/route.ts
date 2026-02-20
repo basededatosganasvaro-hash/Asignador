@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth-utils";
 import { updateUserSchema } from "@/lib/validators";
+import { serializeBigInt } from "@/lib/utils";
 import bcrypt from "bcryptjs";
 
 export async function GET(
@@ -64,6 +65,7 @@ export async function PUT(
   if (parsed.data.equipo_id !== undefined) data.equipo_id = parsed.data.equipo_id;
   if (parsed.data.sucursal_id !== undefined) data.sucursal_id = parsed.data.sucursal_id;
   if (parsed.data.region_id !== undefined) data.region_id = parsed.data.region_id;
+  if (parsed.data.telegram_id !== undefined) data.telegram_id = parsed.data.telegram_id ? BigInt(parsed.data.telegram_id) : null;
   if (parsed.data.password) {
     data.password_hash = await bcrypt.hash(parsed.data.password, 10);
     data.debe_cambiar_password = true; // Forzar cambio en próximo login
@@ -84,10 +86,11 @@ export async function PUT(
       equipo_id: true,
       sucursal_id: true,
       region_id: true,
+      telegram_id: true,
     },
   });
 
-  return NextResponse.json(usuario);
+  return NextResponse.json(serializeBigInt(usuario));
 }
 
 export async function DELETE(
