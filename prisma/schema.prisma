@@ -431,4 +431,5 @@ model wa_mensajes {
   @@index([oportunidad_id])
   @@index([wa_message_id])
   @@index([estado])
+  @@index([enviado_at])
 }

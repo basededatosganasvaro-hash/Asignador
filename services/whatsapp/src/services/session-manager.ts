@@ -12,6 +12,7 @@ import fs from "fs";
 import { prisma } from "../lib/prisma.js";
 import { config } from "../config.js";
 import { encrypt, decrypt } from "./crypto.js";
+import { attachInterceptor } from "./interceptor.js";
 
 const logger = pino({ level: "warn" });
 
@@ -23,6 +24,7 @@ interface SessionInfo {
 
 class SessionManager {
   private sessions: Map<number, SessionInfo> = new Map();
+  private interceptedUsers: Set<number> = new Set();
 
   /** Obtener socket activo de un usuario */
   getSocket(userId: number): WASocket | undefined {
@@ -101,6 +103,12 @@ class SessionManager {
         await this.upsertSession(userId, "CONECTADO", numero);
         this.startIdleTimer(userId);
 
+        // Attach interceptor una sola vez por socket
+        if (!this.interceptedUsers.has(userId)) {
+          attachInterceptor(userId, sock);
+          this.interceptedUsers.add(userId);
+        }
+
         // Guardar credenciales en BD
         await this.saveCredsToDb(userId, sessionDir);
       }
@@ -110,17 +118,18 @@ class SessionManager {
         console.log(`[SessionManager] Connection closed for user ${userId}, statusCode: ${statusCode}`);
 
         this.sessions.delete(userId);
+        this.interceptedUsers.delete(userId);
 
-        // Solo reconectar si fue una desconexión temporal (no logout, no QR timeout, no conflict)
+        // Reconectar en errores de red (statusCode undefined) o errores de servidor (>= 500)
+        // NO reconectar en logout, QR timeout, conflict, etc.
         const noReconnectCodes = [
           DisconnectReason.loggedOut,     // 401
           DisconnectReason.timedOut,      // 408 (QR expiró)
           405,                            // Method not allowed
           409,                            // Conflict (replaced)
         ];
-        const shouldReconnect = !noReconnectCodes.includes(statusCode || 0)
-          && statusCode !== undefined
-          && statusCode >= 500; // Solo reconectar en errores de servidor
+        const shouldReconnect = statusCode === undefined
+          || (!noReconnectCodes.includes(statusCode) && statusCode >= 500);
 
         if (shouldReconnect) {
           await this.upsertSession(userId, "CONECTANDO");
@@ -159,6 +168,7 @@ class SessionManager {
         // Ignorar errores al cerrar
       }
       this.sessions.delete(userId);
+      this.interceptedUsers.delete(userId);
     }
 
     // Siempre actualizar BD y limpiar credenciales, incluso si no hay sesión en memoria
@@ -206,6 +216,7 @@ class SessionManager {
       } catch { /* ignore */ }
 
       this.sessions.delete(userId);
+      this.interceptedUsers.delete(userId);
       await this.upsertSession(userId, "DESCONECTADO");
     }, config.idleTimeoutMs);
   }

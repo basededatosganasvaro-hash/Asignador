@@ -1,6 +1,5 @@
 import { prisma } from "../lib/prisma.js";
 import { sessionManager } from "./session-manager.js";
-import { attachInterceptor } from "./interceptor.js";
 import { humanDelay, burstSize, burstPause, typingDelay, sleep } from "../lib/anti-spam.js";
 import { config } from "../config.js";
 import { proto } from "@whiskeysockets/baileys";
@@ -96,9 +95,6 @@ class MessageQueue {
       return;
     }
 
-    // Attach interceptor para capturar delivery/read receipts
-    attachInterceptor(userId, sock);
-
     // Actualizar estado de campaña
     await prisma.wa_campanas.update({
       where: { id: campanaId },
@@ -117,8 +113,10 @@ class MessageQueue {
     const enviadosHoy = await prisma.wa_mensajes.count({
       where: {
         campana: { usuario_id: userId },
-        enviado_at: { gte: hoy },
-        estado: { in: ["ENVIADO", "ENTREGADO", "LEIDO"] },
+        OR: [
+          { enviado_at: { gte: hoy }, estado: { in: ["ENVIADO", "ENTREGADO", "LEIDO"] } },
+          { estado: { in: ["PENDIENTE", "ENVIANDO"] }, created_at: { gte: hoy } },
+        ],
       },
     });
 
@@ -134,16 +132,20 @@ class MessageQueue {
     let remaining = config.antiSpam.dailyLimit - enviadosHoy;
     let burstCount = 0;
     let currentBurstSize = burstSize();
+    let msgIndex = 0;
 
     for (const msg of mensajes) {
-      // Check campaña still active
-      const campana = await prisma.wa_campanas.findUnique({
-        where: { id: campanaId },
-        select: { estado: true },
-      });
-      if (!campana || !["ENVIANDO", "EN_COLA"].includes(campana.estado)) {
-        break;
+      // Check campaña still active (every 5 messages to reduce DB queries)
+      if (msgIndex % 5 === 0) {
+        const campana = await prisma.wa_campanas.findUnique({
+          where: { id: campanaId },
+          select: { estado: true },
+        });
+        if (!campana || !["ENVIANDO", "EN_COLA"].includes(campana.estado)) {
+          break;
+        }
       }
+      msgIndex++;
 
       // Check daily limit
       if (remaining <= 0) {
@@ -174,12 +176,16 @@ class MessageQueue {
         // Format phone for WhatsApp
         const jid = `${msg.numero_destino}@s.whatsapp.net`;
 
-        // Simulate typing
-        await sock.presenceSubscribe(jid);
-        await sleep(1000);
-        await sock.sendPresenceUpdate("composing", jid);
-        await sleep(typingDelay(msg.mensaje_texto.length));
-        await sock.sendPresenceUpdate("paused", jid);
+        // Simulate typing (non-critical — don't block send on failure)
+        try {
+          await sock.presenceSubscribe(jid);
+          await sleep(1000);
+          await sock.sendPresenceUpdate("composing", jid);
+          await sleep(typingDelay(msg.mensaje_texto.length));
+          await sock.sendPresenceUpdate("paused", jid);
+        } catch (presenceErr) {
+          console.warn(`[MessageQueue] Presence simulation failed for ${msg.numero_destino}, proceeding with send`);
+        }
 
         // Send
         const sent = await sock.sendMessage(jid, { text: msg.mensaje_texto });

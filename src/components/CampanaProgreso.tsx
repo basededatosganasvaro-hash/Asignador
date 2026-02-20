@@ -46,7 +46,7 @@ export default function CampanaProgreso() {
 
   useEffect(() => {
     fetchCampanas();
-    const interval = setInterval(fetchCampanas, 5000); // Poll every 5s
+    const interval = setInterval(fetchCampanas, 10000); // Poll every 10s
     return () => clearInterval(interval);
   }, [fetchCampanas]);
 
