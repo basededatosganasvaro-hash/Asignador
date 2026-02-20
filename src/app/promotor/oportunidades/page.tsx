@@ -368,6 +368,8 @@ export default function OportunidadesPage() {
         setSnackbar({ open: true, message: "Venta registrada!", severity: "success" });
       } else if (result.devuelta_al_pool) {
         setSnackbar({ open: true, message: "Cliente devuelto al pool", severity: "success" });
+      } else if (result.enviada_a_bandeja) {
+        setSnackbar({ open: true, message: "Enviado a bandeja de supervisor", severity: "success" });
       } else {
         setSnackbar({ open: true, message: "Etapa actualizada", severity: "success" });
       }

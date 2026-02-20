@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { prismaClientes } from "@/lib/prisma-clientes";
 import { requireAuth } from "@/lib/auth-utils";
-import { verificarHorarioConConfig } from "@/lib/horario";
+import { verificarHorarioConConfig, calcularTimerVenceConConfig } from "@/lib/horario";
 
 export async function POST(req: Request) {
   const { session, error } = await requireAuth();
@@ -84,7 +84,7 @@ export async function POST(req: Request) {
     where: { clave: "timer_captacion_horas" },
   });
   const timerHoras = timerConfig ? Number(timerConfig.valor) : 168;
-  const timerVence = new Date(Date.now() + timerHoras * 60 * 60 * 1000);
+  const timerVence = await calcularTimerVenceConConfig(timerHoras);
 
   // Transacción: crear oportunidad + captacion + historial
   const oportunidad = await prisma.$transaction(async (tx) => {

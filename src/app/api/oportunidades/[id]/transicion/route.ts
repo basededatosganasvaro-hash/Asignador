@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth-utils";
-import { verificarHorarioConConfig } from "@/lib/horario";
+import { verificarHorarioConConfig, calcularTimerVenceConConfig } from "@/lib/horario";
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { session, error } = await requireAuth();
@@ -67,20 +67,34 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ error: "Debes ingresar el numero de operacion para registrar una venta" }, { status: 400 });
   }
 
-  // Salidas auto-regresan al pool (el promotor ya no las ve, pero el historial se preserva)
-  const esSalidaAutoPool =
+  // Validar num_operacion no duplicado
+  if (esVenta && num_operacion) {
+    const ventaExistente = await prisma.ventas.findFirst({
+      where: { num_operacion: num_operacion.trim() },
+      select: { id: true, oportunidad_id: true },
+    });
+    if (ventaExistente) {
+      return NextResponse.json(
+        { error: `El numero de operacion "${num_operacion}" ya fue registrado en otra venta` },
+        { status: 409 }
+      );
+    }
+  }
+
+  // Salidas/finales no-Venta van a bandeja del supervisor (activo=true, sin timer)
+  const enviarABandeja =
     (transicion.etapa_destino?.tipo === "SALIDA") ||
     (transicion.etapa_destino?.tipo === "FINAL" && transicion.etapa_destino?.nombre !== "Venta");
 
-  // Calcular nuevo timer_vence
+  // Calcular nuevo timer_vence (no aplicar timer a items de bandeja)
   let timerVence: Date | null = null;
-  if (transicion.etapa_destino?.timer_horas) {
-    timerVence = new Date(Date.now() + transicion.etapa_destino.timer_horas * 60 * 60 * 1000);
+  if (!enviarABandeja && transicion.etapa_destino?.timer_horas) {
+    timerVence = await calcularTimerVenceConConfig(transicion.etapa_destino.timer_horas);
   }
 
   // Ejecutar en transacción
   const [opActualizada] = await prisma.$transaction(async (tx) => {
-    const deactivate = transicion.devuelve_al_pool || esSalidaAutoPool;
+    const deactivate = transicion.devuelve_al_pool;
     const updated = await tx.oportunidades.update({
       where: { id: Number(id) },
       data: {
@@ -124,6 +138,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   return NextResponse.json({
     oportunidad: opActualizada,
     confetti: esVenta,
-    devuelta_al_pool: transicion.devuelve_al_pool || esSalidaAutoPool,
+    devuelta_al_pool: transicion.devuelve_al_pool,
+    enviada_a_bandeja: enviarABandeja,
   });
 }

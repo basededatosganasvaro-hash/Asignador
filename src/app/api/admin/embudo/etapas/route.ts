@@ -27,6 +27,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Faltan campos requeridos" }, { status: 400 });
   }
 
+  if (timer_horas != null && Number(timer_horas) <= 0) {
+    return NextResponse.json({ error: "timer_horas debe ser un numero positivo" }, { status: 400 });
+  }
+
   const etapa = await prisma.embudo_etapas.create({
     data: { nombre, orden: Number(orden), tipo, timer_horas: timer_horas ? Number(timer_horas) : null, color },
   });

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { prismaClientes } from "@/lib/prisma-clientes";
 import { requireAuth } from "@/lib/auth-utils";
-import { verificarHorarioConConfig } from "@/lib/horario";
+import { verificarHorarioConConfig, calcularTimerVenceConConfig } from "@/lib/horario";
 import { Prisma } from "@prisma/client";
 
 // GET: Listar lotes del usuario autenticado
@@ -147,16 +147,7 @@ export async function POST(request: Request) {
 
     const requested = Math.min(cantidad || cupoDisponible, cupoDisponible);
 
-    // 4. Obtener cliente_ids ya asignados activamente (BD Sistema)
-    const activas = await prisma.oportunidades.findMany({
-      where: { activo: true },
-      select: { cliente_id: true },
-    });
-    const excludeIds = new Set(
-      activas.map((o) => o.cliente_id).filter((id): id is number => id !== null)
-    );
-
-    // 4b. Cooldown: excluir clientes que este promotor ya trabajó en los últimos N meses
+    // 4. Obtener cliente_ids a excluir en una sola query SQL (activos + cooldown)
     const cooldownConfig = await prisma.configuracion.findUnique({
       where: { clave: "cooldown_meses" },
     });
@@ -164,29 +155,20 @@ export async function POST(request: Request) {
     const cooldownDate = new Date();
     cooldownDate.setMonth(cooldownDate.getMonth() - cooldownMeses);
 
-    const cooldownOps = await prisma.oportunidades.findMany({
-      where: {
-        usuario_id: userId,
-        cliente_id: { not: null },
-        created_at: { gte: cooldownDate },
-      },
-      select: { cliente_id: true },
-    });
-    for (const op of cooldownOps) {
-      if (op.cliente_id !== null) excludeIds.add(op.cliente_id);
-    }
-
-    const excludeArray = Array.from(excludeIds);
+    const excludeRows = await prisma.$queryRaw<{ cliente_id: number }[]>`
+      SELECT DISTINCT cliente_id FROM oportunidades
+      WHERE cliente_id IS NOT NULL
+        AND (activo = true OR (usuario_id = ${userId} AND created_at >= ${cooldownDate}))
+    `;
+    const excludeArray = excludeRows.map((r) => r.cliente_id);
 
     // 5. Construir SQL con parámetros posicionales explícitos ($1, $2, ...)
     const params: unknown[] = [];
     const clauses: string[] = [];
 
     if (excludeArray.length > 0) {
-      const start = params.length + 1;
-      const placeholders = excludeArray.map((_, i) => `$${start + i}`).join(", ");
-      clauses.push(`id NOT IN (${placeholders})`);
-      params.push(...excludeArray);
+      params.push(excludeArray);
+      clauses.push(`id != ALL($${params.length})`);
     }
     if (tipo_cliente) { params.push(tipo_cliente); clauses.push(`tipo_cliente = $${params.length}`); }
     if (convenio)     { params.push(convenio);     clauses.push(`convenio = $${params.length}`); }
@@ -215,7 +197,7 @@ export async function POST(request: Request) {
       where: { nombre: "Asignado", activo: true },
     });
     const timerVence = etapaAsignado?.timer_horas
-      ? new Date(Date.now() + etapaAsignado.timer_horas * 60 * 60 * 1000)
+      ? await calcularTimerVenceConConfig(etapaAsignado.timer_horas)
       : null;
 
     // 8. Transacción atómica: crear lote + oportunidades + historial + actualizar cupo
@@ -223,14 +205,15 @@ export async function POST(request: Request) {
 
     const result = await prisma.$transaction(
       async (tx) => {
-        // 8a. Verificar cupo con lock (si tabla existe)
+        // 8a. Verificar cupo con lock atómico (si tabla existe)
         let cupoFinal = cupoDisponible;
         if (usaCupoDiario) {
-          await tx.cupo_diario.upsert({
-            where: { usuario_id_fecha: { usuario_id: userId, fecha: today } },
-            create: { usuario_id: userId, fecha: today, total_asignado: 0, limite: maxPerDay },
-            update: {},
-          });
+          // INSERT si no existe + SELECT FOR UPDATE en una sola operación atómica
+          await tx.$executeRaw`
+            INSERT INTO cupo_diario (usuario_id, fecha, total_asignado, limite)
+            VALUES (${userId}, ${today}, 0, ${maxPerDay})
+            ON CONFLICT (usuario_id, fecha) DO NOTHING
+          `;
 
           const cupoRows = await tx.$queryRaw<{ id: number; total_asignado: number; limite: number }[]>`
             SELECT id, total_asignado, limite FROM cupo_diario
@@ -286,16 +269,13 @@ export async function POST(request: Request) {
           })),
         });
 
-        // 8e. Actualizar cupo atómicamente (si tabla existe)
+        // 8e. Incrementar cupo atómicamente (row ya está locked por FOR UPDATE)
         if (usaCupoDiario) {
-          const cupoRows = await tx.$queryRaw<{ id: number; total_asignado: number }[]>`
-            SELECT id, total_asignado FROM cupo_diario
+          await tx.$executeRaw`
+            UPDATE cupo_diario
+            SET total_asignado = total_asignado + ${registrosReales.length}
             WHERE usuario_id = ${userId} AND fecha = ${today}
           `;
-          await tx.cupo_diario.update({
-            where: { id: cupoRows[0].id },
-            data: { total_asignado: cupoRows[0].total_asignado + registrosReales.length },
-          });
         }
 
         return { lote, cantidadReal: registrosReales.length, cupoRestante: cupoFinal - registrosReales.length };

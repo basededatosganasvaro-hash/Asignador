@@ -28,16 +28,7 @@ export async function GET(req: Request) {
   const municipio     = searchParams.get("municipio")     || undefined;
   const tiene_telefono = searchParams.get("tiene_telefono") === "true" || searchParams.get("tiene_telefono") === "1";
 
-  // IDs activos a excluir (para el conteo real)
-  const activas = await prisma.oportunidades.findMany({
-    where: { activo: true },
-    select: { cliente_id: true },
-  });
-  const excludeIds = new Set(
-    activas.map((o) => o.cliente_id).filter((id): id is number => id !== null)
-  );
-
-  // Cooldown: excluir clientes que este promotor ya trabajó en los últimos N meses
+  // IDs a excluir: activos + cooldown en una sola query
   const cooldownConfig = await prisma.configuracion.findUnique({
     where: { clave: "cooldown_meses" },
   });
@@ -45,19 +36,12 @@ export async function GET(req: Request) {
   const cooldownDate = new Date();
   cooldownDate.setMonth(cooldownDate.getMonth() - cooldownMeses);
 
-  const cooldownOps = await prisma.oportunidades.findMany({
-    where: {
-      usuario_id: userId,
-      cliente_id: { not: null },
-      created_at: { gte: cooldownDate },
-    },
-    select: { cliente_id: true },
-  });
-  for (const op of cooldownOps) {
-    if (op.cliente_id !== null) excludeIds.add(op.cliente_id);
-  }
-
-  const excludeArray = Array.from(excludeIds);
+  const excludeRows = await prisma.$queryRaw<{ cliente_id: number }[]>`
+    SELECT DISTINCT cliente_id FROM oportunidades
+    WHERE cliente_id IS NOT NULL
+      AND (activo = true OR (usuario_id = ${userId} AND created_at >= ${cooldownDate}))
+  `;
+  const excludeArray = excludeRows.map((r) => r.cliente_id);
 
   // Base where para excluir activos + cooldown
   const baseExclude = excludeArray.length > 0 ? { id: { notIn: excludeArray } } : {};
@@ -87,14 +71,13 @@ export async function GET(req: Request) {
     cupoRestante = Math.max(0, maxPerDay - lotesHoy.reduce((s, l) => s + l.cantidad, 0));
   }
 
-  // Queries en paralelo — cada una filtra por los upstream ya seleccionados
-  // NOTA: las queries de distinct NO usan baseExclude (sería lento con NOT IN miles de IDs)
-  // Solo el count final lo usa para dar el número real de disponibles
+  // Queries en paralelo — cada una filtra por disponibilidad real (excluye activos + cooldown)
   const [tiposRaw, conveniosRaw, estadosRaw, municipiosRaw, disponibles] = await Promise.all([
     // tipo_cliente: siempre independiente
     prismaClientes.clientes.findMany({
       select: { tipo_cliente: true },
       distinct: ["tipo_cliente"],
+      where: { ...baseExclude },
       orderBy: { tipo_cliente: "asc" },
     }),
 
@@ -103,6 +86,7 @@ export async function GET(req: Request) {
       select: { convenio: true },
       distinct: ["convenio"],
       where: {
+        ...baseExclude,
         ...(tipo_cliente ? { tipo_cliente } : {}),
       },
       orderBy: { convenio: "asc" },
@@ -113,6 +97,7 @@ export async function GET(req: Request) {
       select: { estado: true },
       distinct: ["estado"],
       where: {
+        ...baseExclude,
         ...(tipo_cliente ? { tipo_cliente } : {}),
         ...(convenio ? { convenio } : {}),
       },
@@ -125,6 +110,7 @@ export async function GET(req: Request) {
           select: { municipio: true },
           distinct: ["municipio"],
           where: {
+            ...baseExclude,
             ...(tipo_cliente ? { tipo_cliente } : {}),
             ...(convenio ? { convenio } : {}),
             estado,

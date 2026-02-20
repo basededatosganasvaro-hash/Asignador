@@ -25,7 +25,12 @@ export async function GET() {
   const oportunidades = await prisma.oportunidades.findMany({
     where: {
       activo: true,
-      etapa: { tipo: "SALIDA" },
+      etapa: {
+        OR: [
+          { tipo: "SALIDA" },
+          { tipo: "FINAL", nombre: { not: "Venta" } },
+        ],
+      },
       ...equipoFilter,
     },
     include: {
