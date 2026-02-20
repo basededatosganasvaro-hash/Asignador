@@ -17,11 +17,10 @@ import WorkIcon from "@mui/icons-material/Work";
 import FunnelIcon from "@mui/icons-material/FilterAlt";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import InboxIcon from "@mui/icons-material/Inbox";
-import PersonAddIcon from "@mui/icons-material/PersonAdd";
 import RuleIcon from "@mui/icons-material/Rule";
 import WhatsAppIcon from "@mui/icons-material/WhatsApp";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
-import ChevronRightIcon from "@mui/icons-material/ChevronRight";
+import MenuIcon from "@mui/icons-material/Menu";
 
 const DRAWER_WIDTH = 260;
 const DRAWER_COLLAPSED = 68;
@@ -37,24 +36,10 @@ export default function Sidebar({ rol, open, onToggle }: SidebarProps) {
 
   const isPromotor = rol !== "admin" && rol !== "gerente_regional" && rol !== "gerente_sucursal" && rol !== "supervisor";
 
-  return (
-    <Drawer
-      variant="permanent"
-      sx={{
-        width: open ? DRAWER_WIDTH : DRAWER_COLLAPSED,
-        flexShrink: 0,
-        "& .MuiDrawer-paper": {
-          width: open ? DRAWER_WIDTH : DRAWER_COLLAPSED,
-          boxSizing: "border-box",
-          bgcolor: "#1a237e",
-          color: "white",
-          overflowX: "hidden",
-          transition: "width 0.25s ease",
-        },
-      }}
-    >
-      <Toolbar sx={{ justifyContent: open ? "space-between" : "center", minHeight: "64px !important", px: open ? 2 : 0 }}>
-        {open ? (
+  const navContent = (showLabels: boolean) => (
+    <>
+      <Toolbar sx={{ justifyContent: showLabels ? "space-between" : "center", minHeight: "64px !important", px: showLabels ? 2 : 0 }}>
+        {showLabels ? (
           <>
             <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
               <AssignmentIcon sx={{ fontSize: 28 }} />
@@ -66,52 +51,93 @@ export default function Sidebar({ rol, open, onToggle }: SidebarProps) {
           </>
         ) : (
           <IconButton onClick={onToggle} sx={{ color: "rgba(255,255,255,0.7)" }} size="small">
-            <ChevronRightIcon />
+            <MenuIcon />
           </IconButton>
         )}
       </Toolbar>
       <Divider sx={{ borderColor: "rgba(255,255,255,0.12)" }} />
 
       {isPromotor ? (
-        <List sx={{ px: open ? 1 : 0.5, pt: 1 }}>
-          <NavItem label="Mi Asignación" href="/promotor/oportunidades" icon={<TrendingUpIcon />} pathname={pathname} open={open} />
-          <NavItem label="Capacidades" href="/promotor/capacidades" icon={<AssignmentIcon />} exact pathname={pathname} open={open} />
-          <NavItem label="WhatsApp" href="/promotor/whatsapp" icon={<WhatsAppIcon />} exact pathname={pathname} open={open} />
-          <NavItem label="Configuración" href="/promotor/configuracion" icon={<SettingsIcon />} exact pathname={pathname} open={open} />
+        <List sx={{ px: showLabels ? 1 : 0.5, pt: 1 }}>
+          <NavItem label="Mi Asignación" href="/promotor/oportunidades" icon={<TrendingUpIcon />} pathname={pathname} open={showLabels} />
+          <NavItem label="WhatsApp" href="/promotor/whatsapp" icon={<WhatsAppIcon />} exact pathname={pathname} open={showLabels} />
+          <NavItem label="Configuración" href="/promotor/configuracion" icon={<SettingsIcon />} exact pathname={pathname} open={showLabels} />
         </List>
       ) : (
-        <List sx={{ px: open ? 1 : 0.5, pt: 1 }}>
-          <NavItem label="Dashboard" href="/admin" icon={<DashboardIcon />} exact pathname={pathname} open={open} />
-          <NavItem label="Bandeja" href="/admin/bandeja" icon={<InboxIcon />} pathname={pathname} open={open} />
-          <NavItem label="Usuarios" href="/admin/usuarios" icon={<PeopleIcon />} exact pathname={pathname} open={open} />
-          <NavItem label="Embudo" href="/admin/embudo" icon={<FunnelIcon />} exact pathname={pathname} open={open} />
-          <NavItem label="Convenio Reglas" href="/admin/convenio-reglas" icon={<RuleIcon />} exact pathname={pathname} open={open} />
+        <List sx={{ px: showLabels ? 1 : 0.5, pt: 1 }}>
+          <NavItem label="Dashboard" href="/admin" icon={<DashboardIcon />} exact pathname={pathname} open={showLabels} />
+          <NavItem label="Bandeja" href="/admin/bandeja" icon={<InboxIcon />} pathname={pathname} open={showLabels} />
+          <NavItem label="Usuarios" href="/admin/usuarios" icon={<PeopleIcon />} exact pathname={pathname} open={showLabels} />
+          <NavItem label="Embudo" href="/admin/embudo" icon={<FunnelIcon />} exact pathname={pathname} open={showLabels} />
+          <NavItem label="Convenio Reglas" href="/admin/convenio-reglas" icon={<RuleIcon />} exact pathname={pathname} open={showLabels} />
 
           <Divider sx={{ borderColor: "rgba(255,255,255,0.12)", my: 1 }} />
-          {open && (
+          {showLabels && (
             <Typography sx={{ px: 1.5, py: 0.5, fontSize: "0.7rem", fontWeight: 700, color: "rgba(255,255,255,0.45)", letterSpacing: 1 }}>
               ORGANIZACIÓN
             </Typography>
           )}
-          <NavItem label="Regiones" href="/admin/organizacion/regiones" icon={<MapIcon />} pathname={pathname} indent open={open} />
-          <NavItem label="Zonas" href="/admin/organizacion/zonas" icon={<BusinessIcon />} pathname={pathname} indent open={open} />
-          <NavItem label="Sucursales" href="/admin/organizacion/sucursales" icon={<LocationCityIcon />} pathname={pathname} indent open={open} />
-          <NavItem label="Equipos" href="/admin/organizacion/equipos" icon={<GroupsIcon />} pathname={pathname} indent open={open} />
+          <NavItem label="Regiones" href="/admin/organizacion/regiones" icon={<MapIcon />} pathname={pathname} indent open={showLabels} />
+          <NavItem label="Zonas" href="/admin/organizacion/zonas" icon={<BusinessIcon />} pathname={pathname} indent open={showLabels} />
+          <NavItem label="Sucursales" href="/admin/organizacion/sucursales" icon={<LocationCityIcon />} pathname={pathname} indent open={showLabels} />
+          <NavItem label="Equipos" href="/admin/organizacion/equipos" icon={<GroupsIcon />} pathname={pathname} indent open={showLabels} />
 
           <Divider sx={{ borderColor: "rgba(255,255,255,0.12)", my: 1 }} />
-          {open && (
+          {showLabels && (
             <Typography sx={{ px: 1.5, py: 0.5, fontSize: "0.7rem", fontWeight: 700, color: "rgba(255,255,255,0.45)", letterSpacing: 1 }}>
               MENSAJERÍA
             </Typography>
           )}
-          <NavItem label="WhatsApp" href="/admin/whatsapp" icon={<WhatsAppIcon />} exact pathname={pathname} open={open} />
+          <NavItem label="WhatsApp" href="/admin/whatsapp" icon={<WhatsAppIcon />} exact pathname={pathname} open={showLabels} />
 
           <Divider sx={{ borderColor: "rgba(255,255,255,0.12)", my: 1 }} />
-          <NavItem label="Planes de Trabajo" href="/admin/planes-trabajo" icon={<WorkIcon />} exact pathname={pathname} open={open} />
-          <NavItem label="Configuracion" href="/admin/configuracion" icon={<SettingsIcon />} exact pathname={pathname} open={open} />
+          <NavItem label="Planes de Trabajo" href="/admin/planes-trabajo" icon={<WorkIcon />} exact pathname={pathname} open={showLabels} />
+          <NavItem label="Configuracion" href="/admin/configuracion" icon={<SettingsIcon />} exact pathname={pathname} open={showLabels} />
         </List>
       )}
-    </Drawer>
+    </>
+  );
+
+  const drawerPaperSx = {
+    boxSizing: "border-box" as const,
+    bgcolor: "#1a237e",
+    color: "white",
+    overflowX: "hidden" as const,
+  };
+
+  return (
+    <>
+      {/* Mini-rail: always visible */}
+      <Drawer
+        variant="permanent"
+        sx={{
+          width: DRAWER_COLLAPSED,
+          flexShrink: 0,
+          "& .MuiDrawer-paper": {
+            ...drawerPaperSx,
+            width: DRAWER_COLLAPSED,
+          },
+        }}
+      >
+        {navContent(false)}
+      </Drawer>
+
+      {/* Expanded overlay drawer */}
+      <Drawer
+        variant="temporary"
+        open={open}
+        onClose={onToggle}
+        sx={{
+          "& .MuiDrawer-paper": {
+            ...drawerPaperSx,
+            width: DRAWER_WIDTH,
+          },
+        }}
+        ModalProps={{ keepMounted: true }}
+      >
+        {navContent(true)}
+      </Drawer>
+    </>
   );
 }
 

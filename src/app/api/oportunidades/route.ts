@@ -115,7 +115,7 @@ export async function GET() {
         convenio: op.captacion?.convenio ?? "—",
         estado: datos.estado ?? "—",
         municipio: datos.municipio ?? "—",
-        tipo_cliente: "Captado",
+        tipo_cliente: op.origen === "CAPACIDADES" ? "Capacidad IMSS" : "Captado",
         tel_1: datos.tel_1 ?? null,
       };
     }

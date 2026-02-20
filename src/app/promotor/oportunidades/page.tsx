@@ -16,6 +16,7 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
 import AssignmentIndIcon from "@mui/icons-material/AssignmentInd";
 import CampaignIcon from "@mui/icons-material/Campaign";
+import SyncIcon from "@mui/icons-material/Sync";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { buildWhatsAppUrl, formatPhoneForWA, WA_MENSAJES_DEFAULT } from "@/lib/whatsapp";
@@ -86,7 +87,7 @@ interface HistorialEntry {
   etapa_nueva: { id: number; nombre: string; color: string } | null;
 }
 
-type FiltroCard = "capturados" | string; // "capturados" o nombre de etapa
+type FiltroCard = "capturados" | "capacidades" | string; // "capturados", "capacidades" o nombre de etapa
 
 
 // Columnas que no se pueden ocultar
@@ -154,6 +155,7 @@ const CLIENTE_EXTRA_COLUMNS: { field: string; headerName: string; width?: number
 
 const CARD_COLORS: Record<string, string> = {
   capturados: "#26C6DA",
+  capacidades: "#4caf50",
   Asignado: "#42A5F5",
   Contactado: "#FFA726",
   Interesado: "#AB47BC",
@@ -229,6 +231,7 @@ export default function OportunidadesPage() {
   const [transitioning, setTransitioning] = useState<number | null>(null);
   const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" as "success" | "error" });
   const [confetti, setConfetti] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>(() => {
     if (typeof window !== "undefined") {
       try {
@@ -267,6 +270,11 @@ export default function OportunidadesPage() {
     open: false, loading: false, data: null,
   });
 
+  // Modal Ver capacidad IMSS
+  const [capDialog, setCapDialog] = useState<{ open: boolean; loading: boolean; data: Record<string, unknown> | null }>({
+    open: false, loading: false, data: null,
+  });
+
   // Dialog num_operacion para Venta
   const [ventaDialog, setVentaDialog] = useState<{ open: boolean; opId: number; transId: number; numOp: string; monto: string; saving: boolean }>({
     open: false, opId: 0, transId: 0, numOp: "", monto: "", saving: false,
@@ -288,6 +296,27 @@ export default function OportunidadesPage() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
+  // Sincronizar capacidades
+  const handleSyncCapacidades = async () => {
+    setSyncing(true);
+    try {
+      const res = await fetch("/api/promotor/capacidades/sync", { method: "POST" });
+      const data = await res.json();
+      if (res.ok) {
+        const msg = data.sincronizados > 0
+          ? `${data.sincronizados} capacidad${data.sincronizados !== 1 ? "es" : ""} sincronizada${data.sincronizados !== 1 ? "s" : ""}`
+          : "Todo al día, sin capacidades nuevas";
+        setSnackbar({ open: true, message: msg, severity: "success" });
+        if (data.sincronizados > 0) fetchData();
+      } else {
+        setSnackbar({ open: true, message: data.error || "Error al sincronizar", severity: "error" });
+      }
+    } catch {
+      setSnackbar({ open: true, message: "Error de conexión", severity: "error" });
+    }
+    setSyncing(false);
+  };
+
 
   // Mapa de transiciones por etapa_id
   const transMap = useMemo(() => {
@@ -299,14 +328,21 @@ export default function OportunidadesPage() {
   // Solo etapas de avance + Venta (sin salidas)
   const etapasAvance = useMemo(() => etapas.filter((e) => e.tipo === "AVANCE" || (e.tipo === "FINAL" && e.nombre === "Venta")), [etapas]);
 
-  // ─── CONTEOS para las 6 cards ───
+  // ─── CONTEOS para las 7 cards ───
   const conteos = useMemo(() => {
-    const result: Record<string, number> = { capturados: 0 };
+    const result: Record<string, number> = { capturados: 0, capacidades: 0 };
     etapasAvance.forEach((e) => { result[e.nombre] = 0; });
     rows.forEach((r) => {
       if (r.origen === "CAPTACION") {
         result.capturados++;
-      } else if (r.etapa) {
+      } else if (r.origen === "CAPACIDADES" && r.etapa?.nombre === "Asignado") {
+        result.capacidades++;
+      } else if (r.origen !== "CAPACIDADES" && r.etapa) {
+        if (result[r.etapa.nombre] !== undefined) {
+          result[r.etapa.nombre]++;
+        }
+      } else if (r.origen === "CAPACIDADES" && r.etapa && r.etapa.nombre !== "Asignado") {
+        // Capacidades que ya avanzaron: contar en su etapa normal
         if (result[r.etapa.nombre] !== undefined) {
           result[r.etapa.nombre]++;
         }
@@ -328,8 +364,10 @@ export default function OportunidadesPage() {
   const filtered = useMemo(() => {
     if (cardFiltro === "capturados") {
       return rows.filter((r) => r.origen === "CAPTACION");
+    } else if (cardFiltro === "capacidades") {
+      return rows.filter((r) => r.origen === "CAPACIDADES" && r.etapa?.nombre === "Asignado");
     } else if (cardFiltro) {
-      return rows.filter((r) => r.origen !== "CAPTACION" && r.etapa?.nombre === cardFiltro);
+      return rows.filter((r) => r.origen !== "CAPTACION" && !(r.origen === "CAPACIDADES" && r.etapa?.nombre === "Asignado") && r.etapa?.nombre === cardFiltro);
     }
     return rows;
   }, [rows, cardFiltro]);
@@ -399,27 +437,49 @@ export default function OportunidadesPage() {
     }
   };
 
+  // ─── Modal Ver capacidad IMSS ───
+  const openCapDialog = async (row: Oportunidad) => {
+    setCapDialog({ open: true, loading: true, data: null });
+    // datos de capacidad están en los campos de la row (vienen de captacion.datos_json)
+    const datos: Record<string, unknown> = {
+      nombres: row.nombres,
+      convenio: row.convenio,
+      tel_1: row.tel_1,
+      nss: row.nss,
+      curp: row.curp,
+      rfc: row.rfc,
+      numero_empleado: row.num_empleado,
+      imss_capacidad_actual: row.imss_capacidad_actual,
+      imss_num_creditos: row.imss_num_creditos,
+      imss_telefonos: row.imss_telefonos,
+      respuesta: row.respuesta,
+      imss_creditos_json: row.imss_creditos_json,
+      fecha_solicitud: row.fecha_solicitud,
+    };
+    setCapDialog({ open: true, loading: false, data: datos });
+  };
+
   // ─── Columnas DataGrid ───
   const columns: GridColDef[] = useMemo(() => [
     {
       field: "nombres", headerName: "Cliente", flex: 1.3, minWidth: 160,
       renderCell: (p) => (
         <Box sx={{ display: "flex", flexDirection: "column", justifyContent: "center", height: "100%" }}>
-          <Typography variant="body2" fontWeight={600} noWrap>{p.value}</Typography>
-          <Typography variant="caption" color="text.secondary" noWrap>{p.row.tipo_cliente}</Typography>
+          <Typography variant="body2" fontWeight={600} noWrap sx={{ fontSize: 12 }}>{p.value}</Typography>
+          <Typography variant="caption" color="text.secondary" noWrap sx={{ fontSize: 10 }}>{p.row.tipo_cliente}</Typography>
         </Box>
       ),
     },
     {
       field: "convenio", headerName: "Convenio", flex: 0.9, minWidth: 120,
-      renderCell: (p) => <Typography variant="body2" noWrap>{p.value}</Typography>,
+      renderCell: (p) => <Typography variant="body2" noWrap sx={{ fontSize: 12 }}>{p.value}</Typography>,
     },
     {
       field: "estado", headerName: "Ubicación", width: 150,
       renderCell: (p) => (
         <Box sx={{ display: "flex", flexDirection: "column", justifyContent: "center", height: "100%" }}>
-          <Typography variant="body2" noWrap>{p.value}</Typography>
-          <Typography variant="caption" color="text.secondary" noWrap>{p.row.municipio}</Typography>
+          <Typography variant="body2" noWrap sx={{ fontSize: 12 }}>{p.value}</Typography>
+          <Typography variant="caption" color="text.secondary" noWrap sx={{ fontSize: 10 }}>{p.row.municipio}</Typography>
         </Box>
       ),
     },
@@ -428,24 +488,24 @@ export default function OportunidadesPage() {
       renderCell: (p) => p.value
         ? (
           <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-            <PhoneIcon sx={{ fontSize: 13, color: "success.main" }} />
-            <Typography variant="body2">{p.value}</Typography>
+            <PhoneIcon sx={{ fontSize: 12, color: "success.main" }} />
+            <Typography variant="body2" sx={{ fontSize: 12 }}>{p.value}</Typography>
           </Box>
         )
-        : <Typography variant="body2" color="text.disabled">—</Typography>,
+        : <Typography variant="body2" color="text.disabled" sx={{ fontSize: 12 }}>—</Typography>,
     },
     {
       field: "etapa", headerName: "Etapa", width: 180, sortable: false,
       renderCell: (p) => {
         const etapa = p.row.etapa;
-        if (!etapa) return <Chip label="Sin etapa" size="small" />;
+        if (!etapa) return <Chip label="Sin etapa" size="small" sx={{ height: 22 }} />;
         const trans = transMap[etapa.id] || [];
         const isLoading = transitioning === p.row.id;
 
-        if (isLoading) return <CircularProgress size={20} />;
+        if (isLoading) return <CircularProgress size={18} />;
 
         if (trans.length === 0) {
-          return <Chip label={etapa.nombre} size="small" sx={{ bgcolor: etapa.color, color: "white", fontWeight: 600 }} />;
+          return <Chip label={etapa.nombre} size="small" sx={{ bgcolor: etapa.color, color: "white", fontWeight: 600, height: 22, fontSize: 11 }} />;
         }
 
         return (
@@ -454,13 +514,13 @@ export default function OportunidadesPage() {
               value=""
               displayEmpty
               renderValue={() => (
-                <Chip label={etapa.nombre} size="small" sx={{ bgcolor: etapa.color, color: "white", fontWeight: 600 }} />
+                <Chip label={etapa.nombre} size="small" sx={{ bgcolor: etapa.color, color: "white", fontWeight: 600, height: 22, fontSize: 11 }} />
               )}
               onChange={(e) => handleTransicion(p.row.id, Number(e.target.value))}
               onClick={(e) => e.stopPropagation()}
               sx={{
                 "& .MuiOutlinedInput-notchedOutline": { border: "none" },
-                "& .MuiSelect-select": { py: 0.5, pl: 0 },
+                "& .MuiSelect-select": { py: 0.3, pl: 0 },
               }}
             >
               {trans.map((t) => (
@@ -470,8 +530,8 @@ export default function OportunidadesPage() {
                       <Box sx={{ width: 10, height: 10, borderRadius: "50%", bgcolor: t.etapa_destino.color, flexShrink: 0 }} />
                     )}
                     <Box>
-                      <Typography variant="body2" fontWeight={500}>{t.nombre_accion}</Typography>
-                      <Typography variant="caption" color="text.secondary">
+                      <Typography variant="body2" fontWeight={500} sx={{ fontSize: 12 }}>{t.nombre_accion}</Typography>
+                      <Typography variant="caption" color="text.secondary" sx={{ fontSize: 10 }}>
                         {t.etapa_destino ? `→ ${t.etapa_destino.nombre}` : "→ Pool"}
                       </Typography>
                     </Box>
@@ -489,7 +549,7 @@ export default function OportunidadesPage() {
         headerName: "No. Operacion",
         width: 150,
         renderCell: (p: GridRenderCellParams) => (
-          <Typography variant="body2" fontWeight={500}>{p.value || "—"}</Typography>
+          <Typography variant="body2" fontWeight={500} sx={{ fontSize: 12 }}>{p.value || "—"}</Typography>
         ),
       } satisfies GridColDef,
       {
@@ -497,11 +557,31 @@ export default function OportunidadesPage() {
         headerName: "Monto",
         width: 130,
         renderCell: (p: GridRenderCellParams) => (
-          <Typography variant="body2" fontWeight={700} sx={{ color: "#2E7D32" }}>
+          <Typography variant="body2" fontWeight={700} sx={{ color: "#2E7D32", fontSize: 12 }}>
             {p.value != null
               ? Number(p.value).toLocaleString("es-MX", { style: "currency", currency: "MXN" })
               : "—"}
           </Typography>
+        ),
+      } satisfies GridColDef,
+    ] : []),
+    ...(cardFiltro === "capacidades" ? [
+      {
+        field: "imss_capacidad_actual",
+        headerName: "Capacidad",
+        width: 110,
+        renderCell: (p: GridRenderCellParams) => (
+          <Typography variant="body2" fontWeight={600} sx={{ fontSize: 12, color: "#4caf50" }}>
+            {p.value != null ? `$${Number(p.value).toLocaleString("es-MX")}` : "—"}
+          </Typography>
+        ),
+      } satisfies GridColDef,
+      {
+        field: "imss_num_creditos",
+        headerName: "Créditos",
+        width: 90,
+        renderCell: (p: GridRenderCellParams) => (
+          <Typography variant="body2" sx={{ fontSize: 12 }}>{p.value ?? "—"}</Typography>
         ),
       } satisfies GridColDef,
     ] : []),
@@ -511,14 +591,14 @@ export default function OportunidadesPage() {
       headerName: col.headerName,
       width: col.width || 120,
       renderCell: (p: GridRenderCellParams) => (
-        <Typography variant="body2" noWrap>{p.value ?? "—"}</Typography>
+        <Typography variant="body2" noWrap sx={{ fontSize: 12 }}>{p.value ?? "—"}</Typography>
       ),
     } satisfies GridColDef)),
     {
       field: "wa_estado", headerName: "WA", width: 90, sortable: false,
       renderCell: (p: GridRenderCellParams) => {
         const estado = p.value as string | null;
-        if (!estado) return <Typography variant="body2" color="text.disabled" sx={{ fontSize: 11 }}>—</Typography>;
+        if (!estado) return <Typography variant="body2" color="text.disabled" sx={{ fontSize: 10 }}>—</Typography>;
         const colorMap: Record<string, string> = {
           PENDIENTE: "#9e9e9e", ENVIANDO: "#ff9800", ENVIADO: "#2196f3",
           ENTREGADO: "#4caf50", LEIDO: "#00bcd4", FALLIDO: "#f44336",
@@ -527,7 +607,7 @@ export default function OportunidadesPage() {
           <Chip
             label={estado}
             size="small"
-            sx={{ bgcolor: colorMap[estado] || "grey.500", color: "white", fontWeight: 700, fontSize: 10, height: 20 }}
+            sx={{ bgcolor: colorMap[estado] || "grey.500", color: "white", fontWeight: 700, fontSize: 9, height: 20 }}
           />
         );
       },
@@ -543,13 +623,13 @@ export default function OportunidadesPage() {
           value={observaciones[p.row.id] || ""}
           onChange={(e) => setObservaciones((prev) => ({ ...prev, [p.row.id]: e.target.value }))}
           onClick={(e) => e.stopPropagation()}
-          InputProps={{ disableUnderline: true, sx: { fontSize: 13 } }}
-          sx={{ "& input": { py: 0.5 } }}
+          InputProps={{ disableUnderline: true, sx: { fontSize: 12 } }}
+          sx={{ "& input": { py: 0.3 } }}
         />
       ),
     },
     {
-      field: "__acciones", headerName: "", width: 100, sortable: false,
+      field: "__acciones", headerName: "", width: cardFiltro === "capacidades" ? 130 : 100, sortable: false,
       renderCell: (p) => {
         const etapaNombre = p.row.origen === "CAPTACION" ? "Capturados" : (p.row.etapa?.nombre || "Asignado");
         const waUrl = buildWhatsAppUrl(p.row.tel_1 || "", p.row.nombres || "", etapaNombre, promotorNombre, plantillas);
@@ -561,9 +641,20 @@ export default function OportunidadesPage() {
                 color="primary"
                 onClick={(e) => { e.stopPropagation(); openVerDialog(p.row.id); }}
               >
-                <VisibilityIcon fontSize="small" />
+                <VisibilityIcon sx={{ fontSize: 18 }} />
               </IconButton>
             </Tooltip>
+            {cardFiltro === "capacidades" && (
+              <Tooltip title="Ver datos IMSS">
+                <IconButton
+                  size="small"
+                  sx={{ color: "#4caf50" }}
+                  onClick={(e) => { e.stopPropagation(); openCapDialog(p.row); }}
+                >
+                  <AssignmentIndIcon sx={{ fontSize: 18 }} />
+                </IconButton>
+              </Tooltip>
+            )}
             <Tooltip title={waUrl ? "Enviar WhatsApp" : "Sin teléfono"}>
               <span>
                 <IconButton
@@ -572,7 +663,7 @@ export default function OportunidadesPage() {
                   onClick={(e) => { e.stopPropagation(); if (waUrl) window.open(waUrl, "_blank"); }}
                   sx={{ color: waUrl ? "#25D366" : undefined }}
                 >
-                  <WhatsAppIcon fontSize="small" />
+                  <WhatsAppIcon sx={{ fontSize: 18 }} />
                 </IconButton>
               </span>
             </Tooltip>
@@ -609,6 +700,7 @@ export default function OportunidadesPage() {
   const cardItems: { key: FiltroCard; label: string; color: string }[] = [
     { key: "capturados", label: "Capturados", color: CARD_COLORS.capturados },
     ...etapasAvance.map((e) => ({ key: e.nombre as FiltroCard, label: e.nombre, color: CARD_COLORS[e.nombre] || e.color })),
+    { key: "capacidades", label: "Capacidades", color: CARD_COLORS.capacidades },
   ];
 
   return (
@@ -624,6 +716,17 @@ export default function OportunidadesPage() {
           </Typography>
         </Box>
         <Box sx={{ display: "flex", gap: 1 }}>
+          <Tooltip title="Actualizar Capacidades">
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={handleSyncCapacidades}
+              disabled={syncing}
+              sx={{ textTransform: "none", fontWeight: 600, minWidth: 40, px: 1, borderColor: "#4caf50", color: "#4caf50", "&:hover": { borderColor: "#388e3c", bgcolor: "#4caf5010" } }}
+            >
+              {syncing ? <CircularProgress size={18} color="inherit" /> : <SyncIcon />}
+            </Button>
+          </Tooltip>
           <Button
             variant="outlined"
             size="small"
@@ -645,7 +748,7 @@ export default function OportunidadesPage() {
         </Box>
       </Box>
 
-      {/* ═══════ 6 CARDS PIPELINE ═══════ */}
+      {/* ═══════ 7 CARDS PIPELINE ═══════ */}
       <Box
         sx={{
           display: "flex", gap: 1.5, mb: 3, overflowX: "auto", pb: 0.5,
@@ -664,7 +767,7 @@ export default function OportunidadesPage() {
               elevation={isSelected ? 4 : 0}
               onClick={() => setCardFiltro(isSelected ? "" : item.key)}
               sx={{
-                px: 2.5, py: 1.5, cursor: "pointer", minWidth: 130, flex: 1,
+                px: 2.5, py: 1.5, cursor: "pointer", minWidth: 120, flex: 1,
                 borderRadius: 2.5, textAlign: "center",
                 bgcolor: isSelected ? item.color : "background.paper",
                 color: isSelected ? "white" : "text.primary",
@@ -687,7 +790,7 @@ export default function OportunidadesPage() {
                 <Typography
                   variant="caption"
                   fontWeight={600}
-                  sx={{ color: isSelected ? "rgba(255,255,255,0.9)" : "text.secondary", whiteSpace: "nowrap" }}
+                  sx={{ color: isSelected ? "rgba(255,255,255,0.9)" : "text.secondary", whiteSpace: "nowrap", fontSize: 10 }}
                 >
                   {item.label}
                 </Typography>
@@ -696,7 +799,7 @@ export default function OportunidadesPage() {
                 {count}
               </Typography>
               {item.key === "Venta" && totalVentaMonto > 0 && (
-                <Typography variant="caption" fontWeight={700} sx={{ color: isSelected ? "rgba(255,255,255,0.9)" : item.color, display: "block", mt: 0.3 }}>
+                <Typography variant="caption" fontWeight={700} sx={{ color: isSelected ? "rgba(255,255,255,0.9)" : item.color, display: "block", mt: 0.3, fontSize: 10 }}>
                   {totalVentaMonto.toLocaleString("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 0 })}
                 </Typography>
               )}
@@ -709,7 +812,7 @@ export default function OportunidadesPage() {
                   "& .MuiLinearProgress-bar": { bgcolor: isSelected ? "white" : item.color, borderRadius: 2 },
                 }}
               />
-              <Typography variant="caption" sx={{ color: isSelected ? "rgba(255,255,255,0.8)" : "text.disabled", fontSize: 10 }}>
+              <Typography variant="caption" sx={{ color: isSelected ? "rgba(255,255,255,0.8)" : "text.disabled", fontSize: 9 }}>
                 {pct}% del total
               </Typography>
             </Paper>
@@ -720,14 +823,14 @@ export default function OportunidadesPage() {
       {/* ═══════ FILTROS + GRID ═══════ */}
       <Card elevation={0} sx={{ border: "1px solid", borderColor: "divider", borderRadius: 3, overflow: "hidden" }}>
         {/* Barra superior */}
-        <Box sx={{ display: "flex", alignItems: "center", gap: 2, flexWrap: "wrap", px: 2.5, py: 1.5, bgcolor: "grey.50", borderBottom: "1px solid", borderColor: "divider" }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 2, flexWrap: "wrap", px: 2.5, py: 1, bgcolor: "grey.50", borderBottom: "1px solid", borderColor: "divider" }}>
           {cardFiltro && (
             <Chip
-              label={cardFiltro === "capturados" ? "Capturados" : cardFiltro}
+              label={cardFiltro === "capturados" ? "Capturados" : cardFiltro === "capacidades" ? "Capacidades" : cardFiltro}
               onDelete={() => setCardFiltro("")}
               size="small"
               sx={{
-                fontWeight: 600,
+                fontWeight: 600, height: 22, fontSize: 11,
                 bgcolor: CARD_COLORS[cardFiltro] || "primary.main",
                 color: "white",
                 "& .MuiChip-deleteIcon": { color: "rgba(255,255,255,0.7)" },
@@ -735,7 +838,7 @@ export default function OportunidadesPage() {
             />
           )}
 
-          <Typography variant="body2" color="text.secondary" sx={{ flex: 1 }}>
+          <Typography variant="body2" color="text.secondary" sx={{ flex: 1, fontSize: 12 }}>
             {filtered.length} resultado{filtered.length !== 1 ? "s" : ""}
           </Typography>
 
@@ -745,7 +848,7 @@ export default function OportunidadesPage() {
               variant="contained"
               startIcon={<CampaignIcon />}
               onClick={() => setCampanaOpen(true)}
-              sx={{ textTransform: "none", fontWeight: 600, bgcolor: "#25D366", "&:hover": { bgcolor: "#1da851" } }}
+              sx={{ textTransform: "none", fontWeight: 600, bgcolor: "#25D366", "&:hover": { bgcolor: "#1da851" }, fontSize: 12 }}
             >
               WhatsApp Masivo ({selectedIds.length})
             </Button>
@@ -770,7 +873,7 @@ export default function OportunidadesPage() {
               setSelectedIds(Array.from(model.ids).map(Number))
             }
             autoHeight
-            rowHeight={56}
+            rowHeight={40}
             columnVisibilityModel={columnVisibility}
             onColumnVisibilityModelChange={handleColumnVisibilityChange}
             slots={{
@@ -783,8 +886,9 @@ export default function OportunidadesPage() {
             }}
             sx={{
               border: "none",
+              fontSize: 12,
               "& .MuiDataGrid-columnHeader": {
-                bgcolor: "background.paper", fontSize: 11, fontWeight: 700,
+                bgcolor: "background.paper", fontSize: 10, fontWeight: 700,
                 color: "text.secondary", textTransform: "uppercase", letterSpacing: "0.05em",
               },
               "& .MuiDataGrid-row:hover": { bgcolor: "action.hover" },
@@ -936,6 +1040,81 @@ export default function OportunidadesPage() {
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
           <Button onClick={() => setVerDialog({ open: false, loading: false, data: null })} startIcon={<ArrowBackIcon />}>
+            Cerrar
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ═══════ DIALOG: VER DATOS IMSS (CAPACIDADES) ═══════ */}
+      <Dialog
+        open={capDialog.open}
+        onClose={() => setCapDialog({ open: false, loading: false, data: null })}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{ sx: { borderRadius: 3 } }}
+      >
+        <DialogTitle sx={{ display: "flex", alignItems: "center", gap: 1, pb: 1 }}>
+          <Typography variant="h6" fontWeight={700} sx={{ flex: 1 }}>Datos IMSS</Typography>
+          <Chip label="Capacidades" size="small" sx={{ bgcolor: "#4caf50", color: "white", fontWeight: 600 }} />
+        </DialogTitle>
+        <DialogContent>
+          {capDialog.loading ? (
+            <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}><CircularProgress /></Box>
+          ) : capDialog.data ? (
+            <Stack spacing={2} sx={{ mt: 1 }}>
+              <Card variant="outlined" sx={{ borderRadius: 2 }}>
+                <CardContent>
+                  <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1.5, textTransform: "uppercase", letterSpacing: 1, fontSize: 11 }}>
+                    Datos del Cliente
+                  </Typography>
+                  <Stack spacing={1}>
+                    <DetailRow label="Nombre" value={String(capDialog.data.nombres || "—")} />
+                    <DetailRow label="Convenio" value={String(capDialog.data.convenio || "—")} />
+                    <DetailRow label="Teléfono" value={String(capDialog.data.tel_1 || capDialog.data.imss_telefonos || "—")} />
+                    <DetailRow label="NSS" value={String(capDialog.data.nss || "—")} />
+                    <DetailRow label="CURP" value={String(capDialog.data.curp || "—")} />
+                    <DetailRow label="RFC" value={String(capDialog.data.rfc || "—")} />
+                    <DetailRow label="No. Empleado" value={String(capDialog.data.numero_empleado || "—")} />
+                  </Stack>
+                </CardContent>
+              </Card>
+              <Card variant="outlined" sx={{ borderRadius: 2, borderColor: "#4caf50" }}>
+                <CardContent>
+                  <Typography variant="subtitle2" sx={{ mb: 1.5, textTransform: "uppercase", letterSpacing: 1, fontSize: 11, color: "#4caf50" }}>
+                    Información IMSS
+                  </Typography>
+                  <Stack spacing={1}>
+                    <DetailRow label="Capacidad Actual" value={
+                      capDialog.data.imss_capacidad_actual != null
+                        ? `$${Number(capDialog.data.imss_capacidad_actual).toLocaleString("es-MX")}`
+                        : "—"
+                    } />
+                    <DetailRow label="Num. Créditos" value={String(capDialog.data.imss_num_creditos ?? "—")} />
+                    <DetailRow label="Teléfonos IMSS" value={String(capDialog.data.imss_telefonos || "—")} />
+                    {capDialog.data.fecha_solicitud ? (
+                      <DetailRow label="Fecha Solicitud" value={new Date(String(capDialog.data.fecha_solicitud)).toLocaleString("es-MX")} />
+                    ) : null}
+                  </Stack>
+                  {capDialog.data.respuesta ? (
+                    <>
+                      <Divider sx={{ my: 1.5 }} />
+                      <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1, fontSize: 11 }}>
+                        RESPUESTA COMPLETA
+                      </Typography>
+                      <Paper sx={{ p: 1.5, bgcolor: "grey.50", borderRadius: 1, maxHeight: 200, overflow: "auto" }}>
+                        <Typography variant="body2" sx={{ fontSize: 11, whiteSpace: "pre-wrap", fontFamily: "monospace" }}>
+                          {String(capDialog.data.respuesta)}
+                        </Typography>
+                      </Paper>
+                    </>
+                  ) : null}
+                </CardContent>
+              </Card>
+            </Stack>
+          ) : null}
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setCapDialog({ open: false, loading: false, data: null })} startIcon={<ArrowBackIcon />}>
             Cerrar
           </Button>
         </DialogActions>

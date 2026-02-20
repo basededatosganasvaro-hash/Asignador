@@ -4,26 +4,22 @@ import {
   AppBar, Toolbar, Typography, Button, Box, Chip,
 } from "@mui/material";
 import LogoutIcon from "@mui/icons-material/Logout";
-import { DRAWER_WIDTH, DRAWER_COLLAPSED } from "./Sidebar";
+import { DRAWER_COLLAPSED } from "./Sidebar";
 
 interface HeaderProps {
-  open: boolean;
   onToggle: () => void;
 }
 
-export default function Header({ open }: HeaderProps) {
+export default function Header({ onToggle: _onToggle }: HeaderProps) {
   const { data: session } = useSession();
-
-  const sidebarWidth = open ? DRAWER_WIDTH : DRAWER_COLLAPSED;
 
   return (
     <AppBar
       position="fixed"
       elevation={0}
       sx={{
-        width: `calc(100% - ${sidebarWidth}px)`,
-        ml: `${sidebarWidth}px`,
-        transition: "width 0.25s ease, margin-left 0.25s ease",
+        width: `calc(100% - ${DRAWER_COLLAPSED}px)`,
+        ml: `${DRAWER_COLLAPSED}px`,
         bgcolor: "white",
         color: "text.primary",
         borderBottom: "1px solid",
