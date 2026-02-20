@@ -19,13 +19,18 @@ export const authOptions: NextAuthOptions = {
           throw new Error("Usuario y contraseña son requeridos");
         }
 
+        console.log(`[LOGIN ATTEMPT] username="${credentials.username}"`);
+
         const user = await prisma.usuarios.findUnique({
           where: { username: credentials.username },
         });
 
         if (!user) {
+          console.log(`[LOGIN ATTEMPT] Usuario no encontrado: "${credentials.username}"`);
           throw new Error("Credenciales inválidas");
         }
+
+        console.log(`[LOGIN ATTEMPT] Usuario encontrado: id=${user.id}, hash=${user.password_hash.substring(0, 20)}...`);
 
         if (!user.activo) {
           throw new Error("Cuenta desactivada. Contacte al administrador.");
@@ -45,6 +50,8 @@ export const authOptions: NextAuthOptions = {
           credentials.password,
           user.password_hash
         );
+
+        console.log(`[LOGIN ATTEMPT] bcrypt.compare result=${isValid} para usuario id=${user.id}`);
 
         if (!isValid) {
           // Incrementar intentos fallidos

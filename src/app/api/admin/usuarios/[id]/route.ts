@@ -89,10 +89,17 @@ export async function PUT(
       sucursal_id: true,
       region_id: true,
       telegram_id: true,
+      password_hash: true,
     },
   });
 
-  return NextResponse.json(serializeBigInt(usuario));
+  if (parsed.data.password) {
+    console.log(`[PASSWORD RESET] Usuario ID=${id} — UPDATE exitoso, hash en BD: ${usuario.password_hash.substring(0, 20)}...`);
+  }
+
+  // No exponer password_hash en la respuesta
+  const { password_hash: _, ...usuarioSinHash } = usuario;
+  return NextResponse.json(serializeBigInt(usuarioSinHash));
 }
 
 export async function DELETE(
