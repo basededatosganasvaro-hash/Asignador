@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "npm run prisma:generate && npx tsx prisma/migrate-usernames.ts && npx prisma db push --schema=prisma/schema.prisma && npx prisma db seed && next build",
+    "build": "npm run prisma:generate && npx tsx prisma/migrate-usernames.ts && npx prisma db push --accept-data-loss --schema=prisma/schema.prisma && npx prisma db seed && next build",
     "start": "next start",
     "lint": "eslint",
     "postinstall": "npm run prisma:generate",
