@@ -150,20 +150,19 @@ class SessionManager {
   /** Desconectar sesión de un usuario */
   async disconnect(userId: number): Promise<void> {
     const session = this.sessions.get(userId);
-    if (!session) return;
 
-    if (session.idleTimer) clearTimeout(session.idleTimer);
-
-    try {
-      await session.socket.logout();
-    } catch {
-      // Ignorar errores al cerrar
+    if (session) {
+      if (session.idleTimer) clearTimeout(session.idleTimer);
+      try {
+        await session.socket.logout();
+      } catch {
+        // Ignorar errores al cerrar
+      }
+      this.sessions.delete(userId);
     }
 
-    this.sessions.delete(userId);
+    // Siempre actualizar BD y limpiar credenciales, incluso si no hay sesión en memoria
     await this.upsertSession(userId, "DESCONECTADO");
-
-    // Limpiar credenciales
     const sessionDir = path.join("/tmp", "wa-sessions", String(userId));
     await this.clearCreds(userId, sessionDir);
   }
