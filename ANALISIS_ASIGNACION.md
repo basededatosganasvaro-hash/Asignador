@@ -493,3 +493,123 @@ Corregir ahora (datos se pierden),Corregir pronto (performance/race conditions),
 │ 4. Pausar campaña mid-send → verificar que no envíe más de 1 mensaje extra                                │
 │ 5. Enviar a número inexistente → verificar que presenceSubscribe falle gracefully                         │
 │ 6. Verificar que EXPLAIN del query de stats use el índice de enviado_at  
+
+
+ Plan to implement                                                                                         │
+│                                                                                                           │
+│ Plan: Configuración Admin para WhatsApp Masivo Anti-Spam                                                  │
+│                                                                                                           │
+│ Contexto                                                                                                  │
+│                                                                                                           │
+│ Los parámetros anti-spam del microservicio WhatsApp (delays entre mensajes, límite diario, ráfagas) están │
+│  hardcodeados en services/whatsapp/src/config.ts. El admin no puede ajustarlos sin tocar código. Ya       │
+│ existe infraestructura de configuración dinámica: tabla configuracion (key-value), API upsert en          │
+│ /api/admin/configuracion, y página admin en /admin/configuracion. Solo falta conectar los parámetros      │
+│ anti-spam a este sistema.                                                                                 │
+│                                                                                                           │
+│ ---                                                                                                       │
+│ Parámetros a exponer (7 valores)                                                                          │
+│                                                                                                           │
+│ Clave: wa_delay_min                                                                                       │
+│ Default: 8000                                                                                             │
+│ Tooltip: Tiempo mínimo de espera entre mensajes (ms). Valores bajos aumentan riesgo de ban.               │
+│ ────────────────────────────────────────                                                                  │
+│ Clave: wa_delay_max                                                                                       │
+│ Default: 25000                                                                                            │
+│ Tooltip: Tiempo máximo de espera entre mensajes (ms).                                                     │
+│ ────────────────────────────────────────                                                                  │
+│ Clave: wa_burst_min                                                                                       │
+│ Default: 5                                                                                                │
+│ Tooltip: Mínimo de mensajes enviados antes de una pausa larga.                                            │
+│ ────────────────────────────────────────                                                                  │
+│ Clave: wa_burst_max                                                                                       │
+│ Default: 12                                                                                               │
+│ Tooltip: Máximo de mensajes enviados antes de una pausa larga.                                            │
+│ ────────────────────────────────────────                                                                  │
+│ Clave: wa_burst_pause_min                                                                                 │
+│ Default: 120000                                                                                           │
+│ Tooltip: Pausa mínima entre ráfagas (ms). Ej: 120000 = 2 min.                                             │
+│ ────────────────────────────────────────                                                                  │
+│ Clave: wa_burst_pause_max                                                                                 │
+│ Default: 420000                                                                                           │
+│ Tooltip: Pausa máxima entre ráfagas (ms). Ej: 420000 = 7 min.                                             │
+│ ────────────────────────────────────────                                                                  │
+│ Clave: wa_daily_limit                                                                                     │
+│ Default: 180                                                                                              │
+│ Tooltip: Máximo de mensajes por promotor por día. Protege contra spam.                                    │
+│                                                                                                           │
+│ ---                                                                                                       │
+│ Cambios                                                                                                   │
+│                                                                                                           │
+│ 1. UI Admin — src/app/admin/configuracion/page.tsx                                                        │
+│                                                                                                           │
+│ Agregar nueva sección "WhatsApp Masivo" debajo de las configuraciones existentes:                         │
+│ - Card con título "Configuración de Envío Masivo WhatsApp"                                                │
+│ - 7 campos numéricos con TextField type="number"                                                          │
+│ - Cada campo con Tooltip + icono HelpOutline que explica para qué sirve                                   │
+│ - Los campos de milisegundos mostrar en segundos al usuario (convertir ms↔s internamente) para los        │
+│ delays/pausas                                                                                             │
+│ - Botón "Guardar Cambios" que hace PUT individual por cada clave cambiada                                 │
+│ - Usa la misma API existente PUT /api/admin/configuracion con { clave, valor }                            │
+│                                                                                                           │
+│ Layout de campos (agrupados):                                                                             │
+│ - Intervalo entre mensajes: delay_min (s), delay_max (s)                                                  │
+│ - Ráfagas: burst_min (msgs), burst_max (msgs)                                                             │
+│ - Pausas entre ráfagas: burst_pause_min (s), burst_pause_max (s)                                          │
+│ - Límite diario: daily_limit (msgs)                                                                       │
+│                                                                                                           │
+│ Validaciones frontend:                                                                                    │
+│ - Todos los valores deben ser > 0                                                                         │
+│ - min no puede ser mayor que max en cada par                                                              │
+│ - daily_limit entre 1 y 1000                                                                              │
+│ - Mostrar error inline si validación falla                                                                │
+│                                                                                                           │
+│ 2. Microservicio lee config de BD — services/whatsapp/src/config.ts                                       │
+│                                                                                                           │
+│ Agregar función loadAntiSpamConfig() que:                                                                 │
+│ - Lee de tabla configuracion las 7 claves wa_*                                                            │
+│ - Si una clave no existe en BD, usa el default hardcodeado                                                │
+│ - Retorna objeto antiSpam con los valores                                                                 │
+│ - Exportar esta función para uso en message-queue                                                         │
+│                                                                                                           │
+│ Cambiar de const config = { antiSpam: {...} } a valores dinámicos que se leen al inicio de cada campaña.  │
+│                                                                                                           │
+│ 3. Message Queue usa config dinámica — services/whatsapp/src/services/message-queue.ts                    │
+│                                                                                                           │
+│ En sendCampaign():                                                                                        │
+│ - Llamar await loadAntiSpamConfig() al inicio del envío                                                   │
+│ - Pasar los valores cargados a las funciones humanDelay(), burstSize(), burstPause() en vez de usar los   │
+│ hardcodeados                                                                                              │
+│                                                                                                           │
+│ 4. Anti-spam acepta parámetros — services/whatsapp/src/lib/anti-spam.ts                                   │
+│                                                                                                           │
+│ Modificar las funciones para aceptar parámetros opcionales en vez de leer siempre de config:              │
+│ - humanDelay(msgLen, opts?) — usa opts.delayMin/delayMax si se pasan                                      │
+│ - burstSize(opts?) — usa opts.burstMin/burstMax                                                           │
+│ - burstPause(opts?) — usa opts.burstPauseMin/burstPauseMax                                                │
+│                                                                                                           │
+│ Esto permite que message-queue pase los valores dinámicos de BD.                                          │
+│                                                                                                           │
+│ ---                                                                                                       │
+│ Archivos a modificar                                                                                      │
+│                                                                                                           │
+│ 1. src/app/admin/configuracion/page.tsx — agregar sección WhatsApp                                        │
+│ 2. services/whatsapp/src/config.ts — agregar loadAntiSpamConfig()                                         │
+│ 3. services/whatsapp/src/lib/anti-spam.ts — funciones aceptan parámetros                                  │
+│ 4. services/whatsapp/src/services/message-queue.ts — cargar config dinámica al enviar                     │
+│                                                                                                           │
+│ Archivos que NO se modifican                                                                              │
+│                                                                                                           │
+│ - API /api/admin/configuracion — ya soporta cualquier clave genérica                                      │
+│ - Schema/BD — tabla configuracion ya existe y es key-value genérica                                       │
+│ - No se necesita seed — si las claves no existen en BD, se usan defaults                                  │
+│                                                                                                           │
+│ ---                                                                                                       │
+│ Verificación                                                                                              │
+│                                                                                                           │
+│ 1. Abrir /admin/configuracion → ver sección WhatsApp con 7 campos y valores default                       │
+│ 2. Cambiar wa_daily_limit a 50 → guardar → lanzar campaña con >50 destinatarios → verificar que se pausa  │
+│ al llegar a 50                                                                                            │
+│ 3. Cambiar wa_delay_min a 3000 → verificar que mensajes se envían más rápido                              │
+│ 4. Borrar una clave de BD → verificar que el microservicio usa el default hardcodeado                     │
+│ 5. Validar que min > max muestra error en UI  

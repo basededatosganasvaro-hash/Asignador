@@ -1,7 +1,7 @@
 import { prisma } from "../lib/prisma.js";
 import { sessionManager } from "./session-manager.js";
-import { humanDelay, burstSize, burstPause, typingDelay, sleep } from "../lib/anti-spam.js";
-import { config } from "../config.js";
+import { humanDelay, burstSize, burstPause, typingDelay, sleep, type AntiSpamOpts } from "../lib/anti-spam.js";
+import { loadAntiSpamConfig } from "../config.js";
 import { proto } from "@whiskeysockets/baileys";
 
 interface QueueItem {
@@ -85,6 +85,10 @@ class MessageQueue {
   private async sendCampaign(item: QueueItem): Promise<void> {
     const { campanaId, userId } = item;
 
+    // Cargar config anti-spam dinámica de BD
+    const antiSpam = await loadAntiSpamConfig();
+    const spamOpts: AntiSpamOpts = antiSpam;
+
     // Verificar socket activo
     const sock = sessionManager.getSocket(userId);
     if (!sock) {
@@ -120,7 +124,7 @@ class MessageQueue {
       },
     });
 
-    if (enviadosHoy >= config.antiSpam.dailyLimit) {
+    if (enviadosHoy >= antiSpam.dailyLimit) {
       await prisma.wa_campanas.update({
         where: { id: campanaId },
         data: { estado: "PAUSADA" },
@@ -129,9 +133,9 @@ class MessageQueue {
       return;
     }
 
-    let remaining = config.antiSpam.dailyLimit - enviadosHoy;
+    let remaining = antiSpam.dailyLimit - enviadosHoy;
     let burstCount = 0;
-    let currentBurstSize = burstSize();
+    let currentBurstSize = burstSize(spamOpts);
     let msgIndex = 0;
 
     for (const msg of mensajes) {
@@ -159,11 +163,11 @@ class MessageQueue {
 
       // Burst control
       if (burstCount >= currentBurstSize) {
-        const pause = burstPause();
+        const pause = burstPause(spamOpts);
         console.log(`[MessageQueue] Burst pause ${Math.round(pause / 1000)}s for user ${userId}`);
         await sleep(pause);
         burstCount = 0;
-        currentBurstSize = burstSize();
+        currentBurstSize = burstSize(spamOpts);
       }
 
       // Send message
@@ -212,7 +216,7 @@ class MessageQueue {
         burstCount++;
 
         // Human delay before next message
-        const delay = humanDelay(msg.mensaje_texto.length);
+        const delay = humanDelay(msg.mensaje_texto.length, spamOpts);
         console.log(`[MessageQueue] Sent to ${msg.numero_destino}, next in ${Math.round(delay / 1000)}s`);
         await sleep(delay);
       } catch (err) {
