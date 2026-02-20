@@ -69,6 +69,7 @@ router.post("/", async (req: Request, res: Response) => {
         return {
           campana_id: campana.id,
           oportunidad_id: dest.oportunidad_id,
+          nombre_cliente: dest.nombre_cliente || null,
           numero_destino: dest.numero_destino,
           mensaje_texto: mensajeTexto,
           variacion_idx: variacionIdx,

@@ -410,6 +410,7 @@ model wa_mensajes {
   id              Int       @id @default(autoincrement())
   campana_id      Int
   oportunidad_id  Int
+  nombre_cliente  String?   @db.VarChar(200)
   numero_destino  String    @db.VarChar(30)
   mensaje_texto   String
   variacion_idx   Int       @default(0)
