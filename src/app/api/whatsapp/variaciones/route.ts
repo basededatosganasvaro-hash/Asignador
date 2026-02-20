@@ -14,7 +14,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "mensaje_base requerido" }, { status: 400 });
   }
 
-  const cant = Math.min(Math.max(Number(cantidad), 5), 30);
+  const cant = Math.min(Math.max(Number(cantidad), 1), 30);
 
   try {
     const completion = await openai.chat.completions.create({
