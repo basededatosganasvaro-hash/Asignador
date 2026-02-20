@@ -142,50 +142,64 @@ export async function POST(req: Request) {
     );
   }
 
-  // Crear oportunidades en transacción
+  // Crear oportunidades en batches para reducir duración de transacciones
   const timerVence = new Date(Date.now() + timerHoras * 60 * 60 * 1000);
   let created = 0;
+  const BATCH_SIZE = 50;
 
-  await prisma.$transaction(async (tx) => {
-    for (const { rowNum, datos } of rows) {
-      try {
-        const op = await tx.oportunidades.create({
-          data: {
-            cliente_id: null,
-            usuario_id: userId,
-            etapa_id: etapaAsignado?.id ?? null,
-            origen: "CAPTACION",
-            timer_vence: timerVence,
-            activo: true,
-          },
-        });
+  for (let i = 0; i < rows.length; i += BATCH_SIZE) {
+    const batch = rows.slice(i, i + BATCH_SIZE);
 
-        await tx.captaciones.create({
-          data: {
+    try {
+      await prisma.$transaction(async (tx) => {
+        // Create oportunidades one by one to get IDs (createMany doesn't return IDs)
+        const createdOps: { id: number; datos: Record<string, string>; rowNum: number }[] = [];
+
+        for (const { rowNum, datos } of batch) {
+          const op = await tx.oportunidades.create({
+            data: {
+              cliente_id: null,
+              usuario_id: userId,
+              etapa_id: etapaAsignado?.id ?? null,
+              origen: "CAPTACION",
+              timer_vence: timerVence,
+              activo: true,
+            },
+            select: { id: true },
+          });
+          createdOps.push({ id: op.id, datos, rowNum });
+        }
+
+        // Batch insert captaciones and historial
+        await tx.captaciones.createMany({
+          data: createdOps.map((op) => ({
             oportunidad_id: op.id,
             usuario_id: userId,
             origen_captacion,
             convenio,
-            datos_json: datos,
-          },
+            datos_json: op.datos,
+          })),
         });
 
-        await tx.historial.create({
-          data: {
+        await tx.historial.createMany({
+          data: createdOps.map((op) => ({
             oportunidad_id: op.id,
             usuario_id: userId,
             tipo: "CAPTACION",
             etapa_nueva_id: etapaAsignado?.id ?? null,
-            nota: `Importación masiva — fila ${rowNum}`,
-          },
+            nota: `Importación masiva — fila ${op.rowNum}`,
+          })),
         });
 
-        created++;
-      } catch {
-        errors.push({ row: rowNum, message: "Error al crear registro" });
+        created += createdOps.length;
+      });
+    } catch {
+      // Mark all rows in this batch as failed
+      for (const { rowNum } of batch) {
+        errors.push({ row: rowNum, message: "Error al crear registro (batch)" });
       }
     }
-  });
+  }
 
   return NextResponse.json({ created, errors }, { status: 201 });
 }

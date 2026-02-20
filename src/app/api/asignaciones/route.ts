@@ -3,7 +3,22 @@ import { prisma } from "@/lib/prisma";
 import { prismaClientes } from "@/lib/prisma-clientes";
 import { requireAuth } from "@/lib/auth-utils";
 import { verificarHorarioConConfig, calcularTimerVenceConConfig } from "@/lib/horario";
+import { getConfig } from "@/lib/config-cache";
 import { Prisma } from "@prisma/client";
+
+async function withRetry<T>(fn: () => Promise<T>, maxRetries = 3): Promise<T> {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      return await fn();
+    } catch (err: unknown) {
+      const isSerializationError =
+        err instanceof Error && err.message.includes("could not serialize");
+      if (!isSerializationError || i === maxRetries - 1) throw err;
+      await new Promise((r) => setTimeout(r, 100 * (i + 1)));
+    }
+  }
+  throw new Error("Max retries exceeded");
+}
 
 // GET: Listar lotes del usuario autenticado
 export async function GET() {
@@ -23,54 +38,67 @@ export async function GET() {
     orderBy: { created_at: "desc" },
   });
 
-  // Para cada lote, obtener cuantos clientes tienen tel_1 en datos_contacto o en clientes original
-  const result = await Promise.all(
-    lotes.map(async (lote) => {
-      const clienteIds = lote.oportunidades.map((o) => o.cliente_id).filter((id): id is number => id !== null);
-      const cantidad = clienteIds.length;
+  // Batch: collect all clienteIds across all lotes
+  const allClienteIds = lotes.flatMap((l) =>
+    l.oportunidades.map((o) => o.cliente_id).filter((id): id is number => id !== null)
+  );
+  const uniqueClienteIds = [...new Set(allClienteIds)];
 
-      if (cantidad === 0) {
-        return {
-          id: lote.id,
-          fecha: lote.fecha,
-          cantidad: lote.cantidad,
-          oportunidades_activas: 0,
-          registros_con_tel1: 0,
-          puede_descargar: false,
-        };
-      }
+  // Two batch queries in parallel instead of 2×N per-lote queries
+  const [allEdiciones, clientesConTel1] = await Promise.all([
+    uniqueClienteIds.length > 0
+      ? prisma.datos_contacto.findMany({
+          where: { cliente_id: { in: uniqueClienteIds }, campo: "tel_1" },
+          orderBy: { created_at: "desc" },
+        })
+      : [],
+    uniqueClienteIds.length > 0
+      ? prismaClientes.clientes.findMany({
+          where: { id: { in: uniqueClienteIds }, tel_1: { not: null } },
+          select: { id: true },
+        })
+      : [],
+  ]);
 
-      // Ediciones de tel_1 en BD Sistema
-      const ediciones = await prisma.datos_contacto.findMany({
-        where: { cliente_id: { in: clienteIds }, campo: "tel_1" },
-        orderBy: { created_at: "desc" },
-      });
-      const tel1Editados = new Set(ediciones.map((e) => e.cliente_id));
+  // Build lookup sets
+  const tel1EditadosSet = new Set(allEdiciones.map((e) => e.cliente_id));
+  const clientesConTel1Set = new Set(clientesConTel1.map((c) => c.id));
 
-      // Clientes con tel_1 original en BD Clientes (los que no tienen edicion)
-      const sinEdicion = clienteIds.filter((id) => !tel1Editados.has(id));
-      let conTel1Original = 0;
-      if (sinEdicion.length > 0) {
-        conTel1Original = await prismaClientes.clientes.count({
-          where: {
-            id: { in: sinEdicion },
-            tel_1: { not: null },
-          },
-        });
-      }
+  // Map without additional queries
+  const result = lotes.map((lote) => {
+    const clienteIds = lote.oportunidades
+      .map((o) => o.cliente_id)
+      .filter((id): id is number => id !== null);
+    const cantidad = clienteIds.length;
 
-      const registros_con_tel1 = tel1Editados.size + conTel1Original;
-
+    if (cantidad === 0) {
       return {
         id: lote.id,
         fecha: lote.fecha,
         cantidad: lote.cantidad,
-        oportunidades_activas: cantidad,
-        registros_con_tel1,
-        puede_descargar: registros_con_tel1 === cantidad && cantidad > 0,
+        oportunidades_activas: 0,
+        registros_con_tel1: 0,
+        puede_descargar: false,
       };
-    })
-  );
+    }
+
+    // Count: clients with tel_1 edited + clients with original tel_1 (not edited)
+    let registros_con_tel1 = 0;
+    for (const cid of clienteIds) {
+      if (tel1EditadosSet.has(cid) || clientesConTel1Set.has(cid)) {
+        registros_con_tel1++;
+      }
+    }
+
+    return {
+      id: lote.id,
+      fecha: lote.fecha,
+      cantidad: lote.cantidad,
+      oportunidades_activas: cantidad,
+      registros_con_tel1,
+      puede_descargar: registros_con_tel1 === cantidad && cantidad > 0,
+    };
+  });
 
   return NextResponse.json(result);
 }
@@ -112,11 +140,9 @@ export async function POST(request: Request) {
     const nowMx = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Mexico_City" }));
     const today = new Date(nowMx.getFullYear(), nowMx.getMonth(), nowMx.getDate());
 
-    // 2. Leer configuracion del límite diario
-    const config = await prisma.configuracion.findUnique({
-      where: { clave: "max_registros_por_dia" },
-    });
-    const maxPerDay = parseInt(config?.valor || "300");
+    // 2. Leer configuracion del límite diario (cached)
+    const maxPerDayStr = await getConfig("max_registros_por_dia");
+    const maxPerDay = parseInt(maxPerDayStr || "300");
 
     // 3. Verificar cupo antes de hacer trabajo pesado (lectura rápida)
     const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
@@ -148,10 +174,8 @@ export async function POST(request: Request) {
     const requested = Math.min(cantidad || cupoDisponible, cupoDisponible);
 
     // 4. Obtener cliente_ids a excluir en una sola query SQL (activos + cooldown)
-    const cooldownConfig = await prisma.configuracion.findUnique({
-      where: { clave: "cooldown_meses" },
-    });
-    const cooldownMeses = parseInt(cooldownConfig?.valor || "3");
+    const cooldownStr = await getConfig("cooldown_meses");
+    const cooldownMeses = parseInt(cooldownStr || "3");
     const cooldownDate = new Date();
     cooldownDate.setMonth(cooldownDate.getMonth() - cooldownMeses);
 
@@ -203,7 +227,7 @@ export async function POST(request: Request) {
     // 8. Transacción atómica: crear lote + oportunidades + historial + actualizar cupo
     const registrosFinales = records.slice(0, Math.min(records.length, cupoDisponible));
 
-    const result = await prisma.$transaction(
+    const result = await withRetry(() => prisma.$transaction(
       async (tx) => {
         // 8a. Verificar cupo con lock atómico (si tabla existe)
         let cupoFinal = cupoDisponible;
@@ -281,10 +305,10 @@ export async function POST(request: Request) {
         return { lote, cantidadReal: registrosReales.length, cupoRestante: cupoFinal - registrosReales.length };
       },
       {
-        isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+        isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead,
         timeout: 30000,
       }
-    );
+    ));
 
     return NextResponse.json(
       {

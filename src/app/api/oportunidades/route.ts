@@ -39,21 +39,21 @@ export async function GET() {
   const clienteIds = oportunidades.map((o) => o.cliente_id).filter((id): id is number => id !== null);
 
   const clienteMap: Record<number, Record<string, unknown>> = {};
-
-  if (clienteIds.length > 0) {
-    const clientes = await prismaClientes.clientes.findMany({
-      where: { id: { in: clienteIds } },
-    });
-    for (const c of clientes) clienteMap[c.id] = c as unknown as Record<string, unknown>;
-  }
-
-  // Get all contact edits (datos_contacto) for these clients
   const editMap: Record<number, Record<string, string>> = {};
+
   if (clienteIds.length > 0) {
-    const edits = await prisma.datos_contacto.findMany({
-      where: { cliente_id: { in: clienteIds } },
-      orderBy: { created_at: "desc" },
-    });
+    // Parallelize: clientes (BD Clientes) and edits (BD Sistema) are independent
+    const [clientes, edits] = await Promise.all([
+      prismaClientes.clientes.findMany({
+        where: { id: { in: clienteIds } },
+      }),
+      prisma.datos_contacto.findMany({
+        where: { cliente_id: { in: clienteIds } },
+        orderBy: { created_at: "desc" },
+      }),
+    ]);
+
+    for (const c of clientes) clienteMap[c.id] = c as unknown as Record<string, unknown>;
     for (const edit of edits) {
       if (!editMap[edit.cliente_id]) editMap[edit.cliente_id] = {};
       if (!editMap[edit.cliente_id][edit.campo]) {

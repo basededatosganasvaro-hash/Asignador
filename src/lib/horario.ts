@@ -141,16 +141,11 @@ export function calcularTimerVence(
  * Versión async que carga config de BD y calcula timer_vence.
  */
 export async function calcularTimerVenceConConfig(horasTimer: number): Promise<Date> {
-  const { prisma } = await import("@/lib/prisma");
+  const { getConfigBatch } = await import("@/lib/config-cache");
 
-  const configs = await prisma.configuracion.findMany({
-    where: {
-      clave: { in: ["horario_inicio", "horario_fin", "dias_operativos", "horario_activo"] },
-    },
-  });
-
-  const configMap: Record<string, string> = {};
-  for (const c of configs) configMap[c.clave] = c.valor;
+  const configMap = await getConfigBatch([
+    "horario_inicio", "horario_fin", "dias_operativos", "horario_activo",
+  ]);
 
   // Si horario desactivado, usar cálculo simple
   if (configMap.horario_activo === "false") {
@@ -173,19 +168,11 @@ export async function calcularTimerVenceConConfig(horasTimer: number): Promise<D
  *   if (!horario.activo) return NextResponse.json({ error: horario.mensaje }, { status: 403 });
  */
 export async function verificarHorarioConConfig(): Promise<HorarioResult> {
-  // Import dinámico para evitar dependencia circular
-  const { prisma } = await import("@/lib/prisma");
+  const { getConfigBatch } = await import("@/lib/config-cache");
 
-  const configs = await prisma.configuracion.findMany({
-    where: {
-      clave: { in: ["horario_inicio", "horario_fin", "dias_operativos", "horario_activo"] },
-    },
-  });
-
-  const configMap: Record<string, string> = {};
-  for (const c of configs) {
-    configMap[c.clave] = c.valor;
-  }
+  const configMap = await getConfigBatch([
+    "horario_inicio", "horario_fin", "dias_operativos", "horario_activo",
+  ]);
 
   // Si el horario está desactivado desde el admin, permitir acceso siempre
   if (configMap.horario_activo === "false") {

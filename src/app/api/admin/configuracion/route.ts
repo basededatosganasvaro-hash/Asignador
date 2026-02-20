@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth-utils";
 import { updateConfigSchema } from "@/lib/validators";
+import { invalidateConfig } from "@/lib/config-cache";
 
 export async function GET() {
   const { error } = await requireAdmin();
@@ -32,6 +33,9 @@ export async function PUT(request: Request) {
     update: { valor },
     create: { clave, valor },
   });
+
+  // Invalidate cached value so changes propagate immediately in this instance
+  invalidateConfig(clave);
 
   return NextResponse.json(config);
 }

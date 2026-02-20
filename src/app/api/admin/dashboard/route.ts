@@ -31,24 +31,27 @@ export async function GET() {
     // Lotes creados hoy
     prisma.lotes.count({ where: { fecha: { gte: today, lt: tomorrow } } }),
 
-    // Stats por promotor
-    prisma.usuarios.findMany({
-      where: { rol: "promotor", activo: true },
-      select: {
-        id: true,
-        nombre: true,
-        lotes: { select: { cantidad: true } },
-        oportunidades: { where: { activo: true }, select: { id: true } },
-      },
-    }),
+    // Stats por promotor — use raw query for efficient aggregation
+    prisma.$queryRaw<
+      { id: number; nombre: string; total_lotes: bigint; total_asignados: bigint; oportunidades_activas: bigint }[]
+    >`
+      SELECT u.id, u.nombre,
+        COUNT(DISTINCT l.id) as total_lotes,
+        COALESCE(SUM(l.cantidad), 0) as total_asignados,
+        (SELECT COUNT(*) FROM oportunidades o WHERE o.usuario_id = u.id AND o.activo = true) as oportunidades_activas
+      FROM usuarios u
+      LEFT JOIN lotes l ON l.usuario_id = u.id
+      WHERE u.rol = 'promotor' AND u.activo = true
+      GROUP BY u.id, u.nombre
+    `,
   ]);
 
   const porPromotor = promotoresStats.map((p) => ({
     id: p.id,
     nombre: p.nombre,
-    total_lotes: p.lotes.length,
-    total_asignados: p.lotes.reduce((sum, l) => sum + l.cantidad, 0),
-    oportunidades_activas: p.oportunidades.length,
+    total_lotes: Number(p.total_lotes),
+    total_asignados: Number(p.total_asignados),
+    oportunidades_activas: Number(p.oportunidades_activas),
   }));
 
   return NextResponse.json({

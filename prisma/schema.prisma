@@ -213,6 +213,9 @@ model oportunidades {
   @@index([cliente_id, activo])
   @@index([etapa_id])
   @@index([timer_vence, activo])
+  @@index([etapa_id, activo])
+  @@index([lote_id])
+  @@index([origen])
 }
 
 // =============================================
@@ -257,6 +260,7 @@ model historial {
 
   @@index([oportunidad_id])
   @@index([usuario_id])
+  @@index([tipo])
 }
 
 // =============================================
@@ -292,6 +296,7 @@ model cupo_diario {
 
   @@unique([usuario_id, fecha])
   @@index([usuario_id])
+  @@index([fecha])
 }
 
 // =============================================
@@ -401,6 +406,8 @@ model wa_campanas {
 
   @@index([usuario_id])
   @@index([estado])
+  @@index([sesion_id])
+  @@index([usuario_id, estado])
 }
 
 // =============================================

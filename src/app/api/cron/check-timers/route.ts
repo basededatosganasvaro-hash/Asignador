@@ -28,14 +28,11 @@ export async function POST(req: Request) {
   const admin = await prisma.usuarios.findFirst({ where: { rol: "admin" } });
   const sistemaUserId = admin?.id ?? 1;
 
-  await prisma.$transaction(
-    vencidas.map((op) =>
-      prisma.oportunidades.update({
-        where: { id: op.id },
-        data: { activo: false, etapa_id: null, timer_vence: null },
-      })
-    )
-  );
+  const vencidaIds = vencidas.map((op) => op.id);
+  await prisma.oportunidades.updateMany({
+    where: { id: { in: vencidaIds } },
+    data: { activo: false, etapa_id: null, timer_vence: null },
+  });
 
   await prisma.historial.createMany({
     data: vencidas.map((op) => ({
