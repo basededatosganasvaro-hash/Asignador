@@ -3,11 +3,11 @@
  *
  * Lógica:
  * 1. Lee todos los users de BD Capacidades con role agente o supervisor
- * 2. Elimina todos los usuarios actuales del sistema EXCEPTO admins
- * 3. Crea usuarios nuevos con username generado, password = username, debe_cambiar_password = true
- * 4. Vincula telegram_id para cruzar solicitudes
+ * 2. Verifica cuáles ya existen en BD Sistema (por telegram_id)
+ * 3. Solo CREA los que no existen — NO elimina usuarios existentes
+ * 4. Username generado, password = username, debe_cambiar_password = true
  *
- * Ejecutar una vez: npx tsx scripts/import-users-capacidades.ts
+ * Ejecutar: npx tsx scripts/import-users-capacidades.ts
  */
 
 import { PrismaClient } from "@prisma/client";
@@ -48,30 +48,38 @@ async function main() {
   console.log(`  - Agentes: ${agentes.length}`);
   console.log(`  - Supervisores: ${supervisores.length}\n`);
 
-  // 2. Eliminar usuarios NO admin del sistema
-  const deleted = await prisma.usuarios.deleteMany({
-    where: { rol: { not: "admin" } },
+  // 2. Cargar todos los usuarios existentes para evitar duplicados
+  const existentes = await prisma.usuarios.findMany({
+    select: { username: true, email: true, telegram_id: true },
   });
-  console.log(`Usuarios no-admin eliminados del sistema: ${deleted.count}\n`);
 
-  // 3. Crear usuarios nuevos
   const usados = new Set<string>();
   const usadosEmail = new Set<string>();
+  const telegramIdsExistentes = new Set<bigint>();
 
-  // Cargar usernames de admins existentes
-  const admins = await prisma.usuarios.findMany({
-    where: { rol: "admin" },
-    select: { username: true, email: true },
-  });
-  for (const a of admins) {
-    usados.add(a.username);
-    usadosEmail.add(a.email);
+  for (const u of existentes) {
+    usados.add(u.username);
+    usadosEmail.add(u.email);
+    if (u.telegram_id !== null) {
+      telegramIdsExistentes.add(u.telegram_id);
+    }
   }
 
+  console.log(`Usuarios existentes en BD Sistema: ${existentes.length}`);
+  console.log(`  - Con telegram_id: ${telegramIdsExistentes.size}\n`);
+
+  // 3. Crear solo los usuarios que no existen
   let creados = 0;
+  let yaExistian = 0;
   let sinNombre = 0;
 
   for (const user of usersCapacidades) {
+    // Verificar si ya existe por telegram_id
+    if (telegramIdsExistentes.has(user.user_id)) {
+      yaExistian++;
+      continue;
+    }
+
     const nombre = user.nombre?.trim();
     if (!nombre) {
       sinNombre++;
@@ -125,8 +133,9 @@ async function main() {
 
   console.log(`\n=== Resultado ===`);
   console.log(`Usuarios creados: ${creados}`);
+  console.log(`Ya existían (por telegram_id): ${yaExistian}`);
   console.log(`Omitidos (sin nombre): ${sinNombre}`);
-  console.log(`Admins conservados: ${admins.length}`);
+  console.log(`Total en sistema: ${existentes.length + creados}`);
   console.log(`\nImportación completada.`);
 }
 
