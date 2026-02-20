@@ -35,7 +35,7 @@ export async function POST(request: Request) {
   const equipo = await prisma.equipos.create({
     data: {
       nombre: parsed.data.nombre,
-      sucursal_id: parsed.data.sucursal_id,
+      sucursal_id: parsed.data.sucursal_id ?? null,
       supervisor_id: parsed.data.supervisor_id,
     },
     include: {

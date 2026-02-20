@@ -50,14 +50,14 @@ model sucursales {
 
 model equipos {
   id            Int     @id @default(autoincrement())
-  sucursal_id   Int
+  sucursal_id   Int?
   nombre        String  @db.VarChar(200)
   supervisor_id Int?
   activo        Boolean @default(true)
 
-  sucursal   sucursales @relation(fields: [sucursal_id], references: [id])
-  miembros   usuarios[] @relation("EquipoMiembros")
-  supervisor usuarios?  @relation("EquipoSupervisor", fields: [supervisor_id], references: [id])
+  sucursal   sucursales? @relation(fields: [sucursal_id], references: [id])
+  miembros   usuarios[]  @relation("EquipoMiembros")
+  supervisor usuarios?   @relation("EquipoSupervisor", fields: [supervisor_id], references: [id])
 
   @@index([sucursal_id])
 }

@@ -14,7 +14,7 @@ interface Equipo {
   id: number;
   nombre: string;
   activo: boolean;
-  sucursal: { id: number; nombre: string };
+  sucursal: { id: number; nombre: string } | null;
   supervisor: { id: number; nombre: string } | null;
   _count: { miembros: number };
 }
@@ -49,7 +49,7 @@ export default function EquiposPage() {
   const handleOpenCreate = () => { setEditing(null); setForm({ nombre: "", sucursal_id: "", supervisor_id: "" }); setDialogOpen(true); };
   const handleOpenEdit = (row: Equipo) => {
     setEditing(row);
-    setForm({ nombre: row.nombre, sucursal_id: String(row.sucursal.id), supervisor_id: row.supervisor ? String(row.supervisor.id) : "" });
+    setForm({ nombre: row.nombre, sucursal_id: row.sucursal ? String(row.sucursal.id) : "", supervisor_id: row.supervisor ? String(row.supervisor.id) : "" });
     setDialogOpen(true);
   };
 
@@ -58,7 +58,7 @@ export default function EquiposPage() {
     const method = editing ? "PUT" : "POST";
     const body = {
       nombre: form.nombre,
-      sucursal_id: Number(form.sucursal_id),
+      sucursal_id: form.sucursal_id ? Number(form.sucursal_id) : null,
       supervisor_id: form.supervisor_id ? Number(form.supervisor_id) : null,
     };
     const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
@@ -113,9 +113,10 @@ export default function EquiposPage() {
         <DialogTitle>{editing ? "Editar Equipo" : "Nuevo Equipo"}</DialogTitle>
         <DialogContent>
           <TextField fullWidth label="Nombre" value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} margin="normal" required autoFocus />
-          <FormControl fullWidth margin="normal" required>
-            <InputLabel>Sucursal</InputLabel>
-            <Select value={form.sucursal_id} label="Sucursal" onChange={(e) => setForm({ ...form, sucursal_id: e.target.value })}>
+          <FormControl fullWidth margin="normal">
+            <InputLabel>Sucursal (opcional)</InputLabel>
+            <Select value={form.sucursal_id} label="Sucursal (opcional)" onChange={(e) => setForm({ ...form, sucursal_id: e.target.value })}>
+              <MenuItem value="">Sin sucursal</MenuItem>
               {sucursales.map((s) => <MenuItem key={s.id} value={String(s.id)}>{s.nombre}</MenuItem>)}
             </Select>
           </FormControl>
@@ -129,7 +130,7 @@ export default function EquiposPage() {
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
           <Button onClick={() => setDialogOpen(false)} color="error" variant="outlined">Cancelar</Button>
-          <Button variant="contained" onClick={handleSave} disabled={!form.nombre || !form.sucursal_id}>{editing ? "Actualizar" : "Crear"}</Button>
+          <Button variant="contained" onClick={handleSave} disabled={!form.nombre}>{editing ? "Actualizar" : "Crear"}</Button>
         </DialogActions>
       </Dialog>
       <Snackbar open={snackbar.open} autoHideDuration={3000} onClose={() => setSnackbar({ ...snackbar, open: false })}>

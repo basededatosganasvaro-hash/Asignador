@@ -15,7 +15,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     data: {
       ...(nombre !== undefined && { nombre }),
       ...(activo !== undefined && { activo }),
-      ...(sucursal_id !== undefined && { sucursal_id: Number(sucursal_id) }),
+      ...(sucursal_id !== undefined && { sucursal_id: sucursal_id ? Number(sucursal_id) : null }),
       ...(supervisor_id !== undefined && { supervisor_id: supervisor_id ? Number(supervisor_id) : null }),
     },
   });

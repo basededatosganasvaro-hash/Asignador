@@ -71,7 +71,7 @@ export const createSucursalSchema = z.object({
 
 export const createEquipoSchema = z.object({
   nombre: z.string().min(1).max(200),
-  sucursal_id: z.number().int().positive(),
+  sucursal_id: z.number().int().positive().optional().nullable(),
   supervisor_id: z.number().int().positive().optional().nullable(),
 });
 

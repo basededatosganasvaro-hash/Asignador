@@ -1,11 +1,13 @@
 /**
- * Script de importación: crea usuarios del sistema a partir de BD Capacidades.
+ * Script de importación: crea usuarios y equipos del sistema a partir de BD Capacidades.
  *
  * Lógica:
  * 1. Lee todos los users de BD Capacidades con role agente o supervisor
- * 2. Verifica cuáles ya existen en BD Sistema (por telegram_id)
- * 3. Solo CREA los que no existen — NO elimina usuarios existentes
- * 4. Username generado, password = username, debe_cambiar_password = true
+ * 2. Crea equipos únicos a partir del campo users.equipo (sin sucursal)
+ * 3. Verifica cuáles usuarios ya existen en BD Sistema (por telegram_id)
+ * 4. Solo CREA los que no existen — NO elimina usuarios/equipos existentes
+ * 5. Asigna equipo_id al usuario si hay match por nombre
+ * 6. Username generado, password = username, debe_cambiar_password = true
  *
  * Ejecutar: npx tsx prisma/import-users-capacidades.ts
  */
@@ -48,7 +50,40 @@ async function main() {
   console.log(`  - Agentes: ${agentes.length}`);
   console.log(`  - Supervisores: ${supervisores.length}\n`);
 
-  // 2. Cargar todos los usuarios existentes para evitar duplicados
+  // 2. Crear equipos únicos desde BD Capacidades
+  const nombresEquiposCap = new Set<string>();
+  for (const u of usersCapacidades) {
+    if (u.equipo?.trim()) {
+      nombresEquiposCap.add(u.equipo.trim());
+    }
+  }
+  console.log(`Equipos únicos en BD Capacidades: ${nombresEquiposCap.size}`);
+
+  // Cargar equipos existentes en BD Sistema
+  const equiposExistentes = await prisma.equipos.findMany({
+    select: { id: true, nombre: true },
+  });
+  const equipoMap = new Map<string, number>();
+  for (const eq of equiposExistentes) {
+    equipoMap.set(eq.nombre.toLowerCase().trim(), eq.id);
+  }
+
+  // Crear equipos que no existen
+  let equiposCreados = 0;
+  for (const nombreEquipo of nombresEquiposCap) {
+    const key = nombreEquipo.toLowerCase().trim();
+    if (!equipoMap.has(key)) {
+      const nuevo = await prisma.equipos.create({
+        data: { nombre: nombreEquipo },
+      });
+      equipoMap.set(key, nuevo.id);
+      equiposCreados++;
+    }
+  }
+  console.log(`Equipos creados: ${equiposCreados}`);
+  console.log(`Equipos ya existían: ${nombresEquiposCap.size - equiposCreados}\n`);
+
+  // 3. Cargar todos los usuarios existentes para evitar duplicados
   const existentes = await prisma.usuarios.findMany({
     select: { username: true, email: true, telegram_id: true },
   });
@@ -68,10 +103,11 @@ async function main() {
   console.log(`Usuarios existentes en BD Sistema: ${existentes.length}`);
   console.log(`  - Con telegram_id: ${telegramIdsExistentes.size}\n`);
 
-  // 3. Crear solo los usuarios que no existen
+  // 4. Crear solo los usuarios que no existen
   let creados = 0;
   let yaExistian = 0;
   let sinNombre = 0;
+  let conEquipo = 0;
 
   for (const user of usersCapacidades) {
     // Verificar si ya existe por telegram_id
@@ -112,6 +148,14 @@ async function main() {
     // Rol mapeado
     const rol = user.role === "supervisor" ? "supervisor" : "promotor";
 
+    // Match equipo por nombre
+    let equipo_id: number | null = null;
+    if (user.equipo?.trim()) {
+      const key = user.equipo.trim().toLowerCase();
+      equipo_id = equipoMap.get(key) ?? null;
+      if (equipo_id) conEquipo++;
+    }
+
     // Password = username (bcrypt)
     const password_hash = await bcrypt.hash(username, 10);
 
@@ -123,6 +167,7 @@ async function main() {
         password_hash,
         rol,
         telegram_id: user.user_id,
+        equipo_id,
         debe_cambiar_password: true,
         activo: true,
       },
@@ -132,7 +177,8 @@ async function main() {
   }
 
   console.log(`\n=== Resultado ===`);
-  console.log(`Usuarios creados: ${creados}`);
+  console.log(`Equipos creados: ${equiposCreados}`);
+  console.log(`Usuarios creados: ${creados} (${conEquipo} con equipo asignado)`);
   console.log(`Ya existían (por telegram_id): ${yaExistian}`);
   console.log(`Omitidos (sin nombre): ${sinNombre}`);
   console.log(`Total en sistema: ${existentes.length + creados}`);
