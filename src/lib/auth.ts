@@ -28,17 +28,12 @@ export const authOptions: NextAuthOptions = {
         }
 
         if (!user.activo) {
-          throw new Error("Cuenta desactivada. Contacte al administrador.");
+          throw new Error("Credenciales inválidas");
         }
 
         // Verificar bloqueo temporal
         if (user.bloqueado_hasta && user.bloqueado_hasta > new Date()) {
-          const minutosRestantes = Math.ceil(
-            (user.bloqueado_hasta.getTime() - Date.now()) / 60000
-          );
-          throw new Error(
-            `Cuenta bloqueada temporalmente. Intente en ${minutosRestantes} minuto${minutosRestantes !== 1 ? "s" : ""}.`
-          );
+          throw new Error("Cuenta bloqueada temporalmente");
         }
 
         const isValid = await bcrypt.compare(
@@ -63,9 +58,7 @@ export const authOptions: NextAuthOptions = {
           });
 
           if (bloqueado) {
-            throw new Error(
-              `Demasiados intentos fallidos. Cuenta bloqueada por ${BLOQUEO_MINUTOS} minutos.`
-            );
+            throw new Error("Cuenta bloqueada temporalmente");
           }
 
           throw new Error("Credenciales inválidas");

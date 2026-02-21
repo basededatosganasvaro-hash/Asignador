@@ -9,8 +9,7 @@ export async function POST() {
   try {
     const result = await waFetch(`/sessions/${session!.user.id}`, { method: "DELETE" });
     return NextResponse.json(result);
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : "Error";
-    return NextResponse.json({ error: msg }, { status: 500 });
+  } catch {
+    return NextResponse.json({ error: "Error al desconectar sesión WhatsApp" }, { status: 500 });
   }
 }

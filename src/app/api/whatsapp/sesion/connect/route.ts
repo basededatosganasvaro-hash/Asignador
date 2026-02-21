@@ -9,12 +9,11 @@ export async function POST() {
   try {
     const userId = Number(session!.user.id);
     if (!userId || isNaN(userId)) {
-      return NextResponse.json({ error: `ID inválido: ${session!.user.id}` }, { status: 400 });
+      return NextResponse.json({ error: "ID de usuario inválido" }, { status: 400 });
     }
     const result = await waFetch(`/sessions/${userId}/connect`, { method: "POST" });
     return NextResponse.json(result);
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : "Error";
-    return NextResponse.json({ error: msg }, { status: 500 });
+  } catch {
+    return NextResponse.json({ error: "Error de conexión WhatsApp" }, { status: 500 });
   }
 }

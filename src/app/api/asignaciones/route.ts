@@ -329,10 +329,9 @@ export async function POST(request: Request) {
         { status: 409 }
       );
     }
-    const errMsg = err instanceof Error ? err.message : String(err);
-    console.error("Error al crear lote:", errMsg, err);
+    console.error("Error al crear lote:", err instanceof Error ? err.message : "Error desconocido");
     return NextResponse.json(
-      { error: `Error al crear la asignacion: ${errMsg}` },
+      { error: "Error al crear la asignación" },
       { status: 500 }
     );
   }

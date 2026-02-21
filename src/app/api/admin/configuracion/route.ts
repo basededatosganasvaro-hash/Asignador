@@ -8,7 +8,9 @@ export async function GET() {
   const { error } = await requireAdmin();
   if (error) return error;
 
-  const config = await prisma.configuracion.findMany();
+  const config = await prisma.configuracion.findMany({
+    select: { id: true, clave: true, valor: true },
+  });
   return NextResponse.json(config);
 }
 

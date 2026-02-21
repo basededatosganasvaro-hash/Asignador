@@ -15,9 +15,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       return NextResponse.json({ error: "Sin acceso a esta campaña" }, { status: 403 });
     }
     return NextResponse.json(result);
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : "Error";
-    return NextResponse.json({ error: msg }, { status: 500 });
+  } catch {
+    return NextResponse.json({ error: "Error al obtener campaña" }, { status: 500 });
   }
 }
 
@@ -41,8 +40,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
     const result = await waFetch(`/campaigns/${id}/${action}`, { method: "PATCH" });
     return NextResponse.json(result);
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : "Error";
-    return NextResponse.json({ error: msg }, { status: 500 });
+  } catch {
+    return NextResponse.json({ error: "Error al actualizar campaña" }, { status: 500 });
   }
 }

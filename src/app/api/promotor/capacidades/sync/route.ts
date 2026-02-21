@@ -33,7 +33,7 @@ export async function POST() {
       },
     });
   } catch (err) {
-    console.error("Error al consultar BD Capacidades:", err);
+    console.error("Error al consultar BD Capacidades:", err instanceof Error ? err.message : "Error desconocido");
     return NextResponse.json(
       { error: "No se pudo conectar con el servicio de Capacidades. Intenta más tarde." },
       { status: 503 }
@@ -86,7 +86,7 @@ export async function POST() {
   });
 
   if (!etapaAsignado) {
-    console.error("Etapa 'Asignado' no encontrada o inactiva en embudo_etapas");
+    console.error("Etapa 'Asignado' no encontrada o inactiva");
     return NextResponse.json(
       { error: "Configuración del sistema incompleta. Contacta al administrador." },
       { status: 500 }
@@ -159,7 +159,7 @@ export async function POST() {
 
       sincronizados++;
     } catch (err) {
-      console.error(`Error sincronizando solicitud ${sol.id}:`, err);
+      console.error(`Error sincronizando solicitud ${sol.id}:`, err instanceof Error ? err.message : "Error desconocido");
       errores.push(sol.id);
     }
   }

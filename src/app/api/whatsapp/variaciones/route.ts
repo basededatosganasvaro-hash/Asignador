@@ -82,7 +82,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ variaciones });
   } catch (err) {
-    console.error("[Variaciones] OpenAI error:", err);
+    console.error("[Variaciones] OpenAI error:", err instanceof Error ? err.message : "Error desconocido");
     return NextResponse.json(
       { error: "Error al generar variaciones" },
       { status: 500 }

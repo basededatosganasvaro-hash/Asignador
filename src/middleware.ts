@@ -43,5 +43,11 @@ export const config = {
     "/api/asignaciones/:path*",
     "/api/clientes/:path*",
     "/api/organizacion/:path*",
+    "/api/oportunidades/:path*",
+    "/api/captaciones/:path*",
+    "/api/embudo/:path*",
+    "/api/promotor/:path*",
+    "/api/whatsapp/:path*",
+    "/api/sistema/:path*",
   ],
 };

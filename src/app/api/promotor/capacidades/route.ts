@@ -50,7 +50,7 @@ export async function GET() {
       take: MAX_SOLICITUDES,
     });
   } catch (err) {
-    console.error("Error al consultar BD Capacidades:", err);
+    console.error("Error al consultar BD Capacidades:", err instanceof Error ? err.message : "Error desconocido");
     return NextResponse.json(
       { error: "No se pudo conectar con el servicio de Capacidades. Intenta más tarde." },
       { status: 503 }
