@@ -6,7 +6,11 @@ import {
 import WhatsAppIcon from "@mui/icons-material/WhatsApp";
 import LinkOffIcon from "@mui/icons-material/LinkOff";
 import PhoneAndroidIcon from "@mui/icons-material/PhoneAndroid";
+import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
+import IconButton from "@mui/material/IconButton";
+import Tooltip from "@mui/material/Tooltip";
 import WhatsAppQRDialog from "@/components/WhatsAppQRDialog";
+import WhatsAppGuiaModal from "@/components/WhatsAppGuiaModal";
 import CampanaProgreso from "@/components/CampanaProgreso";
 
 interface WaStatus {
@@ -20,6 +24,16 @@ export default function WhatsAppPage() {
   const [status, setStatus] = useState<WaStatus | null>(null);
   const [qrOpen, setQrOpen] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
+  const [guiaOpen, setGuiaOpen] = useState(false);
+
+  useEffect(() => {
+    if (!localStorage.getItem("wa_guia_vista")) setGuiaOpen(true);
+  }, []);
+
+  const handleGuiaClose = () => {
+    localStorage.setItem("wa_guia_vista", "1");
+    setGuiaOpen(false);
+  };
 
   const fetchStatus = useCallback(async () => {
     try {
@@ -47,7 +61,14 @@ export default function WhatsAppPage() {
 
   return (
     <Box>
-      <Typography variant="h5" fontWeight={600} sx={{ mb: 0.5 }}>WhatsApp Masivo</Typography>
+      <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, mb: 0.5 }}>
+        <Typography variant="h5" fontWeight={600}>WhatsApp Masivo</Typography>
+        <Tooltip title="Estrategias anti-bloqueo">
+          <IconButton size="small" onClick={() => setGuiaOpen(true)}>
+            <HelpOutlineIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+      </Box>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
         Envía mensajes masivos a tus clientes desde tu WhatsApp
       </Typography>
@@ -113,6 +134,9 @@ export default function WhatsAppPage() {
 
       {/* Campañas activas */}
       <CampanaProgreso />
+
+      {/* Guía anti-bloqueo */}
+      <WhatsAppGuiaModal open={guiaOpen} onClose={handleGuiaClose} />
 
       {/* QR Dialog */}
       <WhatsAppQRDialog
