@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog, DialogTitle, DialogContent, DialogActions,
   Button, Typography, Box, TextField, Stepper, Step, StepLabel,
@@ -37,6 +37,8 @@ export default function CampanaCrearDialog({ open, onClose, onSuccess, destinata
   const [error, setError] = useState("");
   const [editIdx, setEditIdx] = useState<number | null>(null);
   const [editText, setEditText] = useState("");
+
+  useEffect(() => { setMensajeBase(mensajeInicial); }, [mensajeInicial]);
 
   const handleGenerarVariaciones = async () => {
     if (!mensajeBase.trim()) return;

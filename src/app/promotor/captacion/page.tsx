@@ -59,17 +59,24 @@ export default function CaptacionPage() {
 
   useEffect(() => {
     fetch("/api/captaciones/convenios")
-      .then((r) => r.json())
-      .then(setConvenios);
+      .then((r) => { if (!r.ok) throw new Error(); return r.json(); })
+      .then(setConvenios)
+      .catch(() => setError("Error al cargar convenios"));
   }, []);
 
   const handleConvenioChange = async (convenio: string) => {
     setForm((p) => ({ ...p, convenio }));
     if (!convenio) { setReglas([]); return; }
     setLoadingReglas(true);
-    const res = await fetch(`/api/captaciones/reglas?convenio=${encodeURIComponent(convenio)}`);
-    setReglas(await res.json());
-    setLoadingReglas(false);
+    try {
+      const res = await fetch(`/api/captaciones/reglas?convenio=${encodeURIComponent(convenio)}`);
+      if (!res.ok) throw new Error();
+      setReglas(await res.json());
+    } catch {
+      setError("Error al cargar reglas del convenio");
+    } finally {
+      setLoadingReglas(false);
+    }
   };
 
   const handleField = (campo: string, valor: string) => {
@@ -91,25 +98,30 @@ export default function CaptacionPage() {
     );
 
     setSaving(true);
-    const res = await fetch("/api/captaciones", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ origen_captacion, convenio, datos }),
-    });
-    setSaving(false);
+    try {
+      const res = await fetch("/api/captaciones", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ origen_captacion, convenio, datos }),
+      });
 
-    if (!res.ok) {
-      const data = await res.json();
-      if (res.status === 409 && data.oportunidad_id) {
-        router.push(`/promotor/oportunidades/${data.oportunidad_id}`);
+      if (!res.ok) {
+        const data = await res.json();
+        if (res.status === 409 && data.oportunidad_id) {
+          router.push(`/promotor/oportunidades/${data.oportunidad_id}`);
+          return;
+        }
+        setError(data.error ?? "Error al captar");
         return;
       }
-      setError(data.error ?? "Error al captar");
-      return;
-    }
 
-    const { id } = await res.json();
-    router.push(`/promotor/oportunidades/${id}`);
+      const { id } = await res.json();
+      router.push(`/promotor/oportunidades/${id}`);
+    } catch {
+      setError("Error de conexión");
+    } finally {
+      setSaving(false);
+    }
   };
 
   // Campos extra del convenio (excluyendo los base que ya se muestran)

@@ -21,6 +21,7 @@ interface Opciones {
   municipios: string[];
   disponibles: number;
   cupoRestante: number;
+  cupoMaximo: number;
   asignables: number;
 }
 
@@ -61,7 +62,7 @@ export default function SolicitarAsignacionDialog({ open, onClose, onSuccess }: 
       }
     } catch (err: unknown) {
       if (err instanceof Error && err.name !== "AbortError") {
-        console.error("Error fetching opciones:", err);
+        setError("Error al cargar opciones de asignación");
       }
     } finally {
       setLoading(false);
@@ -149,7 +150,7 @@ export default function SolicitarAsignacionDialog({ open, onClose, onSuccess }: 
           {opciones && opciones.cupoRestante > 0 && (
             <LinearProgress
               variant="determinate"
-              value={((300 - opciones.cupoRestante) / 300) * 100}
+              value={((opciones.cupoMaximo - opciones.cupoRestante) / opciones.cupoMaximo) * 100}
               sx={{ height: 6, borderRadius: 3 }}
             />
           )}

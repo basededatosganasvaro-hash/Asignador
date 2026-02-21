@@ -57,12 +57,16 @@ export default function AsignacionDetallePage() {
   });
 
   const fetchData = useCallback(async () => {
-    const res = await fetch(`/api/asignaciones/${params.id}`);
-    if (res.ok) {
-      const json = await res.json();
-      setData(json);
+    try {
+      const res = await fetch(`/api/asignaciones/${params.id}`);
+      if (res.ok) {
+        setData(await res.json());
+      }
+    } catch {
+      /* error de conexión, data queda null */
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, [params.id]);
 
   useEffect(() => {

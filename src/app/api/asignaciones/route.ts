@@ -125,7 +125,10 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    cantidad = body.cantidad;
+    cantidad = body.cantidad != null ? Math.floor(Number(body.cantidad)) : undefined;
+    if (cantidad != null && (!Number.isFinite(cantidad) || cantidad < 1)) {
+      return NextResponse.json({ error: "Cantidad debe ser un número entero positivo" }, { status: 400 });
+    }
     tipo_cliente = body.tipo_cliente || undefined;
     convenio = body.convenio || undefined;
     estado = body.estado || undefined;

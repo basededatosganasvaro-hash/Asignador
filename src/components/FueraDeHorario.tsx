@@ -52,7 +52,7 @@ export default function FueraDeHorario({
         </Typography>
         {horaActual && (
           <Typography variant="body2" color="text.disabled">
-            Hora actual: {horaActual} (CST)
+            Hora actual: {horaActual} (Hora Centro de México)
           </Typography>
         )}
         <Typography variant="body2" color="text.disabled" sx={{ mt: 1 }}>

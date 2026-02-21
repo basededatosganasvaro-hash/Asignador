@@ -139,6 +139,7 @@ export async function GET(req: Request) {
     municipios:   municipiosRaw.map((r) => (r as { municipio?: string | null }).municipio).filter(Boolean),
     disponibles,
     cupoRestante,
+    cupoMaximo: maxPerDay,
     asignables: Math.min(disponibles, cupoRestante),
   });
 }

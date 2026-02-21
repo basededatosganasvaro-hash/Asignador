@@ -61,8 +61,9 @@ export default function CaptacionModal({ open, onClose, onSuccess }: Props) {
   useEffect(() => {
     if (open) {
       fetch("/api/captaciones/convenios")
-        .then((r) => r.json())
-        .then(setConvenios);
+        .then((r) => { if (!r.ok) throw new Error(); return r.json(); })
+        .then(setConvenios)
+        .catch(() => setError("Error al cargar convenios"));
     }
   }, [open]);
 
@@ -89,9 +90,15 @@ export default function CaptacionModal({ open, onClose, onSuccess }: Props) {
     setForm((p) => ({ ...p, convenio }));
     if (!convenio) { setReglas([]); return; }
     setLoadingReglas(true);
-    const res = await fetch(`/api/captaciones/reglas?convenio=${encodeURIComponent(convenio)}`);
-    setReglas(await res.json());
-    setLoadingReglas(false);
+    try {
+      const res = await fetch(`/api/captaciones/reglas?convenio=${encodeURIComponent(convenio)}`);
+      if (!res.ok) throw new Error();
+      setReglas(await res.json());
+    } catch {
+      setError("Error al cargar reglas del convenio");
+    } finally {
+      setLoadingReglas(false);
+    }
   };
 
   const handleField = (campo: string, valor: string) => {
@@ -113,22 +120,27 @@ export default function CaptacionModal({ open, onClose, onSuccess }: Props) {
     );
 
     setSaving(true);
-    const res = await fetch("/api/captaciones", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ origen_captacion, convenio, datos }),
-    });
-    setSaving(false);
+    try {
+      const res = await fetch("/api/captaciones", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ origen_captacion, convenio, datos }),
+      });
 
-    if (!res.ok) {
-      const data = await res.json();
-      setError(data.error ?? "Error al captar");
-      return;
+      if (!res.ok) {
+        const data = await res.json();
+        setError(data.error ?? "Error al captar");
+        return;
+      }
+
+      const { id } = await res.json();
+      resetForm();
+      onSuccess(id);
+    } catch {
+      setError("Error de conexión");
+    } finally {
+      setSaving(false);
     }
-
-    const { id } = await res.json();
-    resetForm();
-    onSuccess(id);
   };
 
   const camposBase = ["nombres", "a_paterno", "a_materno", "tel_1"];

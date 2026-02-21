@@ -21,7 +21,6 @@ import TelegramIcon from "@mui/icons-material/Telegram";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { buildWhatsAppUrl, formatPhoneForWA, WA_MENSAJES_DEFAULT } from "@/lib/whatsapp";
-import ImportCaptacionDialog from "@/components/ImportCaptacionDialog";
 import CaptacionModal from "@/components/CaptacionModal";
 import SolicitarAsignacionDialog from "@/components/SolicitarAsignacionDialog";
 import CampanaCrearDialog from "@/components/CampanaCrearDialog";
@@ -260,7 +259,6 @@ export default function OportunidadesPage() {
     } catch { /* ignore */ }
   }, []);
   const router = useRouter();
-  const [importOpen, setImportOpen] = useState(false);
   const [captacionOpen, setCaptacionOpen] = useState(false);
   const [asignacionOpen, setAsignacionOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
@@ -282,17 +280,26 @@ export default function OportunidadesPage() {
   });
 
   const fetchData = useCallback(async () => {
-    const [resOps, resEtapas, resPlantillas] = await Promise.all([
-      fetch("/api/oportunidades"),
-      fetch("/api/embudo/etapas"),
-      fetch("/api/promotor/plantillas-whatsapp"),
-    ]);
-    setRows(await resOps.json());
-    setEtapas(await resEtapas.json());
-    if (resPlantillas.ok) {
-      setPlantillas(await resPlantillas.json());
+    try {
+      const [resOps, resEtapas, resPlantillas] = await Promise.all([
+        fetch("/api/oportunidades"),
+        fetch("/api/embudo/etapas"),
+        fetch("/api/promotor/plantillas-whatsapp"),
+      ]);
+      if (!resOps.ok || !resEtapas.ok) {
+        setSnackbar({ open: true, message: "Error al cargar datos", severity: "error" });
+        return;
+      }
+      setRows(await resOps.json());
+      setEtapas(await resEtapas.json());
+      if (resPlantillas.ok) {
+        setPlantillas(await resPlantillas.json());
+      }
+    } catch {
+      setSnackbar({ open: true, message: "Error de conexión al cargar datos", severity: "error" });
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, []);
 
   useEffect(() => { fetchData(); }, [fetchData]);
@@ -391,35 +398,40 @@ export default function OportunidadesPage() {
 
   const executeTransicion = async (opId: number, transicionId: number, numOperacion?: string, monto?: string) => {
     setTransitioning(opId);
-    const res = await fetch(`/api/oportunidades/${opId}/transicion`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        transicion_id: transicionId,
-        nota: observaciones[opId] || undefined,
-        num_operacion: numOperacion || undefined,
-        monto: monto ? parseFloat(monto) : undefined,
-      }),
-    });
-    setTransitioning(null);
+    try {
+      const res = await fetch(`/api/oportunidades/${opId}/transicion`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          transicion_id: transicionId,
+          nota: observaciones[opId] || undefined,
+          num_operacion: numOperacion || undefined,
+          monto: monto ? parseFloat(monto) : undefined,
+        }),
+      });
 
-    if (res.ok) {
-      const result = await res.json();
-      if (result.confetti) {
-        setConfetti(true);
-        setSnackbar({ open: true, message: "Venta registrada!", severity: "success" });
-      } else if (result.devuelta_al_pool) {
-        setSnackbar({ open: true, message: "Cliente devuelto al pool", severity: "success" });
-      } else if (result.enviada_a_bandeja) {
-        setSnackbar({ open: true, message: "Enviado a bandeja de supervisor", severity: "success" });
+      if (res.ok) {
+        const result = await res.json();
+        if (result.confetti) {
+          setConfetti(true);
+          setSnackbar({ open: true, message: "Venta registrada!", severity: "success" });
+        } else if (result.devuelta_al_pool) {
+          setSnackbar({ open: true, message: "Cliente devuelto al pool", severity: "success" });
+        } else if (result.enviada_a_bandeja) {
+          setSnackbar({ open: true, message: "Enviado a bandeja de supervisor", severity: "success" });
+        } else {
+          setSnackbar({ open: true, message: "Etapa actualizada", severity: "success" });
+        }
+        setObservaciones((p) => { const next = { ...p }; delete next[opId]; return next; });
+        fetchData();
       } else {
-        setSnackbar({ open: true, message: "Etapa actualizada", severity: "success" });
+        const err = await res.json().catch(() => ({ error: "Error al cambiar etapa" }));
+        setSnackbar({ open: true, message: err.error || "Error al cambiar etapa", severity: "error" });
       }
-      setObservaciones((p) => { const next = { ...p }; delete next[opId]; return next; });
-      fetchData();
-    } else {
-      const err = await res.json();
-      setSnackbar({ open: true, message: err.error || "Error al cambiar etapa", severity: "error" });
+    } catch {
+      setSnackbar({ open: true, message: "Error de conexión al cambiar etapa", severity: "error" });
+    } finally {
+      setTransitioning(null);
     }
   };
 
@@ -442,7 +454,7 @@ export default function OportunidadesPage() {
   };
 
   // ─── Modal Ver capacidad IMSS ───
-  const openCapDialog = async (row: Oportunidad) => {
+  const openCapDialog = (row: Oportunidad) => {
     setCapDialog({ open: true, loading: true, data: null });
     // datos de capacidad están en los campos de la row (vienen de captacion.datos_json)
     const datos: Record<string, unknown> = {
@@ -1161,12 +1173,6 @@ export default function OportunidadesPage() {
           fetchData();
           setSnackbar({ open: true, message: "Asignación completada", severity: "success" });
         }}
-      />
-
-      <ImportCaptacionDialog
-        open={importOpen}
-        onClose={() => setImportOpen(false)}
-        onSuccess={() => { setImportOpen(false); fetchData(); }}
       />
 
       <CampanaCrearDialog

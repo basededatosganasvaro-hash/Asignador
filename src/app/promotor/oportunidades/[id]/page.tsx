@@ -114,46 +114,58 @@ export default function OportunidadDetallePage({ params }: { params: Promise<{ i
   const handleExecuteTransicion = async () => {
     if (!selectedTransicion) return;
     setSaving(true);
-    const res = await fetch(`/api/oportunidades/${id}/transicion`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        transicion_id: selectedTransicion.id,
-        canal: canal || undefined,
-        nota: nota || undefined,
-        num_operacion: numOperacion || undefined,
-      }),
-    });
-    setSaving(false);
+    try {
+      const res = await fetch(`/api/oportunidades/${id}/transicion`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          transicion_id: selectedTransicion.id,
+          canal: canal || undefined,
+          nota: nota || undefined,
+          num_operacion: numOperacion || undefined,
+        }),
+      });
 
-    if (res.ok) {
-      const result = await res.json();
-      setDialogOpen(false);
-      if (result.confetti) {
-        setConfetti(true);
-      } else if (result.devuelta_al_pool) {
-        setSnackbar({ open: true, message: "Oportunidad devuelta al pool", severity: "success" });
-        setTimeout(() => router.push("/promotor/oportunidades"), 1500);
+      if (res.ok) {
+        const result = await res.json();
+        setDialogOpen(false);
+        if (result.confetti) {
+          setConfetti(true);
+        } else if (result.devuelta_al_pool) {
+          setSnackbar({ open: true, message: "Oportunidad devuelta al pool", severity: "success" });
+          setTimeout(() => router.push("/promotor/oportunidades"), 1500);
+        } else {
+          setSnackbar({ open: true, message: "Etapa actualizada", severity: "success" });
+          fetchData();
+        }
       } else {
-        setSnackbar({ open: true, message: "Etapa actualizada", severity: "success" });
-        fetchData();
+        const err = await res.json().catch(() => ({ error: "Error al ejecutar" }));
+        setSnackbar({ open: true, message: err.error || "Error al ejecutar", severity: "error" });
       }
-    } else {
-      const err = await res.json();
-      setSnackbar({ open: true, message: err.error || "Error al ejecutar", severity: "error" });
+    } catch {
+      setSnackbar({ open: true, message: "Error de conexión", severity: "error" });
+    } finally {
+      setSaving(false);
     }
   };
 
   const handleEditTel = async () => {
-    const res = await fetch(`/api/clientes/${data!.cliente_id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tel_1: editTel }),
-    });
-    if (res.ok) {
-      setEditTelOpen(false);
-      setSnackbar({ open: true, message: "Teléfono actualizado", severity: "success" });
-      fetchData();
+    try {
+      const res = await fetch(`/api/clientes/${data!.cliente_id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tel_1: editTel }),
+      });
+      if (res.ok) {
+        setEditTelOpen(false);
+        setSnackbar({ open: true, message: "Teléfono actualizado", severity: "success" });
+        fetchData();
+      } else {
+        const err = await res.json().catch(() => ({ error: "Error al guardar" }));
+        setSnackbar({ open: true, message: err.error || "Error al guardar teléfono", severity: "error" });
+      }
+    } catch {
+      setSnackbar({ open: true, message: "Error de conexión", severity: "error" });
     }
   };
 

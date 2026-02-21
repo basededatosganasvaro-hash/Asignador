@@ -51,11 +51,10 @@ export default function AsignacionesPage() {
 
   useEffect(() => {
     fetch("/api/asignaciones")
-      .then((res) => res.json())
-      .then((data) => {
-        setAsignaciones(data);
-        setLoading(false);
-      });
+      .then((res) => { if (!res.ok) throw new Error(); return res.json(); })
+      .then((data) => setAsignaciones(data))
+      .catch(() => { /* error silencioso, lista vacía */ })
+      .finally(() => setLoading(false));
   }, []);
 
   const handleDownload = (id: number) => {

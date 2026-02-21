@@ -98,10 +98,10 @@ export default function CapacidadesPage() {
       field: "estado",
       headerName: "Estado",
       width: 120,
-      renderCell: () => (
+      renderCell: (p) => (
         <Chip
           icon={<CheckCircleIcon sx={{ fontSize: 14 }} />}
-          label="Respondida"
+          label={p.value || "Respondida"}
           size="small"
           color="success"
           variant="outlined"

@@ -23,6 +23,19 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ error: "transicion_id es requerido" }, { status: 400 });
   }
 
+  // Validar monto si se envía
+  if (monto != null) {
+    const montoNum = Number(monto);
+    if (!Number.isFinite(montoNum) || montoNum < 0) {
+      return NextResponse.json({ error: "El monto debe ser un número positivo" }, { status: 400 });
+    }
+  }
+
+  // Limitar longitud de nota
+  if (nota && typeof nota === "string" && nota.length > 500) {
+    return NextResponse.json({ error: "La nota no puede exceder 500 caracteres" }, { status: 400 });
+  }
+
   // Cargar oportunidad
   const op = await prisma.oportunidades.findUnique({
     where: { id: Number(id) },

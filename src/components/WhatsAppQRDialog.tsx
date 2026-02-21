@@ -61,7 +61,9 @@ export default function WhatsAppQRDialog({ open, onClose, onConnected }: Props) 
           setStatus("qr");
           setQrData(data.qr_code);
         } else if (data.estado === "DESCONECTADO") {
-          // Puede pasar si falla la conexión
+          setStatus("error");
+          setError("WhatsApp se desconectó. Intenta de nuevo.");
+          stopPolling();
         }
       } catch {
         // Ignore polling errors

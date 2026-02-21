@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth-utils";
-import { verificarHorarioConConfig } from "@/lib/horario";
+import { verificarHorarioConConfig, calcularTimerVenceConConfig } from "@/lib/horario";
 import ExcelJS from "exceljs";
 
 export async function POST(req: Request) {
@@ -38,6 +38,14 @@ export async function POST(req: Request) {
 
   if (!sheet || sheet.rowCount < 2) {
     return NextResponse.json({ error: "El archivo está vacío o no tiene datos" }, { status: 400 });
+  }
+
+  const MAX_FILAS = 1000;
+  if (sheet.rowCount - 1 > MAX_FILAS) {
+    return NextResponse.json(
+      { error: `El archivo tiene ${sheet.rowCount - 1} filas. El máximo permitido es ${MAX_FILAS}.` },
+      { status: 400 }
+    );
   }
 
   // Leer headers de la fila 1
@@ -143,7 +151,7 @@ export async function POST(req: Request) {
   }
 
   // Crear oportunidades en batches para reducir duración de transacciones
-  const timerVence = new Date(Date.now() + timerHoras * 60 * 60 * 1000);
+  const timerVence = await calcularTimerVenceConConfig(timerHoras);
   let created = 0;
   const BATCH_SIZE = 50;
 
