@@ -229,7 +229,7 @@ export default function OportunidadesPage() {
   const [cardFiltro, setCardFiltro] = useState<FiltroCard>("Asignado"); // default: Asignado
   const [observaciones, setObservaciones] = useState<Record<number, string>>({});
   const [transitioning, setTransitioning] = useState<number | null>(null);
-  const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" as "success" | "error" });
+  const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" as "success" | "error" | "warning" });
   const [confetti, setConfetti] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>(() => {
@@ -303,10 +303,13 @@ export default function OportunidadesPage() {
       const res = await fetch("/api/promotor/capacidades/sync", { method: "POST" });
       const data = await res.json();
       if (res.ok) {
-        const msg = data.sincronizados > 0
+        let msg = data.sincronizados > 0
           ? `${data.sincronizados} capacidad${data.sincronizados !== 1 ? "es" : ""} sincronizada${data.sincronizados !== 1 ? "s" : ""}`
           : "Todo al día, sin capacidades nuevas";
-        setSnackbar({ open: true, message: msg, severity: "success" });
+        if (data.errores) {
+          msg += ` (${data.errores} con error)`;
+        }
+        setSnackbar({ open: true, message: msg, severity: data.errores ? "warning" : "success" });
         if (data.sincronizados > 0) fetchData();
       } else {
         setSnackbar({ open: true, message: data.error || "Error al sincronizar", severity: "error" });

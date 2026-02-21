@@ -33,12 +33,15 @@ export default function CapacidadesPage() {
   const fetchData = useCallback(async () => {
     try {
       const res = await fetch("/api/promotor/capacidades");
-      if (!res.ok) throw new Error("Error al cargar");
       const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Error al cargar");
+      }
       setSolicitudes(data.solicitudes || []);
       setMensaje(data.mensaje || null);
-    } catch {
-      setSnackbar({ open: true, message: "Error al cargar solicitudes", severity: "error" });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Error al cargar solicitudes";
+      setSnackbar({ open: true, message: msg, severity: "error" });
     } finally {
       setLoading(false);
     }
@@ -113,7 +116,7 @@ export default function CapacidadesPage() {
       minWidth: 200,
       renderCell: (p) => (
         <Typography variant="body2" noWrap color="text.secondary" sx={{ fontSize: 12 }}>
-          {p.value ? (p.value as string).substring(0, 80) + "..." : "—"}
+          {p.value ? ((p.value as string).length > 80 ? (p.value as string).substring(0, 80) + "…" : p.value) : "—"}
         </Typography>
       ),
     },

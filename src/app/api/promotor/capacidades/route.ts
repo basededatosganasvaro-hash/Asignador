@@ -3,6 +3,8 @@ import { requireAuth } from "@/lib/auth-utils";
 import { prisma } from "@/lib/prisma";
 import { prismaCapacidades } from "@/lib/prisma-capacidades";
 
+const MAX_SOLICITUDES = 500;
+
 export async function GET() {
   const { session, error } = await requireAuth();
   if (error) return error;
@@ -23,27 +25,37 @@ export async function GET() {
   }
 
   // Query BD Capacidades: solicitudes respondidas
-  const solicitudes = await prismaCapacidades.solicitudes.findMany({
-    where: {
-      user_id: usuario.telegram_id,
-      estado: "respondida",
-    },
-    select: {
-      id: true,
-      convenio: true,
-      nombre_cliente: true,
-      nss: true,
-      curp: true,
-      rfc: true,
-      numero_empleado: true,
-      fecha_solicitud: true,
-      imss_capacidad_actual: true,
-      imss_num_creditos: true,
-      imss_telefonos: true,
-      respuesta: true,
-    },
-    orderBy: { fecha_solicitud: "desc" },
-  });
+  let solicitudes;
+  try {
+    solicitudes = await prismaCapacidades.solicitudes.findMany({
+      where: {
+        user_id: usuario.telegram_id,
+        estado: "respondida",
+      },
+      select: {
+        id: true,
+        convenio: true,
+        nombre_cliente: true,
+        nss: true,
+        curp: true,
+        rfc: true,
+        numero_empleado: true,
+        fecha_solicitud: true,
+        imss_capacidad_actual: true,
+        imss_num_creditos: true,
+        imss_telefonos: true,
+        respuesta: true,
+      },
+      orderBy: { fecha_solicitud: "desc" },
+      take: MAX_SOLICITUDES,
+    });
+  } catch (err) {
+    console.error("Error al consultar BD Capacidades:", err);
+    return NextResponse.json(
+      { error: "No se pudo conectar con el servicio de Capacidades. Intenta más tarde." },
+      { status: 503 }
+    );
+  }
 
   return NextResponse.json({ solicitudes });
 }
