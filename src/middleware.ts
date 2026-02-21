@@ -5,9 +5,28 @@ import { getToken } from "next-auth/jwt";
 const ROLES_ADMIN_AREA = ["admin", "gerente_regional", "gerente_sucursal", "supervisor"];
 const ROLES_PROMOTOR_AREA = ["promotor"];
 
+// Rate limiting por IP para login (credential stuffing protection)
+const loginAttempts = new Map<string, number[]>();
+const LOGIN_WINDOW_MS = 15 * 60 * 1000; // 15 minutos
+const LOGIN_MAX_PER_IP = 20;
+
 export async function middleware(request: NextRequest) {
-  const token = await getToken({ req: request });
   const { pathname } = request.nextUrl;
+
+  // Rate limiting por IP en login — antes de cualquier otra lógica
+  if (pathname === "/api/auth/callback/credentials" && request.method === "POST") {
+    const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+    const now = Date.now();
+    const attempts = (loginAttempts.get(ip) || []).filter(t => now - t < LOGIN_WINDOW_MS);
+    if (attempts.length >= LOGIN_MAX_PER_IP) {
+      return NextResponse.json({ error: "Demasiados intentos" }, { status: 429 });
+    }
+    attempts.push(now);
+    loginAttempts.set(ip, attempts);
+    return NextResponse.next();
+  }
+
+  const token = await getToken({ req: request });
 
   if (!token) {
     const loginUrl = new URL("/login", request.url);
@@ -49,5 +68,6 @@ export const config = {
     "/api/promotor/:path*",
     "/api/whatsapp/:path*",
     "/api/sistema/:path*",
+    "/api/auth/callback/:path*",
   ],
 };
