@@ -153,11 +153,34 @@ export default function CampanaProgreso() {
                 </Box>
 
                 <Collapse in={expanded === c.id}>
-                  <Box sx={{ mt: 1, pl: 1, borderLeft: "3px solid", borderColor: "divider" }}>
-                    <Typography variant="caption" color="text.secondary">
-                      Creada: {new Date(c.created_at).toLocaleString("es-MX")}
-                    </Typography>
+                  <Box sx={{ mt: 1.5, display: "flex", flexWrap: "wrap", gap: 1 }}>
+                    {[
+                      { label: "Enviados", value: c.enviados, color: "#2196f3", bg: "#e3f2fd", always: true },
+                      { label: "Entregados", value: c.entregados, color: "#4caf50", bg: "#e8f5e9", always: false },
+                      { label: "Leídos", value: c.leidos, color: "#00bcd4", bg: "#e0f7fa", always: false },
+                      { label: "Fallidos", value: c.fallidos, color: "#f44336", bg: "#ffebee", always: false },
+                    ]
+                      .filter((s) => s.always || s.value > 0)
+                      .map((s) => (
+                        <Box
+                          key={s.label}
+                          sx={{
+                            flex: "1 1 0", minWidth: 70, textAlign: "center",
+                            bgcolor: s.bg, borderRadius: 2, py: 1, px: 0.5,
+                          }}
+                        >
+                          <Typography variant="h5" fontWeight={700} sx={{ color: s.color, lineHeight: 1.2 }}>
+                            {s.value}
+                          </Typography>
+                          <Typography variant="caption" sx={{ color: s.color, fontWeight: 600 }}>
+                            {s.label}
+                          </Typography>
+                        </Box>
+                      ))}
                   </Box>
+                  <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: "block" }}>
+                    Creada: {new Date(c.created_at).toLocaleString("es-MX")}
+                  </Typography>
                 </Collapse>
               </Box>
             );
