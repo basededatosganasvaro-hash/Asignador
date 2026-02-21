@@ -17,6 +17,7 @@ import PersonAddIcon from "@mui/icons-material/PersonAdd";
 import AssignmentIndIcon from "@mui/icons-material/AssignmentInd";
 import CampaignIcon from "@mui/icons-material/Campaign";
 import SyncIcon from "@mui/icons-material/Sync";
+import TelegramIcon from "@mui/icons-material/Telegram";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { buildWhatsAppUrl, formatPhoneForWA, WA_MENSAJES_DEFAULT } from "@/lib/whatsapp";
@@ -632,7 +633,7 @@ export default function OportunidadesPage() {
       ),
     },
     {
-      field: "__acciones", headerName: "", width: cardFiltro === "capacidades" ? 130 : 100, sortable: false,
+      field: "__acciones", headerName: "", width: cardFiltro === "capacidades" ? 160 : 130, sortable: false,
       renderCell: (p) => {
         const etapaNombre = p.row.origen === "CAPTACION" ? "Capturados" : (p.row.etapa?.nombre || "Asignado");
         const waUrl = buildWhatsAppUrl(p.row.tel_1 || "", p.row.nombres || "", etapaNombre, promotorNombre, plantillas);
@@ -667,6 +668,24 @@ export default function OportunidadesPage() {
                   sx={{ color: waUrl ? "#25D366" : undefined }}
                 >
                   <WhatsAppIcon sx={{ fontSize: 18 }} />
+                </IconButton>
+              </span>
+            </Tooltip>
+            <Tooltip title={p.row.curp || p.row.nss ? "Copiar datos Telegram" : "Sin CURP ni NSS"}>
+              <span>
+                <IconButton
+                  size="small"
+                  disabled={!p.row.curp && !p.row.nss}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const cadena = `${p.row.nombres || ""}, ${p.row.curp || ""}, ${p.row.nss || ""}`;
+                    navigator.clipboard.writeText(cadena).then(() => {
+                      setSnackbar({ open: true, message: "Copiado al portapapeles", severity: "success" });
+                    });
+                  }}
+                  sx={{ color: p.row.curp || p.row.nss ? "#0088cc" : undefined }}
+                >
+                  <TelegramIcon sx={{ fontSize: 18 }} />
                 </IconButton>
               </span>
             </Tooltip>
