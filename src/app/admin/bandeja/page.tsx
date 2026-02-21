@@ -343,7 +343,7 @@ function PromotoresTab({ showSnack }: { showSnack: (m: string, s?: "success" | "
 
   const columns: GridColDef[] = [
     { field: "nombre", headerName: "Nombre", flex: 1 },
-    { field: "email", headerName: "Email", flex: 1 },
+    { field: "username", headerName: "Usuario", width: 150 },
     { field: "total_activas", headerName: "Activas", width: 90, align: "center", headerAlign: "center" },
     { field: "en_salida", headerName: "En Salida", width: 100, align: "center", headerAlign: "center", renderCell: (p) => p.value > 0 ? <Chip label={p.value} size="small" color="warning" /> : p.value },
     { field: "en_avance", headerName: "En Avance", width: 100, align: "center", headerAlign: "center" },

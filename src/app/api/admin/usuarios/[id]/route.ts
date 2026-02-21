@@ -18,7 +18,8 @@ export async function GET(
     select: {
       id: true,
       nombre: true,
-      email: true,
+      username: true,
+      telegram_id: true,
       rol: true,
       activo: true,
       created_at: true,
@@ -35,7 +36,7 @@ export async function GET(
     return NextResponse.json({ error: "Usuario no encontrado" }, { status: 404 });
   }
 
-  return NextResponse.json(usuario);
+  return NextResponse.json(serializeBigInt(usuario));
 }
 
 export async function PUT(
@@ -59,7 +60,6 @@ export async function PUT(
   const data: Record<string, unknown> = {};
   if (parsed.data.nombre !== undefined) data.nombre = parsed.data.nombre;
   if (parsed.data.username !== undefined) data.username = parsed.data.username;
-  if (parsed.data.email !== undefined) data.email = parsed.data.email;
   if (parsed.data.rol !== undefined) data.rol = parsed.data.rol;
   if (parsed.data.activo !== undefined) data.activo = parsed.data.activo;
   if (parsed.data.equipo_id !== undefined) data.equipo_id = parsed.data.equipo_id;
@@ -68,9 +68,8 @@ export async function PUT(
   if (parsed.data.telegram_id !== undefined) data.telegram_id = parsed.data.telegram_id ? BigInt(parsed.data.telegram_id) : null;
   if (parsed.data.password) {
     const hashed = await bcrypt.hash(parsed.data.password, 10);
-    console.log(`[PASSWORD RESET] Usuario ID=${id} — hash generado: ${hashed.substring(0, 20)}...`);
     data.password_hash = hashed;
-    data.debe_cambiar_password = true; // Forzar cambio en próximo login
+    data.debe_cambiar_password = true;
     data.intentos_fallidos = 0;
     data.bloqueado_hasta = null;
   }
@@ -81,7 +80,7 @@ export async function PUT(
     select: {
       id: true,
       nombre: true,
-      email: true,
+      username: true,
       rol: true,
       activo: true,
       created_at: true,
@@ -89,17 +88,10 @@ export async function PUT(
       sucursal_id: true,
       region_id: true,
       telegram_id: true,
-      password_hash: true,
     },
   });
 
-  if (parsed.data.password) {
-    console.log(`[PASSWORD RESET] Usuario ID=${id} — UPDATE exitoso, hash en BD: ${usuario.password_hash.substring(0, 20)}...`);
-  }
-
-  // No exponer password_hash en la respuesta
-  const { password_hash: _, ...usuarioSinHash } = usuario;
-  return NextResponse.json(serializeBigInt(usuarioSinHash));
+  return NextResponse.json(serializeBigInt(usuario));
 }
 
 export async function DELETE(

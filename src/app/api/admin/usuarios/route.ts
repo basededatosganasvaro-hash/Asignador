@@ -14,7 +14,6 @@ export async function GET() {
       id: true,
       nombre: true,
       username: true,
-      email: true,
       rol: true,
       activo: true,
       created_at: true,
@@ -47,15 +46,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const { nombre, username, email, password, rol, equipo_id, sucursal_id, region_id, telegram_id } = parsed.data;
-
-  const existingEmail = await prisma.usuarios.findUnique({ where: { email } });
-  if (existingEmail) {
-    return NextResponse.json(
-      { error: "Ya existe un usuario con ese email" },
-      { status: 409 }
-    );
-  }
+  const { nombre, username, password, rol, equipo_id, sucursal_id, region_id, telegram_id } = parsed.data;
 
   const existingUsername = await prisma.usuarios.findUnique({ where: { username } });
   if (existingUsername) {
@@ -68,12 +59,11 @@ export async function POST(request: Request) {
   const password_hash = await bcrypt.hash(password, 10);
 
   const usuario = await prisma.usuarios.create({
-    data: { nombre, username, email, password_hash, rol, equipo_id, sucursal_id, region_id, telegram_id: telegram_id ? BigInt(telegram_id) : null, debe_cambiar_password: true },
+    data: { nombre, username, password_hash, rol, equipo_id, sucursal_id, region_id, telegram_id: telegram_id ? BigInt(telegram_id) : null, debe_cambiar_password: true },
     select: {
       id: true,
       nombre: true,
       username: true,
-      email: true,
       rol: true,
       activo: true,
       created_at: true,

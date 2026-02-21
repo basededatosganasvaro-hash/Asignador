@@ -70,7 +70,6 @@ model usuarios {
   id            Int      @id @default(autoincrement())
   nombre        String   @db.VarChar(200)
   username      String   @unique @db.VarChar(50)
-  email         String   @unique @db.VarChar(300)
   password_hash String
   rol           String   @default("promotor") @db.VarChar(30)
   // admin | gerente_regional | gerente_sucursal | supervisor | promotor

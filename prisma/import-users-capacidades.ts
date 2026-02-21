@@ -107,16 +107,14 @@ async function main() {
   // 4. Cargar usuarios existentes para evitar duplicados
   // ============================================
   const existentes = await prisma.usuarios.findMany({
-    select: { id: true, username: true, email: true, telegram_id: true, equipo_id: true },
+    select: { id: true, username: true, telegram_id: true, equipo_id: true },
   });
 
   const usados = new Set<string>();
-  const usadosEmail = new Set<string>();
   const telegramIdToUsuario = new Map<bigint, { id: number; equipo_id: number | null }>();
 
   for (const u of existentes) {
     usados.add(u.username);
-    usadosEmail.add(u.email);
     if (u.telegram_id !== null) {
       telegramIdToUsuario.set(u.telegram_id, { id: u.id, equipo_id: u.equipo_id });
     }
@@ -181,15 +179,6 @@ async function main() {
     }
     usados.add(username);
 
-    // Email placeholder único
-    let email = `${username}@sistema.local`;
-    let emailSuffix = 2;
-    while (usadosEmail.has(email)) {
-      email = `${username}${emailSuffix}@sistema.local`;
-      emailSuffix++;
-    }
-    usadosEmail.add(email);
-
     // Rol mapeado
     const rol = user.role === "supervisor" ? "supervisor" : "promotor";
 
@@ -202,7 +191,6 @@ async function main() {
       data: {
         nombre,
         username,
-        email,
         password_hash,
         rol,
         telegram_id: user.user_id,

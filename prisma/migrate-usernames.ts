@@ -44,8 +44,8 @@ async function main() {
   }
 
   // Obtener usuarios sin username
-  const usuarios = await prisma.$queryRaw<{ id: number; nombre: string; email: string }[]>`
-    SELECT id, nombre, email FROM usuarios WHERE username IS NULL OR username = ''
+  const usuarios = await prisma.$queryRaw<{ id: number; nombre: string }[]>`
+    SELECT id, nombre FROM usuarios WHERE username IS NULL OR username = ''
   `;
 
   if (usuarios.length === 0) {
@@ -64,10 +64,8 @@ async function main() {
     for (const user of usuarios) {
       let base = generarUsername(user.nombre);
       if (!base || base.length < 4) {
-        // Fallback: usar parte del email antes del @
-        base = user.email.split("@")[0].toLowerCase().replace(/[^a-z0-9.-]/g, "");
+        base = `user${user.id}`;
       }
-      if (base.length < 4) base = `user${user.id}`;
 
       let username = base;
       let suffix = 2;
@@ -82,7 +80,7 @@ async function main() {
         username,
         user.id
       );
-      console.log(`  ${user.nombre} (${user.email}) → ${username}`);
+      console.log(`  ${user.nombre} → ${username}`);
     }
   }
 

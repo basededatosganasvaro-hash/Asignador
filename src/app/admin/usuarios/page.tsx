@@ -18,6 +18,7 @@ import {
   Snackbar,
   IconButton,
   InputAdornment,
+  Tooltip,
 } from "@mui/material";
 import { DataGrid, GridColDef } from "@mui/x-data-grid";
 import AddIcon from "@mui/icons-material/Add";
@@ -25,12 +26,12 @@ import EditIcon from "@mui/icons-material/Edit";
 import BlockIcon from "@mui/icons-material/Block";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import SearchIcon from "@mui/icons-material/Search";
+import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 
 interface Usuario {
   id: number;
   nombre: string;
   username?: string;
-  email: string;
   rol: string;
   activo: boolean;
   created_at: string;
@@ -89,7 +90,6 @@ export default function UsuariosPage() {
   const [formData, setFormData] = useState({
     nombre: "",
     username: "",
-    email: "",
     password: "",
     rol: "promotor",
     region_id: "",
@@ -122,7 +122,7 @@ export default function UsuariosPage() {
 
   const handleOpenCreate = async () => {
     setEditingUser(null);
-    setFormData({ nombre: "", username: "", email: "", password: "", rol: "promotor", region_id: "", sucursal_id: "", equipo_id: "", telegram_id: "" });
+    setFormData({ nombre: "", username: "", password: "", rol: "promotor", region_id: "", sucursal_id: "", equipo_id: "", telegram_id: "" });
     await fetchOrgData();
     setDialogOpen(true);
   };
@@ -132,7 +132,6 @@ export default function UsuariosPage() {
     setFormData({
       nombre: user.nombre,
       username: user.username || "",
-      email: user.email,
       password: "",
       rol: user.rol,
       region_id: user.region?.id ? String(user.region.id) : "",
@@ -151,7 +150,6 @@ export default function UsuariosPage() {
     const body: Record<string, string | number | null> = {
       nombre: formData.nombre,
       username: formData.username,
-      email: formData.email,
       rol: formData.rol,
       region_id: formData.region_id ? Number(formData.region_id) : null,
       sucursal_id: formData.sucursal_id ? Number(formData.sucursal_id) : null,
@@ -188,10 +186,38 @@ export default function UsuariosPage() {
     }
   };
 
+  const handleCopyUsername = (username: string) => {
+    navigator.clipboard.writeText(username);
+    setSnackbar({ open: true, message: `Username "${username}" copiado`, severity: "success" });
+  };
+
   const columns: GridColDef[] = [
     { field: "nombre", headerName: "Nombre", flex: 1 },
-    { field: "username", headerName: "Usuario", width: 130 },
-    { field: "email", headerName: "Email", flex: 1 },
+    {
+      field: "username",
+      headerName: "Usuario",
+      width: 170,
+      renderCell: (params) => {
+        const username = params.value as string;
+        if (!username) return "—";
+        return (
+          <Tooltip title="Click para copiar" arrow>
+            <Chip
+              label={username}
+              icon={<ContentCopyIcon sx={{ fontSize: 14 }} />}
+              variant="outlined"
+              size="small"
+              onClick={() => handleCopyUsername(username)}
+              sx={{
+                fontFamily: "monospace",
+                cursor: "pointer",
+                "& .MuiChip-icon": { ml: 0.5 },
+              }}
+            />
+          </Tooltip>
+        );
+      },
+    },
     {
       field: "rol",
       headerName: "Rol",
@@ -315,11 +341,6 @@ export default function UsuariosPage() {
             margin="normal" required
             helperText="Mínimo 4 caracteres. Solo letras, números, puntos y guiones."
             inputProps={{ minLength: 4, maxLength: 50 }}
-          />
-          <TextField
-            fullWidth label="Email" type="email" value={formData.email}
-            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-            margin="normal" required
           />
           <TextField
             fullWidth

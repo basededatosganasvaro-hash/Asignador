@@ -6,7 +6,7 @@ const prisma = new PrismaClient();
 async function main() {
   // Crear usuario admin por defecto
   const adminExists = await prisma.usuarios.findFirst({
-    where: { OR: [{ email: "admin@sistema.com" }, { username: "admin" }] },
+    where: { username: "admin" },
   });
 
   if (!adminExists) {
@@ -15,7 +15,6 @@ async function main() {
       data: {
         nombre: "Administrador",
         username: "admin",
-        email: "admin@sistema.com",
         password_hash: hashedPassword,
         rol: "admin",
         activo: true,

@@ -36,7 +36,7 @@ export async function GET() {
   const result = promotores.map((p) => ({
     id: p.id,
     nombre: p.nombre,
-    email: p.email,
+    username: p.username,
     activo: p.activo,
     total_activas: p.oportunidades.length,
     en_salida: p.oportunidades.filter((o) => o.etapa?.tipo === "SALIDA").length,

@@ -8,7 +8,6 @@ export type Rol = typeof ROLES[number];
 export const createUserSchema = z.object({
   nombre: z.string().min(2, "El nombre debe tener al menos 2 caracteres"),
   username: z.string().min(4, "El usuario debe tener al menos 4 caracteres").max(50).regex(/^[a-zA-Z0-9._-]+$/, "Solo letras, numeros, puntos, guiones"),
-  email: z.string().email("Email invalido"),
   password: z.string().min(6, "La contraseña debe tener al menos 6 caracteres"),
   rol: z.enum(ROLES),
   equipo_id: z.number().int().positive().optional().nullable(),
@@ -20,7 +19,6 @@ export const createUserSchema = z.object({
 export const updateUserSchema = z.object({
   nombre: z.string().min(2).optional(),
   username: z.string().min(4).max(50).regex(/^[a-zA-Z0-9._-]+$/).optional(),
-  email: z.string().email().optional(),
   password: z.string().min(6).optional(),
   rol: z.enum(ROLES).optional(),
   activo: z.boolean().optional(),
