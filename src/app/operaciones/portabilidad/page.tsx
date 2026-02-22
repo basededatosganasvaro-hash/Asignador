@@ -407,14 +407,14 @@ export default function PortabilidadPage() {
           </IconButton>
         </DialogTitle>
         <DialogContent>
-          <Stack spacing={2}>
+          <Stack spacing={2} alignItems="center">
             {evidenciaDialog?.map((url, i) => {
               const isVideo = url.match(/\.mp4/i);
               return isVideo ? (
-                <video key={i} src={url} controls style={{ maxWidth: "100%", borderRadius: 8 }} />
+                <video key={i} src={url} controls style={{ maxWidth: 400, maxHeight: 300, borderRadius: 8 }} />
               ) : (
                 <Box key={i} component="img" src={url} alt={`Evidencia ${i + 1}`}
-                  sx={{ maxWidth: "100%", borderRadius: 2, border: "1px solid", borderColor: "divider" }}
+                  sx={{ maxWidth: 400, maxHeight: 300, objectFit: "contain", borderRadius: 2, border: "1px solid", borderColor: "divider" }}
                 />
               );
             })}
