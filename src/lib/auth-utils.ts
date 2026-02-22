@@ -50,6 +50,15 @@ export async function requirePromotor() {
   return { session: session!, error: null };
 }
 
+export async function requireGestorOperaciones() {
+  const { session, error } = await getSessionOrError();
+  if (error) return { session: null, error };
+  if (session!.user.rol !== "gestor_operaciones") {
+    return { session: null, error: NextResponse.json({ error: "Acceso denegado" }, { status: 403 }) };
+  }
+  return { session: session!, error: null };
+}
+
 export async function requireAuth() {
   const { session, error } = await getSessionOrError();
   if (error) return { session: null, error };

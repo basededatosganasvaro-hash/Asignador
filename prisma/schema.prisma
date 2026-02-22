@@ -72,7 +72,7 @@ model usuarios {
   username      String   @unique @db.VarChar(50)
   password_hash String
   rol           String   @default("promotor") @db.VarChar(30)
-  // admin | gerente_regional | gerente_sucursal | supervisor | promotor
+  // admin | gerente_regional | gerente_sucursal | supervisor | promotor | gestor_operaciones
 
   telegram_id BigInt?  @unique
 

@@ -19,6 +19,7 @@ import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import InboxIcon from "@mui/icons-material/Inbox";
 import RuleIcon from "@mui/icons-material/Rule";
 import WhatsAppIcon from "@mui/icons-material/WhatsApp";
+import CompareArrowsIcon from "@mui/icons-material/CompareArrows";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import MenuIcon from "@mui/icons-material/Menu";
 
@@ -34,7 +35,8 @@ interface SidebarProps {
 export default function Sidebar({ rol, open, onToggle }: SidebarProps) {
   const pathname = usePathname();
 
-  const isPromotor = rol !== "admin" && rol !== "gerente_regional" && rol !== "gerente_sucursal" && rol !== "supervisor";
+  const isOperaciones = rol === "operaciones";
+  const isPromotor = !isOperaciones && rol !== "admin" && rol !== "gerente_regional" && rol !== "gerente_sucursal" && rol !== "supervisor";
 
   const navContent = (showLabels: boolean) => (
     <>
@@ -57,7 +59,11 @@ export default function Sidebar({ rol, open, onToggle }: SidebarProps) {
       </Toolbar>
       <Divider sx={{ borderColor: "rgba(255,255,255,0.12)" }} />
 
-      {isPromotor ? (
+      {isOperaciones ? (
+        <List sx={{ px: showLabels ? 1 : 0.5, pt: 1 }}>
+          <NavItem label="Portabilidad" href="/operaciones/portabilidad" icon={<CompareArrowsIcon />} pathname={pathname} open={showLabels} />
+        </List>
+      ) : isPromotor ? (
         <List sx={{ px: showLabels ? 1 : 0.5, pt: 1 }}>
           <NavItem label="Mi Asignación" href="/promotor/oportunidades" icon={<TrendingUpIcon />} pathname={pathname} open={showLabels} />
           <NavItem label="WhatsApp" href="/promotor/whatsapp" icon={<WhatsAppIcon />} exact pathname={pathname} open={showLabels} />

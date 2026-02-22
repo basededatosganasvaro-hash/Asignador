@@ -9,9 +9,13 @@ export default async function Home() {
     redirect("/login");
   }
 
-  if (session.user.rol === "admin") {
-    redirect("/admin");
+  if (session.user.rol === "gestor_operaciones") {
+    redirect("/operaciones");
   }
 
-  redirect("/promotor");
+  if (session.user.rol === "promotor") {
+    redirect("/promotor");
+  }
+
+  redirect("/admin");
 }
