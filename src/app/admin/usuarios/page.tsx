@@ -54,6 +54,8 @@ const ROL_LABELS: Record<string, string> = {
   supervisor: "Supervisor",
   promotor: "Promotor",
   gestor_operaciones: "Gestor Op.",
+  comercial: "Comercial",
+  direccion: "Dirección",
 };
 
 const ROL_COLORS: Record<string, "error" | "warning" | "info" | "secondary" | "primary"> = {
@@ -63,6 +65,8 @@ const ROL_COLORS: Record<string, "error" | "warning" | "info" | "secondary" | "p
   supervisor: "secondary",
   promotor: "primary",
   gestor_operaciones: "info",
+  comercial: "secondary",
+  direccion: "warning",
 };
 
 export default function UsuariosPage() {
@@ -360,6 +364,8 @@ export default function UsuariosPage() {
               <MenuItem value="gerente_regional">Gerente Regional</MenuItem>
               <MenuItem value="admin">Admin</MenuItem>
               <MenuItem value="gestor_operaciones">Gestor de Operaciones</MenuItem>
+              <MenuItem value="comercial">Comercial</MenuItem>
+              <MenuItem value="direccion">Dirección</MenuItem>
             </Select>
           </FormControl>
           <TextField
