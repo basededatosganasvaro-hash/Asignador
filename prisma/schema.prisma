@@ -218,6 +218,9 @@ model oportunidades {
   @@index([etapa_id, activo])
   @@index([lote_id])
   @@index([origen])
+  @@index([usuario_id, etapa_id, activo])
+  @@index([timer_vence, etapa_id, activo])
+  @@index([cliente_id, etapa_id, activo])
 }
 
 // =============================================
@@ -263,6 +266,8 @@ model historial {
   @@index([oportunidad_id])
   @@index([usuario_id])
   @@index([tipo])
+  @@index([oportunidad_id, tipo, created_at])
+  @@index([created_at, tipo])
 }
 
 // =============================================
@@ -280,6 +285,8 @@ model ventas {
 
   oportunidad oportunidades @relation(fields: [oportunidad_id], references: [id])
   usuario     usuarios      @relation(fields: [usuario_id], references: [id])
+
+  @@index([usuario_id, validada])
 }
 
 // =============================================
@@ -329,6 +336,7 @@ model captaciones {
   usuario     usuarios      @relation(fields: [usuario_id], references: [id])
 
   @@index([usuario_id])
+  @@index([usuario_id, origen_captacion])
 }
 
 // =============================================
@@ -473,4 +481,168 @@ model ia_mensajes {
   conversacion ia_conversaciones @relation(fields: [conversacion_id], references: [id], onDelete: Cascade)
 
   @@index([conversacion_id])
+}
+
+// =============================================
+// TABLAS RESUMEN (populadas por sync, no por Prisma)
+// =============================================
+
+model resumen_oportunidades {
+  oportunidad_id        Int       @id
+  cliente_id            Int?
+  usuario_id            Int
+  etapa_id              Int?
+  origen                String?   @db.VarChar(20)
+  lote_id               Int?
+  timer_vence           DateTime?
+  num_operacion         String?   @db.VarChar(100)
+  venta_validada        Boolean   @default(false)
+  activo                Boolean   @default(true)
+  oportunidad_created   DateTime?
+  oportunidad_updated   DateTime?
+
+  etapa_nombre          String?   @db.VarChar(100)
+  etapa_tipo            String?   @db.VarChar(20)
+  etapa_orden           Int?
+  etapa_color           String?   @db.VarChar(7)
+
+  usuario_nombre        String?   @db.VarChar(200)
+  usuario_username      String?   @db.VarChar(50)
+  usuario_rol           String?   @db.VarChar(30)
+  equipo_id             Int?
+  equipo_nombre         String?   @db.VarChar(200)
+
+  sucursal_id           Int?
+  sucursal_nombre       String?   @db.VarChar(200)
+  zona_id               Int?
+  zona_nombre           String?   @db.VarChar(200)
+  region_id             Int?
+  region_nombre         String?   @db.VarChar(200)
+
+  cliente_nss           String?
+  cliente_nombres       String?
+  cliente_a_paterno     String?
+  cliente_a_materno     String?
+  cliente_curp          String?
+  cliente_rfc           String?
+  cliente_edad          String?
+  cliente_genero        String?
+  cliente_estado        String?
+  cliente_municipio     String?
+  cliente_cp            String?
+  cliente_convenio      String?
+  cliente_tipo_cliente  String?   @db.VarChar(100)
+  cliente_tipo_pension  String?
+  cliente_capacidad     String?
+  cliente_oferta        String?
+  cliente_plazo_oferta  String?
+  cliente_tasa          String?
+  cliente_financiera    String?
+  cliente_dependencia   String?
+  cliente_estatus       String?
+  cliente_monto         String?
+  cliente_monto_comisionable String?
+
+  telefono_efectivo     String?
+  email_efectivo        String?
+
+  total_interacciones   Int       @default(0)
+  total_llamadas        Int       @default(0)
+  total_whatsapp        Int       @default(0)
+  total_sms             Int       @default(0)
+  total_notas           Int       @default(0)
+  total_cambios_etapa   Int       @default(0)
+  ultima_interaccion    DateTime?
+
+  venta_monto           Decimal?  @db.Decimal(12, 2)
+  venta_fecha           DateTime?
+
+  captacion_origen      String?   @db.VarChar(50)
+  captacion_convenio    String?   @db.VarChar(300)
+  captacion_fecha       DateTime?
+
+  timer_vencido         Boolean   @default(false)
+  dias_sin_interaccion  Int?
+
+  sync_at               DateTime  @default(now())
+
+  @@index([activo])
+  @@index([usuario_id, activo])
+  @@index([usuario_id, etapa_id, activo])
+  @@index([etapa_id, activo])
+  @@index([sucursal_id, activo])
+  @@index([zona_id, activo])
+  @@index([region_id, activo])
+  @@index([cliente_convenio])
+  @@index([cliente_estado])
+  @@index([origen, activo])
+  @@index([oportunidad_created])
+}
+
+model resumen_usuarios {
+  usuario_id            Int       @id
+  nombre                String?   @db.VarChar(200)
+  username              String?   @db.VarChar(50)
+  rol                   String?   @db.VarChar(30)
+  telegram_id           BigInt?
+  activo                Boolean   @default(true)
+  usuario_created       DateTime?
+
+  equipo_id             Int?
+  equipo_nombre         String?   @db.VarChar(200)
+  sucursal_id           Int?
+  sucursal_nombre       String?   @db.VarChar(200)
+  zona_id               Int?
+  zona_nombre           String?   @db.VarChar(200)
+  region_id             Int?
+  region_nombre         String?   @db.VarChar(200)
+
+  oportunidades_total   Int       @default(0)
+  oportunidades_activas Int       @default(0)
+  oportunidades_pool    Int       @default(0)
+  oportunidades_captacion Int     @default(0)
+  oportunidades_etapa_1 Int       @default(0)
+  oportunidades_etapa_2 Int       @default(0)
+  oportunidades_etapa_3 Int       @default(0)
+  oportunidades_etapa_4 Int       @default(0)
+  oportunidades_etapa_5 Int       @default(0)
+  oportunidades_etapa_6 Int       @default(0)
+  oportunidades_etapa_7 Int       @default(0)
+  oportunidades_etapa_8 Int       @default(0)
+
+  ventas_total          Int       @default(0)
+  ventas_validadas      Int       @default(0)
+  ventas_monto_total    Decimal   @default(0) @db.Decimal(14, 2)
+  ventas_monto_validado Decimal   @default(0) @db.Decimal(14, 2)
+
+  tasa_asignacion_contacto  Decimal @default(0) @db.Decimal(5, 2)
+  tasa_contacto_venta       Decimal @default(0) @db.Decimal(5, 2)
+  tasa_global               Decimal @default(0) @db.Decimal(5, 2)
+
+  interacciones_hoy     Int       @default(0)
+  interacciones_semana  Int       @default(0)
+  interacciones_mes     Int       @default(0)
+  llamadas_total        Int       @default(0)
+  whatsapp_total        Int       @default(0)
+
+  captaciones_total     Int       @default(0)
+  captaciones_cambaceo  Int       @default(0)
+  captaciones_referido  Int       @default(0)
+  captaciones_redes     Int       @default(0)
+
+  solicitudes_imss_total      Int @default(0)
+  solicitudes_imss_pendientes Int @default(0)
+  solicitudes_imss_resueltas  Int @default(0)
+
+  cupo_hoy_asignado     Int       @default(0)
+  cupo_hoy_limite       Int       @default(300)
+
+  sync_at               DateTime  @default(now())
+
+  @@index([rol])
+  @@index([sucursal_id])
+  @@index([zona_id])
+  @@index([region_id])
+  @@index([activo, rol])
+  @@index([ventas_total])
 }
