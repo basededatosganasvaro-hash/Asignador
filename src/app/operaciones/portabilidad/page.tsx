@@ -13,6 +13,8 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import ImageIcon from "@mui/icons-material/Image";
 import CloseIcon from "@mui/icons-material/Close";
 import SearchIcon from "@mui/icons-material/Search";
+import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
+import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import { getSupabaseClient } from "@/lib/supabase";
 import type { RegistroPortabilidad } from "@/types/portabilidad";
 
@@ -43,6 +45,7 @@ export default function PortabilidadPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [evidenciaDialog, setEvidenciaDialog] = useState<string[] | null>(null);
+  const [evidenciaIdx, setEvidenciaIdx] = useState(0);
 
   // Form fields
   const [formData, setFormData] = useState({
@@ -211,7 +214,7 @@ export default function PortabilidadPage() {
             size="small"
             color="primary"
             variant="outlined"
-            onClick={() => setEvidenciaDialog(urls)}
+            onClick={() => { setEvidenciaIdx(0); setEvidenciaDialog(urls); }}
             sx={{ cursor: "pointer" }}
           />
         );
@@ -398,27 +401,96 @@ export default function PortabilidadPage() {
         </DialogActions>
       </Dialog>
 
-      {/* Evidencia Viewer */}
-      <Dialog open={!!evidenciaDialog} onClose={() => setEvidenciaDialog(null)} maxWidth="md" fullWidth>
-        <DialogTitle>
-          Evidencias
-          <IconButton onClick={() => setEvidenciaDialog(null)} sx={{ position: "absolute", right: 8, top: 8 }}>
+      {/* Evidencia Viewer — Carousel */}
+      <Dialog open={!!evidenciaDialog} onClose={() => setEvidenciaDialog(null)} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", pb: 0 }}>
+          <Typography variant="subtitle1" fontWeight={600}>
+            Evidencia {evidenciaDialog ? `${evidenciaIdx + 1} / ${evidenciaDialog.length}` : ""}
+          </Typography>
+          <IconButton onClick={() => setEvidenciaDialog(null)} size="small">
             <CloseIcon />
           </IconButton>
         </DialogTitle>
-        <DialogContent>
-          <Stack spacing={2} alignItems="center">
-            {evidenciaDialog?.map((url, i) => {
-              const isVideo = url.match(/\.mp4/i);
-              return isVideo ? (
-                <video key={i} src={url} controls style={{ maxWidth: 400, maxHeight: 300, borderRadius: 8 }} />
-              ) : (
-                <Box key={i} component="img" src={url} alt={`Evidencia ${i + 1}`}
-                  sx={{ maxWidth: 400, maxHeight: 300, objectFit: "contain", borderRadius: 2, border: "1px solid", borderColor: "divider" }}
-                />
-              );
-            })}
-          </Stack>
+        <DialogContent sx={{ px: 1, py: 2 }}>
+          {evidenciaDialog && evidenciaDialog.length > 0 && (() => {
+            const url = evidenciaDialog[evidenciaIdx];
+            const isVideo = url.match(/\.mp4/i);
+            return (
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                <IconButton
+                  onClick={() => setEvidenciaIdx((p) => Math.max(0, p - 1))}
+                  disabled={evidenciaIdx === 0}
+                >
+                  <ChevronLeftIcon />
+                </IconButton>
+
+                <Box sx={{ flex: 1, display: "flex", justifyContent: "center", minHeight: 300 }}>
+                  {isVideo ? (
+                    <video
+                      key={evidenciaIdx}
+                      src={url}
+                      controls
+                      style={{ maxWidth: "100%", maxHeight: 400, borderRadius: 8 }}
+                    />
+                  ) : (
+                    <Box
+                      key={evidenciaIdx}
+                      component="img"
+                      src={url}
+                      alt={`Evidencia ${evidenciaIdx + 1}`}
+                      sx={{
+                        maxWidth: "100%",
+                        maxHeight: 400,
+                        objectFit: "contain",
+                        borderRadius: 2,
+                        border: "1px solid",
+                        borderColor: "divider",
+                      }}
+                    />
+                  )}
+                </Box>
+
+                <IconButton
+                  onClick={() => setEvidenciaIdx((p) => Math.min(evidenciaDialog.length - 1, p + 1))}
+                  disabled={evidenciaIdx === evidenciaDialog.length - 1}
+                >
+                  <ChevronRightIcon />
+                </IconButton>
+              </Box>
+            );
+          })()}
+
+          {/* Thumbnails */}
+          {evidenciaDialog && evidenciaDialog.length > 1 && (
+            <Stack direction="row" spacing={1} justifyContent="center" sx={{ mt: 2 }}>
+              {evidenciaDialog.map((url, i) => (
+                <Box
+                  key={i}
+                  onClick={() => setEvidenciaIdx(i)}
+                  sx={{
+                    width: 48,
+                    height: 48,
+                    borderRadius: 1,
+                    overflow: "hidden",
+                    border: i === evidenciaIdx ? "2px solid" : "1px solid",
+                    borderColor: i === evidenciaIdx ? "primary.main" : "divider",
+                    cursor: "pointer",
+                    opacity: i === evidenciaIdx ? 1 : 0.6,
+                    transition: "all 0.2s",
+                    "&:hover": { opacity: 1 },
+                  }}
+                >
+                  {url.match(/\.mp4/i) ? (
+                    <Box sx={{ width: "100%", height: "100%", bgcolor: "grey.200", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <Typography variant="caption" color="text.secondary">MP4</Typography>
+                    </Box>
+                  ) : (
+                    <Box component="img" src={url} sx={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  )}
+                </Box>
+              ))}
+            </Stack>
+          )}
         </DialogContent>
       </Dialog>
 
