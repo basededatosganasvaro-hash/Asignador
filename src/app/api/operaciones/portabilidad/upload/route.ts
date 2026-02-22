@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireGestorOperaciones } from "@/lib/auth-utils";
-import { supabaseAdmin } from "@/lib/supabase";
+import { getSupabaseAdmin } from "@/lib/supabase";
 
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "video/mp4"];
 const MAX_SIZE = 50 * 1024 * 1024; // 50MB
@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
   const arrayBuffer = await file.arrayBuffer();
   const buffer = new Uint8Array(arrayBuffer);
 
-  const { error: uploadError } = await supabaseAdmin.storage
+  const { error: uploadError } = await getSupabaseAdmin().storage
     .from("evidencias")
     .upload(filePath, buffer, {
       contentType: file.type,
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Error al subir archivo" }, { status: 500 });
   }
 
-  const { data: urlData } = supabaseAdmin.storage
+  const { data: urlData } = getSupabaseAdmin().storage
     .from("evidencias")
     .getPublicUrl(filePath);
 

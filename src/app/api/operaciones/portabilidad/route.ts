@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireGestorOperaciones } from "@/lib/auth-utils";
-import { supabaseAdmin } from "@/lib/supabase";
+import { getSupabaseAdmin } from "@/lib/supabase";
 import { z } from "zod";
 
 const createSchema = z.object({
@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
   const desde = searchParams.get("desde");
   const hasta = searchParams.get("hasta");
 
-  let query = supabaseAdmin
+  let query = getSupabaseAdmin()
     .from("registros")
     .select("*")
     .order("created_at", { ascending: false });
@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Datos inválidos", details: parsed.error.issues }, { status: 400 });
   }
 
-  const { data, error: dbError } = await supabaseAdmin
+  const { data, error: dbError } = await getSupabaseAdmin()
     .from("registros")
     .insert(parsed.data)
     .select()

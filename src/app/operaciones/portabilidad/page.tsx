@@ -13,7 +13,7 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import ImageIcon from "@mui/icons-material/Image";
 import CloseIcon from "@mui/icons-material/Close";
 import SearchIcon from "@mui/icons-material/Search";
-import { supabaseClient } from "@/lib/supabase";
+import { getSupabaseClient } from "@/lib/supabase";
 import type { RegistroPortabilidad } from "@/types/portabilidad";
 
 function parseEvidencias(evidencia_url: string): string[] {
@@ -77,7 +77,7 @@ export default function PortabilidadPage() {
 
   // Realtime subscription
   useEffect(() => {
-    const channel = supabaseClient
+    const channel = getSupabaseClient()
       .channel("registros-realtime")
       .on(
         "postgres_changes",
@@ -97,7 +97,7 @@ export default function PortabilidadPage() {
       .subscribe();
 
     return () => {
-      supabaseClient.removeChannel(channel);
+      getSupabaseClient().removeChannel(channel);
     };
   }, []);
 

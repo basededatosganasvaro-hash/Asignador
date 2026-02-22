@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireGestorOperaciones } from "@/lib/auth-utils";
-import { supabaseAdmin } from "@/lib/supabase";
+import { getSupabaseAdmin } from "@/lib/supabase";
 import { z } from "zod";
 
 const updateSchema = z.object({
@@ -19,7 +19,7 @@ export async function GET(
   if (error) return error;
 
   const { id } = await params;
-  const { data, error: dbError } = await supabaseAdmin
+  const { data, error: dbError } = await getSupabaseAdmin()
     .from("registros")
     .select("*")
     .eq("id", id)
@@ -52,7 +52,7 @@ export async function PUT(
     return NextResponse.json({ error: "Datos inválidos", details: parsed.error.issues }, { status: 400 });
   }
 
-  const { data, error: dbError } = await supabaseAdmin
+  const { data, error: dbError } = await getSupabaseAdmin()
     .from("registros")
     .update(parsed.data)
     .eq("id", id)
@@ -76,7 +76,7 @@ export async function DELETE(
   const { id } = await params;
 
   // Get registro to find evidencia files to delete
-  const { data: registro } = await supabaseAdmin
+  const { data: registro } = await getSupabaseAdmin()
     .from("registros")
     .select("evidencia_url")
     .eq("id", id)
@@ -101,11 +101,11 @@ export async function DELETE(
       .filter(Boolean) as string[];
 
     if (filePaths.length > 0) {
-      await supabaseAdmin.storage.from("evidencias").remove(filePaths);
+      await getSupabaseAdmin().storage.from("evidencias").remove(filePaths);
     }
   }
 
-  const { error: dbError } = await supabaseAdmin
+  const { error: dbError } = await getSupabaseAdmin()
     .from("registros")
     .delete()
     .eq("id", id);
