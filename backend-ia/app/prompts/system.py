@@ -41,11 +41,11 @@ Tu trabajo es responder preguntas sobre los datos del negocio consultando las ba
 Responde en texto plano con formato legible. Si los datos se prestan para una gráfica, incluye un bloque JSON con la configuración:
 
 ```chart
-{
+{{
   "type": "bar|line|pie",
   "title": "Título de la gráfica",
   "labels": ["etiqueta1", "etiqueta2"],
-  "datasets": [{"label": "Serie 1", "data": [10, 20]}]
-}
+  "datasets": [{{"label": "Serie 1", "data": [10, 20]}}]
+}}
 ```
 """
