@@ -72,7 +72,7 @@ model usuarios {
   username      String   @unique @db.VarChar(50)
   password_hash String
   rol           String   @default("promotor") @db.VarChar(30)
-  // admin | gerente_regional | gerente_sucursal | supervisor | promotor | gestor_operaciones
+  // admin | gerente_regional | gerente_sucursal | supervisor | promotor | gestor_operaciones | comercial | direccion
 
   telegram_id BigInt?  @unique
 
@@ -104,6 +104,7 @@ model usuarios {
   plantillas_whatsapp     plantillas_whatsapp[]
   wa_sesion               wa_sesiones?
   wa_campanas             wa_campanas[]
+  ia_conversaciones       ia_conversaciones[]
 
   @@index([username])
   @@index([rol])
@@ -440,4 +441,36 @@ model wa_mensajes {
   @@index([wa_message_id])
   @@index([estado])
   @@index([enviado_at])
+}
+
+// =============================================
+// ASISTENTE IA — CONVERSACIONES
+// =============================================
+
+model ia_conversaciones {
+  id         Int      @id @default(autoincrement())
+  usuario_id Int
+  titulo     String?  @db.VarChar(200)
+  activo     Boolean  @default(true)
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now()) @updatedAt
+
+  usuario  usuarios       @relation(fields: [usuario_id], references: [id])
+  mensajes ia_mensajes[]
+
+  @@index([usuario_id, activo])
+  @@index([updated_at])
+}
+
+model ia_mensajes {
+  id              Int      @id @default(autoincrement())
+  conversacion_id Int
+  rol             String   @db.VarChar(20) // "user" | "assistant"
+  contenido       String
+  metadata_json   Json?    // { sql_queries, chart, tokens_used, model, duration_ms }
+  created_at      DateTime @default(now())
+
+  conversacion ia_conversaciones @relation(fields: [conversacion_id], references: [id], onDelete: Cascade)
+
+  @@index([conversacion_id])
 }

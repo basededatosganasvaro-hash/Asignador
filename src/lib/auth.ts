@@ -120,4 +120,6 @@ export const authOptions: NextAuthOptions = {
   pages: {
     signIn: "/login",
   },
+  // Redirect after sign in based on role
+  // comercial/direccion → /asistente (handled via middleware)
 };

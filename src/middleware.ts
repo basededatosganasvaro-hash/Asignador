@@ -5,6 +5,7 @@ import { getToken } from "next-auth/jwt";
 const ROLES_ADMIN_AREA = ["admin", "gerente_regional", "gerente_sucursal", "supervisor"];
 const ROLES_PROMOTOR_AREA = ["promotor"];
 const ROLES_OPERACIONES_AREA = ["gestor_operaciones"];
+const ROLES_ASISTENTE = ["admin", "gerente_regional", "gerente_sucursal", "supervisor", "comercial", "direccion"];
 
 // Rate limiting por IP para login (credential stuffing protection)
 const loginAttempts = new Map<string, number[]>();
@@ -40,6 +41,21 @@ export async function middleware(request: NextRequest) {
   // Forzar cambio de contraseña si es obligatorio
   if (token.debe_cambiar_password && !pathname.startsWith("/cambiar-password") && !pathname.startsWith("/api/auth")) {
     return NextResponse.redirect(new URL("/cambiar-password", request.url));
+  }
+
+  // Area asistente: acceso para roles de gestion + comercial/direccion
+  if (pathname.startsWith("/asistente") && !ROLES_ASISTENTE.includes(rol)) {
+    if (ROLES_OPERACIONES_AREA.includes(rol)) {
+      return NextResponse.redirect(new URL("/operaciones", request.url));
+    }
+    return NextResponse.redirect(new URL("/promotor", request.url));
+  }
+
+  // Roles comercial/direccion: solo acceden a /asistente
+  if (["comercial", "direccion"].includes(rol)) {
+    if (!pathname.startsWith("/asistente") && !pathname.startsWith("/api/asistente") && !pathname.startsWith("/cambiar-password")) {
+      return NextResponse.redirect(new URL("/asistente", request.url));
+    }
   }
 
   // Area operaciones: acceso solo para gestor_operaciones
@@ -83,5 +99,7 @@ export const config = {
     "/api/whatsapp/:path*",
     "/api/sistema/:path*",
     "/api/auth/callback/:path*",
+    "/asistente/:path*",
+    "/api/asistente/:path*",
   ],
 };

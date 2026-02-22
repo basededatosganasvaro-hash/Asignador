@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const ROLES = ["admin", "gerente_regional", "gerente_sucursal", "supervisor", "promotor", "gestor_operaciones"] as const;
+export const ROLES = ["admin", "gerente_regional", "gerente_sucursal", "supervisor", "promotor", "gestor_operaciones", "comercial", "direccion"] as const;
 export type Rol = typeof ROLES[number];
 
 // ============ USUARIOS ============

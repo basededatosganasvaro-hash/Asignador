@@ -59,6 +59,18 @@ export async function requireGestorOperaciones() {
   return { session: session!, error: null };
 }
 
+export async function requireAsistente() {
+  // Permite: admin, gerente_regional, gerente_sucursal, supervisor, comercial, direccion
+  const { session, error } = await getSessionOrError();
+  if (error) return { session: null, error };
+  const rol = session!.user.rol;
+  const rolesAsistente = ["admin", "gerente_regional", "gerente_sucursal", "supervisor", "comercial", "direccion"];
+  if (!rolesAsistente.includes(rol)) {
+    return { session: null, error: NextResponse.json({ error: "Acceso denegado" }, { status: 403 }) };
+  }
+  return { session: session!, error: null };
+}
+
 export async function requireAuth() {
   const { session, error } = await getSessionOrError();
   if (error) return { session: null, error };
