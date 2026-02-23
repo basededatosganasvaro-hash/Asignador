@@ -1,19 +1,22 @@
-import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/auth-utils";
-
 /**
- * POST /api/admin/migracion
- * Endpoint protegido (solo admin) para ejecutar migraciones de datos.
- * Ejecutar una sola vez después del deploy — es idempotente.
+ * Next.js Instrumentation — se ejecuta UNA vez al iniciar el servidor.
+ * Ideal para migraciones de datos idempotentes que deben correr en cada deploy.
  */
-export async function POST() {
-  const { error } = await requireAdmin();
-  if (error) return error;
+export async function register() {
+  // Solo ejecutar en el servidor Node.js (no en edge runtime)
+  if (process.env.NEXT_RUNTIME === "nodejs") {
+    await runMigrations();
+  }
+}
 
-  const resultados: string[] = [];
+async function runMigrations() {
+  // Import dinámico para evitar que se cargue en el cliente
+  const { PrismaClient } = await import("@prisma/client");
+  const prisma = new PrismaClient();
 
   try {
+    console.log("[migracion] Iniciando migraciones de datos...");
+
     // ============================================================
     // 1. TRANSICIONES DEL EMBUDO — flujo híbrido de retorno al pool
     // ============================================================
@@ -26,7 +29,7 @@ export async function POST() {
         AND etapa_destino_id = (SELECT id FROM embudo_etapas WHERE nombre = 'No contactado')
         AND devuelve_al_pool = false
     `;
-    resultados.push(`Asignado→No contactado pool=true: ${t1} actualizada(s)`);
+    if (t1 > 0) console.log(`[migracion] Asignado→No contactado pool=true: ${t1}`);
 
     // 1b. "Interesado → Descartado": devolver al pool
     const t2 = await prisma.$executeRaw`
@@ -36,7 +39,7 @@ export async function POST() {
         AND etapa_destino_id = (SELECT id FROM embudo_etapas WHERE nombre = 'Descartado')
         AND devuelve_al_pool = false
     `;
-    resultados.push(`Interesado→Descartado pool=true: ${t2} actualizada(s)`);
+    if (t2 > 0) console.log(`[migracion] Interesado→Descartado pool=true: ${t2}`);
 
     // 1c. Nueva transición "Asignado → Descartado" (si no existe)
     const existe = await prisma.$queryRaw<{ cnt: bigint }[]>`
@@ -57,17 +60,38 @@ export async function POST() {
           true
         )
       `;
-      resultados.push("Asignado→Descartado: creada");
-    } else {
-      resultados.push("Asignado→Descartado: ya existe, omitida");
+      console.log("[migracion] Asignado→Descartado: creada");
     }
 
     // ============================================================
-    // 2. BACKFILL — derivar sucursal_id y region_id de usuarios
-    //    desde jerarquía equipo → sucursal → zona → región
+    // 2. FIX RETROACTIVO — desactivar oportunidades trabadas
+    //    en estados de salida con activo=true
     // ============================================================
 
-    // 2a. Actualizar sucursal_id
+    const fix1 = await prisma.$executeRaw`
+      UPDATE oportunidades o
+      SET activo = false, etapa_id = NULL, timer_vence = NULL
+      FROM embudo_etapas e
+      WHERE o.etapa_id = e.id
+        AND e.nombre = 'No contactado'
+        AND o.activo = true
+    `;
+    if (fix1 > 0) console.log(`[migracion] Fix No contactado→pool: ${fix1} oportunidad(es)`);
+
+    const fix2 = await prisma.$executeRaw`
+      UPDATE oportunidades o
+      SET activo = false, etapa_id = NULL, timer_vence = NULL
+      FROM embudo_etapas e
+      WHERE o.etapa_id = e.id
+        AND e.nombre = 'Descartado'
+        AND o.activo = true
+    `;
+    if (fix2 > 0) console.log(`[migracion] Fix Descartado→pool: ${fix2} oportunidad(es)`);
+
+    // ============================================================
+    // 3. BACKFILL — derivar sucursal_id y region_id de usuarios
+    // ============================================================
+
     const u1 = await prisma.$executeRaw`
       UPDATE usuarios u
       SET sucursal_id = e.sucursal_id
@@ -76,9 +100,8 @@ export async function POST() {
         AND e.sucursal_id IS NOT NULL
         AND u.sucursal_id IS DISTINCT FROM e.sucursal_id
     `;
-    resultados.push(`Backfill sucursal_id: ${u1} usuario(s) actualizado(s)`);
+    if (u1 > 0) console.log(`[migracion] Backfill sucursal_id: ${u1} usuario(s)`);
 
-    // 2b. Actualizar region_id
     const u2 = await prisma.$executeRaw`
       UPDATE usuarios u
       SET region_id = z.region_id
@@ -88,46 +111,13 @@ export async function POST() {
       WHERE u.equipo_id = e.id
         AND u.region_id IS DISTINCT FROM z.region_id
     `;
-    resultados.push(`Backfill region_id: ${u2} usuario(s) actualizado(s)`);
+    if (u2 > 0) console.log(`[migracion] Backfill region_id: ${u2} usuario(s)`);
 
-    // ============================================================
-    // 3. VERIFICACIÓN — resumen de usuarios con org completa
-    // ============================================================
-    const verificacion = await prisma.$queryRaw<{
-      total: bigint;
-      con_equipo: bigint;
-      con_sucursal: bigint;
-      con_region: bigint;
-      sin_org: bigint;
-    }[]>`
-      SELECT
-        COUNT(*)::bigint as total,
-        COUNT(equipo_id)::bigint as con_equipo,
-        COUNT(sucursal_id)::bigint as con_sucursal,
-        COUNT(region_id)::bigint as con_region,
-        COUNT(*) FILTER (WHERE equipo_id IS NOT NULL AND (sucursal_id IS NULL OR region_id IS NULL))::bigint as sin_org
-      FROM usuarios
-      WHERE activo = true
-    `;
-
-    const stats = verificacion[0];
-
-    return NextResponse.json({
-      ok: true,
-      resultados,
-      verificacion: {
-        usuarios_activos: Number(stats.total),
-        con_equipo: Number(stats.con_equipo),
-        con_sucursal: Number(stats.con_sucursal),
-        con_region: Number(stats.con_region),
-        pendientes_sin_org: Number(stats.sin_org),
-      },
-    });
+    console.log("[migracion] Migraciones completadas.");
   } catch (err) {
-    console.error("Error en migración:", err);
-    return NextResponse.json(
-      { ok: false, resultados, error: err instanceof Error ? err.message : "Error desconocido" },
-      { status: 500 }
-    );
+    // No lanzar error para no impedir el arranque del servidor
+    console.error("[migracion] Error (no bloqueante):", err instanceof Error ? err.message : err);
+  } finally {
+    await prisma.$disconnect();
   }
 }
