@@ -46,7 +46,8 @@ export async function POST(request: Request) {
     );
   }
 
-  const { nombre, username, password, rol, equipo_id, sucursal_id, region_id, telegram_id } = parsed.data;
+  const { nombre, username, password, rol, equipo_id, telegram_id } = parsed.data;
+  let { sucursal_id, region_id } = parsed.data;
 
   const existingUsername = await prisma.usuarios.findUnique({ where: { username } });
   if (existingUsername) {
@@ -56,10 +57,22 @@ export async function POST(request: Request) {
     );
   }
 
+  // Auto-derivar sucursal_id y region_id desde la jerarquía del equipo
+  if (equipo_id) {
+    const equipo = await prisma.equipos.findUnique({
+      where: { id: equipo_id },
+      include: { sucursal: { include: { zona: true } } },
+    });
+    if (equipo?.sucursal) {
+      sucursal_id = equipo.sucursal.id;
+      region_id = equipo.sucursal.zona?.region_id ?? null;
+    }
+  }
+
   const password_hash = await bcrypt.hash(password, 10);
 
   const usuario = await prisma.usuarios.create({
-    data: { nombre, username, password_hash, rol, equipo_id, sucursal_id, region_id, telegram_id: telegram_id ? BigInt(telegram_id) : null, debe_cambiar_password: true },
+    data: { nombre, username, password_hash, rol, equipo_id, sucursal_id: sucursal_id ?? null, region_id: region_id ?? null, telegram_id: telegram_id ? BigInt(telegram_id) : null, debe_cambiar_password: true },
     select: {
       id: true,
       nombre: true,

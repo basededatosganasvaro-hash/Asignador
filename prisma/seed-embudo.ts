@@ -35,7 +35,7 @@ async function main() {
   const transicionesData = [
     // Desde Asignado
     { origen: "Asignado",      destino: "Contactado",       accion: "Marcar contactado",       nota: true,  sup: false, pool: false },
-    { origen: "Asignado",      destino: "No contactado",    accion: "No se logro contactar",   nota: true,  sup: false, pool: false },
+    { origen: "Asignado",      destino: "No contactado",    accion: "No se logro contactar",   nota: true,  sup: false, pool: true  },
     // Desde Contactado
     { origen: "Contactado",    destino: "Interesado",       accion: "Cliente interesado",      nota: true,  sup: false, pool: false },
     { origen: "Contactado",    destino: "No interesado",    accion: "Cliente no interesado",   nota: true,  sup: false, pool: false },
@@ -53,8 +53,9 @@ async function main() {
     // Desde Negociacion caida (supervisor)
     { origen: "Negociacion caida", destino: "Interesado",   accion: "Retomar cliente",         nota: true,  sup: true,  pool: false },
     { origen: "Negociacion caida", destino: null,           accion: "Devolver al pool",        nota: false, sup: true,  pool: true  },
-    // Descartado (manual por supervisor)
-    { origen: "Interesado",    destino: "Descartado",       accion: "Descartar cliente",       nota: true,  sup: true,  pool: false },
+    // Descartado (manual por supervisor — devuelve al pool)
+    { origen: "Asignado",      destino: "Descartado",       accion: "Descartar cliente",       nota: true,  sup: true,  pool: true  },
+    { origen: "Interesado",    destino: "Descartado",       accion: "Descartar cliente",       nota: true,  sup: true,  pool: true  },
   ];
 
   let count = 0;

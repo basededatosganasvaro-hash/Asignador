@@ -95,9 +95,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   }
 
   // Salidas/finales no-Venta van a bandeja del supervisor (activo=true, sin timer)
+  // Excepto si devuelve_al_pool=true (regresa directo al pool sin pasar por bandeja)
   const enviarABandeja =
-    (transicion.etapa_destino?.tipo === "SALIDA") ||
-    (transicion.etapa_destino?.tipo === "FINAL" && transicion.etapa_destino?.nombre !== "Venta");
+    !transicion.devuelve_al_pool &&
+    ((transicion.etapa_destino?.tipo === "SALIDA") ||
+     (transicion.etapa_destino?.tipo === "FINAL" && transicion.etapa_destino?.nombre !== "Venta"));
 
   // Calcular nuevo timer_vence (no aplicar timer a items de bandeja)
   let timerVence: Date | null = null;
@@ -126,8 +128,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         usuario_id: userId,
         tipo: canal ? canal : "CAMBIO_ETAPA",
         etapa_anterior_id: op.etapa_id,
-        // Para salidas auto-pool: preservar la etapa destino en historial como razón de salida
-        etapa_nueva_id: transicion.devuelve_al_pool ? null : transicion.etapa_destino_id,
+        // Siempre registrar la etapa destino real en historial (para auditoría)
+        etapa_nueva_id: transicion.etapa_destino_id,
         canal: canal ?? null,
         nota: nota ?? null,
       },

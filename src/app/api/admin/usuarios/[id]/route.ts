@@ -66,6 +66,23 @@ export async function PUT(
   if (parsed.data.sucursal_id !== undefined) data.sucursal_id = parsed.data.sucursal_id;
   if (parsed.data.region_id !== undefined) data.region_id = parsed.data.region_id;
   if (parsed.data.telegram_id !== undefined) data.telegram_id = parsed.data.telegram_id ? BigInt(parsed.data.telegram_id) : null;
+
+  // Auto-derivar sucursal_id y region_id desde la jerarquía del equipo
+  const equipoId = parsed.data.equipo_id !== undefined ? parsed.data.equipo_id : undefined;
+  if (equipoId) {
+    const equipo = await prisma.equipos.findUnique({
+      where: { id: equipoId },
+      include: { sucursal: { include: { zona: true } } },
+    });
+    if (equipo?.sucursal) {
+      data.sucursal_id = equipo.sucursal.id;
+      data.region_id = equipo.sucursal.zona?.region_id ?? null;
+    }
+  } else if (equipoId === null) {
+    // Si se quita el equipo, limpiar sucursal y region también
+    data.sucursal_id = null;
+    data.region_id = null;
+  }
   if (parsed.data.password) {
     const hashed = await bcrypt.hash(parsed.data.password, 10);
     data.password_hash = hashed;
