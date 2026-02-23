@@ -16,12 +16,20 @@ export async function GET(req: Request) {
   const municipio = searchParams.get("municipio") || undefined;
   const tiene_telefono = searchParams.get("tiene_telefono") === "true" || searchParams.get("tiene_telefono") === "1";
 
-  // IDs ya ocupados en oportunidades activas
-  const activas = await prisma.oportunidades.findMany({
-    where: { activo: true },
-    select: { cliente_id: true },
+  // Excluir: activos (de cualquier promotor) + cooldown (del mismo promotor)
+  const cooldownConfig = await prisma.configuracion.findUnique({
+    where: { clave: "cooldown_meses" },
   });
-  const excludeIds = activas.map((o) => o.cliente_id).filter((id): id is number => id !== null);
+  const cooldownMeses = parseInt(cooldownConfig?.valor || "3");
+  const cooldownDate = new Date();
+  cooldownDate.setMonth(cooldownDate.getMonth() - cooldownMeses);
+
+  const excludeRows = await prisma.$queryRaw<{ cliente_id: number }[]>`
+    SELECT DISTINCT cliente_id FROM oportunidades
+    WHERE cliente_id IS NOT NULL
+      AND (activo = true OR (usuario_id = ${userId} AND created_at >= ${cooldownDate}))
+  `;
+  const excludeIds = excludeRows.map((r) => r.cliente_id);
 
   const disponibles = await prismaClientes.clientes.count({
     where: {
