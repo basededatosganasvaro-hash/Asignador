@@ -53,9 +53,9 @@ async function main() {
     // Desde Negociacion caida (supervisor)
     { origen: "Negociacion caida", destino: "Interesado",   accion: "Retomar cliente",         nota: true,  sup: true,  pool: false },
     { origen: "Negociacion caida", destino: null,           accion: "Devolver al pool",        nota: false, sup: true,  pool: true  },
-    // Descartado (manual por supervisor — devuelve al pool)
-    { origen: "Asignado",      destino: "Descartado",       accion: "Descartar cliente",       nota: true,  sup: true,  pool: true  },
-    { origen: "Interesado",    destino: "Descartado",       accion: "Descartar cliente",       nota: true,  sup: true,  pool: true  },
+    // Descartado (promotor puede descartar — devuelve al pool)
+    { origen: "Asignado",      destino: "Descartado",       accion: "Descartar cliente",       nota: true,  sup: false, pool: true  },
+    { origen: "Interesado",    destino: "Descartado",       accion: "Descartar cliente",       nota: true,  sup: false, pool: true  },
   ];
 
   let count = 0;

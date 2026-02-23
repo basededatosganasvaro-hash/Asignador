@@ -55,13 +55,22 @@ async function runMigrations() {
           (SELECT id FROM embudo_etapas WHERE nombre = 'Descartado'),
           'Descartar cliente',
           true,
-          true,
+          false,
           true,
           true
         )
       `;
       console.log("[migracion] Asignado→Descartado: creada");
     }
+
+    // 1d. Descartado NO requiere supervisor (corregir si ya existían)
+    const t3 = await prisma.$executeRaw`
+      UPDATE embudo_transiciones
+      SET requiere_supervisor = false
+      WHERE etapa_destino_id = (SELECT id FROM embudo_etapas WHERE nombre = 'Descartado')
+        AND requiere_supervisor = true
+    `;
+    if (t3 > 0) console.log(`[migracion] Descartado requiere_supervisor=false: ${t3}`);
 
     // ============================================================
     // 2. FIX RETROACTIVO — desactivar oportunidades trabadas
