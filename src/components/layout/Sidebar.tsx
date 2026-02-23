@@ -20,7 +20,6 @@ import InboxIcon from "@mui/icons-material/Inbox";
 import RuleIcon from "@mui/icons-material/Rule";
 import WhatsAppIcon from "@mui/icons-material/WhatsApp";
 import CompareArrowsIcon from "@mui/icons-material/CompareArrows";
-import SmartToyIcon from "@mui/icons-material/SmartToy";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import MenuIcon from "@mui/icons-material/Menu";
 
@@ -37,8 +36,7 @@ export default function Sidebar({ rol, open, onToggle }: SidebarProps) {
   const pathname = usePathname();
 
   const isOperaciones = rol === "operaciones";
-  const isAsistente = rol === "asistente";
-  const isPromotor = !isOperaciones && !isAsistente && rol !== "admin" && rol !== "gerente_regional" && rol !== "gerente_sucursal" && rol !== "supervisor";
+  const isPromotor = !isOperaciones && rol !== "admin" && rol !== "gerente_regional" && rol !== "gerente_sucursal" && rol !== "supervisor";
 
   const navContent = (showLabels: boolean) => (
     <>
@@ -64,10 +62,6 @@ export default function Sidebar({ rol, open, onToggle }: SidebarProps) {
       {isOperaciones ? (
         <List sx={{ px: showLabels ? 1 : 0.5, pt: 1 }}>
           <NavItem label="Portabilidad" href="/operaciones/portabilidad" icon={<CompareArrowsIcon />} pathname={pathname} open={showLabels} />
-        </List>
-      ) : isAsistente ? (
-        <List sx={{ px: showLabels ? 1 : 0.5, pt: 1 }}>
-          <NavItem label="Asistente IA" href="/asistente" icon={<SmartToyIcon />} exact pathname={pathname} open={showLabels} />
         </List>
       ) : isPromotor ? (
         <List sx={{ px: showLabels ? 1 : 0.5, pt: 1 }}>
@@ -106,13 +100,6 @@ export default function Sidebar({ rol, open, onToggle }: SidebarProps) {
           <NavItem label="Planes de Trabajo" href="/admin/planes-trabajo" icon={<WorkIcon />} exact pathname={pathname} open={showLabels} />
           <NavItem label="Configuracion" href="/admin/configuracion" icon={<SettingsIcon />} exact pathname={pathname} open={showLabels} />
 
-          <Divider sx={{ borderColor: "rgba(255,255,255,0.12)", my: 1 }} />
-          {showLabels && (
-            <Typography sx={{ px: 1.5, py: 0.5, fontSize: "0.7rem", fontWeight: 700, color: "rgba(255,255,255,0.45)", letterSpacing: 1 }}>
-              INTELIGENCIA
-            </Typography>
-          )}
-          <NavItem label="Asistente IA" href="/asistente" icon={<SmartToyIcon />} exact pathname={pathname} open={showLabels} />
         </List>
       )}
     </>

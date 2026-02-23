@@ -150,10 +150,15 @@ async def query_databases(mensaje: str, historial: list[dict] | None = None) -> 
             f"Historial de conversación:\n{history_context}\n\n"
             f"Base de datos principal: {primary_name}\n"
             f"Bases de datos disponibles: {db_list}\n"
-            f"Para consultar otras BDs usa las herramientas query_<nombre>_db y schema_<nombre>_db."
+            f"Para consultar otras BDs usa las herramientas query_<nombre>_db y schema_<nombre>_db.\n\n"
+            f"IMPORTANTE: SIEMPRE responde usando el formato exacto:\n"
+            f"Final Answer: <tu respuesta aquí>\n"
+            f"Si no necesitas consultar la base de datos, responde directamente con Final Answer."
         ),
-        handle_parsing_errors=True,
-        max_iterations=10,
+        agent_executor_kwargs={
+            "handle_parsing_errors": "Por favor responde usando el formato: Final Answer: <tu respuesta>",
+            "max_iterations": 10,
+        },
     )
 
     try:
