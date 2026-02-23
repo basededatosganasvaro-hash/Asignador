@@ -3,6 +3,10 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# Environment
+ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
+
 # API Key for service-to-service auth
 API_KEY = os.getenv("API_KEY", "")
 

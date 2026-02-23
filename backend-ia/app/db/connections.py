@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from langchain_community.utilities import SQLDatabase
 
 from ..config import DB_URLS
@@ -13,14 +13,21 @@ def get_engine(name: str):
         url = DB_URLS.get(name)
         if not url:
             return None
-        # Ensure read-only by using execution_options
-        _engines[name] = create_engine(
+        engine = create_engine(
             url,
             pool_size=3,
             max_overflow=2,
             pool_pre_ping=True,
-            execution_options={"postgresql_readonly": True},
         )
+
+        # Enforce read-only at PostgreSQL level
+        @event.listens_for(engine, "connect")
+        def set_readonly(dbapi_conn, connection_record):
+            cursor = dbapi_conn.cursor()
+            cursor.execute("SET default_transaction_read_only = on")
+            cursor.close()
+
+        _engines[name] = engine
     return _engines[name]
 
 

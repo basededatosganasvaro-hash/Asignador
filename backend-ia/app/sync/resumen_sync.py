@@ -4,6 +4,7 @@ Consolida datos de 3 BDs (Sistema, Clientes, Capacidades) en tablas
 resumen_oportunidades y resumen_usuarios de BD Sistema.
 """
 
+import asyncio
 import logging
 import time
 from datetime import datetime, date, timedelta
@@ -16,6 +17,7 @@ from ..config import DB_URLS
 logger = logging.getLogger(__name__)
 
 BATCH_SIZE = 1000
+_sync_lock = asyncio.Lock()
 
 
 def _connect(db_name: str):
@@ -38,8 +40,13 @@ def sync_resumen_oportunidades() -> dict:
         cur_s = conn_sistema.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         cur_clientes = conn_clientes.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
-        # 1. Obtener oportunidades con joins en BD Sistema
-        cur_s.execute("""
+        # 1. Obtener oportunidades con joins en BD Sistema (server-side cursor)
+        cur_ops = conn_sistema.cursor(
+            name="srv_oportunidades",
+            cursor_factory=psycopg2.extras.RealDictCursor,
+        )
+        cur_ops.itersize = BATCH_SIZE
+        cur_ops.execute("""
             SELECT
                 o.id AS oportunidad_id,
                 o.cliente_id,
@@ -76,11 +83,17 @@ def sync_resumen_oportunidades() -> dict:
             LEFT JOIN zonas z ON z.id = suc.zona_id
             LEFT JOIN regiones r ON r.id = z.region_id
         """)
-        oportunidades = cur_s.fetchall()
+        oportunidades = cur_ops.fetchall()
+        cur_ops.close()
         logger.info(f"Fetched {len(oportunidades)} oportunidades from BD Sistema")
 
-        # 2. Obtener historial agregado por oportunidad
-        cur_s.execute("""
+        # 2. Obtener historial agregado por oportunidad (server-side cursor)
+        cur_hist = conn_sistema.cursor(
+            name="srv_historial",
+            cursor_factory=psycopg2.extras.RealDictCursor,
+        )
+        cur_hist.itersize = BATCH_SIZE
+        cur_hist.execute("""
             SELECT
                 oportunidad_id,
                 COUNT(*) AS total_interacciones,
@@ -93,7 +106,8 @@ def sync_resumen_oportunidades() -> dict:
             FROM historial
             GROUP BY oportunidad_id
         """)
-        historial_map = {row["oportunidad_id"]: row for row in cur_s.fetchall()}
+        historial_map = {row["oportunidad_id"]: row for row in cur_hist.fetchall()}
+        cur_hist.close()
 
         # 3. Obtener ventas
         cur_s.execute("""
@@ -679,19 +693,26 @@ def sync_resumen_usuarios() -> dict:
 
 
 async def sync_all() -> dict:
-    """Ejecuta sincronizacion completa de ambas tablas resumen."""
-    start = time.time()
-    results = []
+    """Ejecuta sincronizacion completa de ambas tablas resumen.
+    Uses asyncio.to_thread to avoid blocking the event loop.
+    Mutex prevents concurrent syncs from overlapping.
+    """
+    if _sync_lock.locked():
+        return {"status": "skipped", "reason": "Sync already in progress"}
 
-    result_ops = sync_resumen_oportunidades()
-    results.append(result_ops)
+    async with _sync_lock:
+        start = time.time()
+        results = []
 
-    result_usr = sync_resumen_usuarios()
-    results.append(result_usr)
+        result_ops = await asyncio.to_thread(sync_resumen_oportunidades)
+        results.append(result_ops)
 
-    total_duration = time.time() - start
-    return {
-        "status": "ok",
-        "tables": results,
-        "total_duration_s": round(total_duration, 1),
-    }
+        result_usr = await asyncio.to_thread(sync_resumen_usuarios)
+        results.append(result_usr)
+
+        total_duration = time.time() - start
+        return {
+            "status": "ok",
+            "tables": results,
+            "total_duration_s": round(total_duration, 1),
+        }

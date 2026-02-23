@@ -5,6 +5,9 @@ import { prisma } from "@/lib/prisma";
 const AGENTE_API_URL = process.env.AGENTE_API_URL || "http://agente-api.railway.internal:8000";
 const AGENTE_API_KEY = process.env.AGENTE_API_KEY || "";
 
+const MAX_MESSAGE_LENGTH = 2000;
+const MAX_CONVERSATIONS = 50;
+
 export async function POST(request: NextRequest) {
   const { session, error } = await requireAsistente();
   if (error) return error;
@@ -16,11 +19,29 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Mensaje requerido" }, { status: 400 });
   }
 
+  if (mensaje.length > MAX_MESSAGE_LENGTH) {
+    return NextResponse.json(
+      { error: `El mensaje no puede exceder ${MAX_MESSAGE_LENGTH} caracteres` },
+      { status: 400 },
+    );
+  }
+
   const userId = parseInt(session.user.id);
 
   // Crear o obtener conversación
   let convId = conversacion_id;
   if (!convId) {
+    // Verificar límite de conversaciones activas
+    const convCount = await prisma.ia_conversaciones.count({
+      where: { usuario_id: userId, activo: true },
+    });
+    if (convCount >= MAX_CONVERSATIONS) {
+      return NextResponse.json(
+        { error: `Límite de ${MAX_CONVERSATIONS} conversaciones alcanzado. Elimina alguna para continuar.` },
+        { status: 429 },
+      );
+    }
+
     const conv = await prisma.ia_conversaciones.create({
       data: {
         usuario_id: userId,
@@ -47,13 +68,14 @@ export async function POST(request: NextRequest) {
     },
   });
 
-  // Obtener historial reciente para contexto
+  // Obtener historial reciente para contexto (los 20 más recientes)
   const historial = await prisma.ia_mensajes.findMany({
     where: { conversacion_id: convId },
-    orderBy: { created_at: "asc" },
+    orderBy: { created_at: "desc" },
     take: 20,
     select: { rol: true, contenido: true },
   });
+  historial.reverse();
 
   // Forward a agente-api
   const startTime = Date.now();
@@ -89,10 +111,11 @@ export async function POST(request: NextRequest) {
       duration_ms: Date.now() - startTime,
     };
   } catch (err) {
-    // Si el agente no está disponible, responder con mensaje de fallback
+    // Log internally, return generic message to client
     const duration = Date.now() - startTime;
+    console.error("Agente API error:", err instanceof Error ? err.message : "Unknown error");
     respuestaTexto = "El servicio de IA no está disponible en este momento. Por favor intenta de nuevo más tarde.";
-    metadata = { error: err instanceof Error ? err.message : "Unknown error", duration_ms: duration };
+    metadata = { error: true, duration_ms: duration };
   }
 
   // Guardar respuesta del asistente

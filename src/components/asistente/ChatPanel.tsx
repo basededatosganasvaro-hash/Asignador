@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Box, Paper, Typography, CircularProgress } from "@mui/material";
+import { Box, Paper, Typography, CircularProgress, Snackbar, Alert } from "@mui/material";
 import SmartToyIcon from "@mui/icons-material/SmartToy";
 import ConversationList from "./ConversationList";
 import ChatMessage from "./ChatMessage";
@@ -28,6 +28,7 @@ export default function ChatPanel() {
   const [messages, setMessages] = useState<Mensaje[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [convLoading, setConvLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -44,8 +45,12 @@ export default function ChatPanel() {
       if (res.ok) {
         const data = await res.json();
         setConversaciones(data.conversaciones);
+      } else {
+        setErrorMsg("Error al cargar conversaciones");
       }
-    } catch { /* ignore */ }
+    } catch {
+      setErrorMsg("Error al cargar conversaciones");
+    }
     setConvLoading(false);
   }, []);
 
@@ -58,8 +63,12 @@ export default function ChatPanel() {
       if (res.ok) {
         const data = await res.json();
         setMessages(data.mensajes || []);
+      } else {
+        setErrorMsg("Error al cargar mensajes");
       }
-    } catch { /* ignore */ }
+    } catch {
+      setErrorMsg("Error al cargar mensajes");
+    }
   };
 
   const handleSelectConv = (id: number) => {
@@ -74,12 +83,16 @@ export default function ChatPanel() {
   };
 
   const handleDeleteConv = async (id: number) => {
-    await fetch(`/api/asistente/conversaciones/${id}`, { method: "DELETE" });
-    if (activeConvId === id) {
-      setActiveConvId(null);
-      setMessages([]);
+    try {
+      await fetch(`/api/asistente/conversaciones/${id}`, { method: "DELETE" });
+      if (activeConvId === id) {
+        setActiveConvId(null);
+        setMessages([]);
+      }
+      fetchConversaciones();
+    } catch {
+      setErrorMsg("Error al eliminar conversación");
     }
-    fetchConversaciones();
   };
 
   const handleSend = async (mensaje: string) => {
@@ -100,17 +113,24 @@ export default function ChatPanel() {
         body: JSON.stringify({ mensaje, conversacion_id: activeConvId }),
       });
 
-      if (res.ok) {
-        const data = await res.json();
-        // Si era nueva conversación, setear el ID
-        if (!activeConvId) {
-          setActiveConvId(data.conversacion_id);
-        }
-        // Agregar respuesta del asistente
-        setMessages((prev) => [...prev, data.mensaje]);
-        fetchConversaciones();
+      const data = await res.json();
+
+      if (!res.ok) {
+        setErrorMsg(data.error || "Error al enviar mensaje");
+        setIsLoading(false);
+        return;
       }
-    } catch { /* ignore */ }
+
+      // Si era nueva conversación, setear el ID
+      if (!activeConvId) {
+        setActiveConvId(data.conversacion_id);
+      }
+      // Agregar respuesta del asistente
+      setMessages((prev) => [...prev, data.mensaje]);
+      fetchConversaciones();
+    } catch {
+      setErrorMsg("Error de conexión con el servidor");
+    }
     setIsLoading(false);
   };
 
@@ -176,6 +196,18 @@ export default function ChatPanel() {
         {/* Input */}
         <ChatInput onSend={handleSend} disabled={isLoading} />
       </Paper>
+
+      {/* Snackbar de errores */}
+      <Snackbar
+        open={!!errorMsg}
+        autoHideDuration={5000}
+        onClose={() => setErrorMsg(null)}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      >
+        <Alert onClose={() => setErrorMsg(null)} severity="error" variant="filled" sx={{ width: "100%" }}>
+          {errorMsg}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }

@@ -1,7 +1,9 @@
 "use client";
+import { useState } from "react";
 import {
   Box, List, ListItemButton, ListItemText, Typography,
   IconButton, Divider, CircularProgress,
+  Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Button,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
@@ -25,6 +27,15 @@ interface ConversationListProps {
 export default function ConversationList({
   conversaciones, activeId, loading, onSelect, onNew, onDelete,
 }: ConversationListProps) {
+  const [deleteTarget, setDeleteTarget] = useState<number | null>(null);
+
+  const handleConfirmDelete = () => {
+    if (deleteTarget !== null) {
+      onDelete(deleteTarget);
+      setDeleteTarget(null);
+    }
+  };
+
   return (
     <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
       <Box sx={{ p: 1.5, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -66,7 +77,7 @@ export default function ConversationList({
                 />
                 <IconButton
                   size="small"
-                  onClick={(e) => { e.stopPropagation(); onDelete(conv.id); }}
+                  onClick={(e) => { e.stopPropagation(); setDeleteTarget(conv.id); }}
                   sx={{ opacity: 0.5, "&:hover": { opacity: 1 } }}
                 >
                   <DeleteOutlineIcon fontSize="small" />
@@ -76,6 +87,25 @@ export default function ConversationList({
           </List>
         )}
       </Box>
+
+      {/* Dialog de confirmación para eliminar */}
+      <Dialog
+        open={deleteTarget !== null}
+        onClose={() => setDeleteTarget(null)}
+      >
+        <DialogTitle>Eliminar conversación</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Esta acción eliminará la conversación y todo su historial de mensajes. Esta acción no se puede deshacer.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteTarget(null)}>Cancelar</Button>
+          <Button onClick={handleConfirmDelete} color="error" variant="contained">
+            Eliminar
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }
