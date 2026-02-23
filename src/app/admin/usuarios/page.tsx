@@ -27,6 +27,7 @@ import BlockIcon from "@mui/icons-material/Block";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import SearchIcon from "@mui/icons-material/Search";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import DownloadIcon from "@mui/icons-material/Download";
 
 interface Usuario {
   id: number;
@@ -298,9 +299,18 @@ export default function UsuariosPage() {
     <Box>
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3 }}>
         <Typography variant="h4">Gestion de Usuarios</Typography>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpenCreate}>
-          Nuevo Usuario
-        </Button>
+        <Box sx={{ display: "flex", gap: 1 }}>
+          <Button
+            variant="outlined"
+            startIcon={<DownloadIcon />}
+            onClick={() => window.open("/api/admin/usuarios/exportar", "_blank")}
+          >
+            Descargar
+          </Button>
+          <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpenCreate}>
+            Nuevo Usuario
+          </Button>
+        </Box>
       </Box>
 
       <TextField
