@@ -95,14 +95,23 @@ export const authOptions: NextAuthOptions = {
         token.rol = (user as { rol: string }).rol;
         token.nombre = (user as { nombre: string }).nombre;
         token.debe_cambiar_password = (user as { debe_cambiar_password: boolean }).debe_cambiar_password;
+        token.lastRefresh = Date.now();
       } else if (token.id) {
-        // Refrescar debe_cambiar_password desde BD en cada request
-        const dbUser = await prisma.usuarios.findUnique({
-          where: { id: parseInt(token.id as string) },
-          select: { debe_cambiar_password: true },
-        });
-        if (dbUser) {
-          token.debe_cambiar_password = dbUser.debe_cambiar_password;
+        // Refrescar debe_cambiar_password cada 5 minutos (no en cada request)
+        const lastRefresh = (token.lastRefresh as number) || 0;
+        if (Date.now() - lastRefresh > 5 * 60 * 1000) {
+          try {
+            const dbUser = await prisma.usuarios.findUnique({
+              where: { id: parseInt(token.id as string) },
+              select: { debe_cambiar_password: true },
+            });
+            if (dbUser) {
+              token.debe_cambiar_password = dbUser.debe_cambiar_password;
+            }
+            token.lastRefresh = Date.now();
+          } catch {
+            // Si falla la BD, mantener el valor actual del token
+          }
         }
       }
       return token;

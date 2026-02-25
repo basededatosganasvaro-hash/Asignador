@@ -106,9 +106,14 @@ export default function UsuariosPage() {
   });
 
   const fetchUsers = useCallback(async () => {
-    const res = await fetch("/api/admin/usuarios");
-    const data = await res.json();
-    setUsuarios(data);
+    try {
+      const res = await fetch("/api/admin/usuarios");
+      if (!res.ok) throw new Error("Error al cargar usuarios");
+      const data = await res.json();
+      setUsuarios(data);
+    } catch (err) {
+      setSnackbar({ open: true, message: err instanceof Error ? err.message : "Error de conexión", severity: "error" });
+    }
     setLoading(false);
   }, []);
 
@@ -117,14 +122,18 @@ export default function UsuariosPage() {
   }, [fetchUsers]);
 
   const fetchOrgData = async () => {
-    const [r, s, e] = await Promise.all([
-      fetch("/api/admin/organizacion/regiones").then((res) => res.json()),
-      fetch("/api/admin/organizacion/sucursales").then((res) => res.json()),
-      fetch("/api/admin/organizacion/equipos").then((res) => res.json()),
-    ]);
-    setRegiones(r);
-    setSucursales(s);
-    setEquipos(e);
+    try {
+      const [r, s, e] = await Promise.all([
+        fetch("/api/admin/organizacion/regiones").then((res) => res.json()),
+        fetch("/api/admin/organizacion/sucursales").then((res) => res.json()),
+        fetch("/api/admin/organizacion/equipos").then((res) => res.json()),
+      ]);
+      setRegiones(r);
+      setSucursales(s);
+      setEquipos(e);
+    } catch (err) {
+      setSnackbar({ open: true, message: err instanceof Error ? err.message : "Error de conexión", severity: "error" });
+    }
   };
 
   const handleOpenCreate = async () => {

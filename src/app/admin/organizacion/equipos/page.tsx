@@ -33,14 +33,18 @@ export default function EquiposPage() {
   const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" as "success" | "error" });
 
   const fetchData = useCallback(async () => {
-    const [e, s, u] = await Promise.all([
-      fetch("/api/admin/organizacion/equipos").then((res) => res.json()),
-      fetch("/api/admin/organizacion/sucursales").then((res) => res.json()),
-      fetch("/api/admin/usuarios").then((res) => res.json()),
-    ]);
-    setRows(e);
-    setSucursales(s);
-    setSupervisores(u.filter((u: { rol: string }) => u.rol === "supervisor"));
+    try {
+      const [e, s, u] = await Promise.all([
+        fetch("/api/admin/organizacion/equipos").then((res) => res.json()),
+        fetch("/api/admin/organizacion/sucursales").then((res) => res.json()),
+        fetch("/api/admin/usuarios").then((res) => res.json()),
+      ]);
+      setRows(e);
+      setSucursales(s);
+      setSupervisores(u.filter((u: { rol: string }) => u.rol === "supervisor"));
+    } catch (err) {
+      setSnackbar({ open: true, message: err instanceof Error ? err.message : "Error de conexión", severity: "error" });
+    }
     setLoading(false);
   }, []);
 

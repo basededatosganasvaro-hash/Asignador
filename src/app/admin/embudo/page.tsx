@@ -58,14 +58,24 @@ export default function EmbudoPage() {
   });
 
   const fetchEtapas = useCallback(async () => {
-    const res = await fetch("/api/admin/embudo/etapas");
-    setEtapas(await res.json());
+    try {
+      const res = await fetch("/api/admin/embudo/etapas");
+      if (!res.ok) throw new Error("Error al cargar etapas");
+      setEtapas(await res.json());
+    } catch (err) {
+      setSnackbar({ open: true, message: err instanceof Error ? err.message : "Error de conexión", severity: "error" });
+    }
     setLoadingE(false);
   }, []);
 
   const fetchTransiciones = useCallback(async () => {
-    const res = await fetch("/api/admin/embudo/transiciones");
-    setTransiciones(await res.json());
+    try {
+      const res = await fetch("/api/admin/embudo/transiciones");
+      if (!res.ok) throw new Error("Error al cargar transiciones");
+      setTransiciones(await res.json());
+    } catch (err) {
+      setSnackbar({ open: true, message: err instanceof Error ? err.message : "Error de conexión", severity: "error" });
+    }
     setLoadingT(false);
   }, []);
 

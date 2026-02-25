@@ -45,13 +45,19 @@ export default function ConvenioReglasPage() {
   const [saving, setSaving] = useState(false);
 
   const cargarReglas = async () => {
-    const res = await fetch("/api/admin/convenio-reglas");
-    setReglas(await res.json());
+    try {
+      const res = await fetch("/api/admin/convenio-reglas");
+      if (!res.ok) throw new Error("Error al cargar reglas");
+      setReglas(await res.json());
+    } catch { setError("Error al cargar reglas"); }
   };
 
   const cargarConvenios = async () => {
-    const res = await fetch("/api/captaciones/convenios");
-    setConvenios(await res.json());
+    try {
+      const res = await fetch("/api/captaciones/convenios");
+      if (!res.ok) throw new Error("Error al cargar convenios");
+      setConvenios(await res.json());
+    } catch { setError("Error al cargar convenios"); }
   };
 
   useEffect(() => {

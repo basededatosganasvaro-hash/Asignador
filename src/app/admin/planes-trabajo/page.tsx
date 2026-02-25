@@ -28,12 +28,16 @@ export default function PlanesTrabajoPage() {
   const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" as "success" | "error" });
 
   const fetchData = useCallback(async () => {
-    const [p, s] = await Promise.all([
-      fetch("/api/admin/planes-trabajo").then((res) => res.json()),
-      fetch("/api/admin/organizacion/sucursales").then((res) => res.json()),
-    ]);
-    setRows(p);
-    setSucursales(s);
+    try {
+      const [p, s] = await Promise.all([
+        fetch("/api/admin/planes-trabajo").then((res) => res.json()),
+        fetch("/api/admin/organizacion/sucursales").then((res) => res.json()),
+      ]);
+      setRows(p);
+      setSucursales(s);
+    } catch (err) {
+      setSnackbar({ open: true, message: err instanceof Error ? err.message : "Error de conexión", severity: "error" });
+    }
     setLoading(false);
   }, []);
 

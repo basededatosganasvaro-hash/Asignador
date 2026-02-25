@@ -167,7 +167,10 @@ export default function ConfiguracionPage() {
 
   useEffect(() => {
     fetch("/api/admin/configuracion")
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) throw new Error("Error al cargar configuración");
+        return res.json();
+      })
       .then((data: Config[]) => {
         setConfigs(data);
         const maxReg = data.find((c: Config) => c.clave === "max_registros_por_dia");
@@ -184,6 +187,10 @@ export default function ConfiguracionPage() {
         }
         setWaValues(newWaValues);
 
+        setLoading(false);
+      })
+      .catch(() => {
+        setSnackbar({ open: true, message: "Error al cargar configuración", severity: "error" });
         setLoading(false);
       });
   }, []);

@@ -30,12 +30,16 @@ export default function ZonasPage() {
   const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" as "success" | "error" });
 
   const fetchData = useCallback(async () => {
-    const [z, r] = await Promise.all([
-      fetch("/api/admin/organizacion/zonas").then((res) => res.json()),
-      fetch("/api/admin/organizacion/regiones").then((res) => res.json()),
-    ]);
-    setRows(z);
-    setRegiones(r);
+    try {
+      const [z, r] = await Promise.all([
+        fetch("/api/admin/organizacion/zonas").then((res) => res.json()),
+        fetch("/api/admin/organizacion/regiones").then((res) => res.json()),
+      ]);
+      setRows(z);
+      setRegiones(r);
+    } catch (err) {
+      setSnackbar({ open: true, message: err instanceof Error ? err.message : "Error de conexión", severity: "error" });
+    }
     setLoading(false);
   }, []);
 

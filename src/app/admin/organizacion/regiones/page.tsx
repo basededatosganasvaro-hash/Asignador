@@ -26,8 +26,13 @@ export default function RegionesPage() {
   const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" as "success" | "error" });
 
   const fetchData = useCallback(async () => {
-    const res = await fetch("/api/admin/organizacion/regiones");
-    setRows(await res.json());
+    try {
+      const res = await fetch("/api/admin/organizacion/regiones");
+      if (!res.ok) throw new Error("Error al cargar regiones");
+      setRows(await res.json());
+    } catch (err) {
+      setSnackbar({ open: true, message: err instanceof Error ? err.message : "Error de conexión", severity: "error" });
+    }
     setLoading(false);
   }, []);
 

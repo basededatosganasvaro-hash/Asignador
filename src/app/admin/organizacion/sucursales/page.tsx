@@ -31,12 +31,16 @@ export default function SucursalesPage() {
   const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" as "success" | "error" });
 
   const fetchData = useCallback(async () => {
-    const [s, z] = await Promise.all([
-      fetch("/api/admin/organizacion/sucursales").then((res) => res.json()),
-      fetch("/api/admin/organizacion/zonas").then((res) => res.json()),
-    ]);
-    setRows(s);
-    setZonas(z);
+    try {
+      const [s, z] = await Promise.all([
+        fetch("/api/admin/organizacion/sucursales").then((res) => res.json()),
+        fetch("/api/admin/organizacion/zonas").then((res) => res.json()),
+      ]);
+      setRows(s);
+      setZonas(z);
+    } catch (err) {
+      setSnackbar({ open: true, message: err instanceof Error ? err.message : "Error de conexión", severity: "error" });
+    }
     setLoading(false);
   }, []);
 

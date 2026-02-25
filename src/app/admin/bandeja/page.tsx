@@ -104,20 +104,29 @@ function BandejaTab({ showSnack }: { showSnack: (m: string, s?: "success" | "err
   const [saving, setSaving] = useState(false);
 
   const fetchData = useCallback(async () => {
-    const res = await fetch("/api/admin/bandeja");
-    setRows(await res.json());
+    try {
+      const res = await fetch("/api/admin/bandeja");
+      if (!res.ok) throw new Error("Error al cargar bandeja");
+      setRows(await res.json());
+    } catch (err) {
+      showSnack(err instanceof Error ? err.message : "Error de conexión", "error");
+    }
     setLoading(false);
-  }, []);
+  }, [showSnack]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
   const handleOpenDrawer = async (id: number) => {
-    const res = await fetch(`/api/oportunidades/${id}`);
-    if (res.ok) {
-      setSelected(await res.json());
-      setNota("");
-      setCanal("");
-      setDrawerOpen(true);
+    try {
+      const res = await fetch(`/api/oportunidades/${id}`);
+      if (res.ok) {
+        setSelected(await res.json());
+        setNota("");
+        setCanal("");
+        setDrawerOpen(true);
+      }
+    } catch {
+      showSnack("Error al cargar oportunidad", "error");
     }
   };
 
@@ -228,14 +237,18 @@ function EquipoTab({ showSnack }: { showSnack: (m: string, s?: "success" | "erro
   const [nuevoPromotor, setNuevoPromotor] = useState("");
 
   const fetchData = useCallback(async () => {
-    const [opRes, prRes] = await Promise.all([
-      fetch("/api/admin/equipo/oportunidades"),
-      fetch("/api/admin/equipo"),
-    ]);
-    setRows(await opRes.json());
-    setPromotores(await prRes.json());
+    try {
+      const [opRes, prRes] = await Promise.all([
+        fetch("/api/admin/equipo/oportunidades"),
+        fetch("/api/admin/equipo"),
+      ]);
+      setRows(await opRes.json());
+      setPromotores(await prRes.json());
+    } catch (err) {
+      showSnack(err instanceof Error ? err.message : "Error de conexión", "error");
+    }
     setLoading(false);
-  }, []);
+  }, [showSnack]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -314,10 +327,15 @@ function PromotoresTab({ showSnack }: { showSnack: (m: string, s?: "success" | "
   const [saving, setSaving] = useState(false);
 
   const fetchData = useCallback(async () => {
-    const res = await fetch("/api/admin/equipo");
-    setPromotores(await res.json());
+    try {
+      const res = await fetch("/api/admin/equipo");
+      if (!res.ok) throw new Error("Error al cargar promotores");
+      setPromotores(await res.json());
+    } catch (err) {
+      showSnack(err instanceof Error ? err.message : "Error de conexión", "error");
+    }
     setLoading(false);
-  }, []);
+  }, [showSnack]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 

@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Box, Typography, Grid, CircularProgress } from "@mui/material";
+import { Box, Typography, Grid, CircularProgress, Alert } from "@mui/material";
 import PeopleIcon from "@mui/icons-material/People";
 import AssignmentIcon from "@mui/icons-material/Assignment";
 import StorageIcon from "@mui/icons-material/Storage";
@@ -33,12 +33,20 @@ const columns: GridColDef[] = [
 export default function AdminDashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/admin/dashboard")
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) throw new Error("Error al cargar datos");
+        return res.json();
+      })
       .then((data) => {
         setData(data);
+        setLoading(false);
+      })
+      .catch((err) => {
+        setError(err.message || "Error de conexión");
         setLoading(false);
       });
   }, []);
@@ -47,6 +55,14 @@ export default function AdminDashboard() {
     return (
       <Box sx={{ display: "flex", justifyContent: "center", mt: 8 }}>
         <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box sx={{ display: "flex", justifyContent: "center", mt: 8 }}>
+        <Alert severity="error" sx={{ maxWidth: 500 }}>{error}</Alert>
       </Box>
     );
   }
