@@ -89,7 +89,7 @@ export const authOptions: NextAuthOptions = {
     maxAge: 24 * 60 * 60, // 24 horas
   },
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger }) {
       if (user) {
         token.id = user.id;
         token.rol = (user as { rol: string }).rol;
@@ -97,9 +97,10 @@ export const authOptions: NextAuthOptions = {
         token.debe_cambiar_password = (user as { debe_cambiar_password: boolean }).debe_cambiar_password;
         token.lastRefresh = Date.now();
       } else if (token.id) {
-        // Refrescar debe_cambiar_password cada 5 minutos (no en cada request)
+        // Refrescar debe_cambiar_password cada 5 minutos o inmediatamente si update() fue llamado
         const lastRefresh = (token.lastRefresh as number) || 0;
-        if (Date.now() - lastRefresh > 5 * 60 * 1000) {
+        const forceRefresh = trigger === "update";
+        if (forceRefresh || Date.now() - lastRefresh > 5 * 60 * 1000) {
           try {
             const dbUser = await prisma.usuarios.findUnique({
               where: { id: parseInt(token.id as string) },
