@@ -1,12 +1,13 @@
 "use client";
-import { useEffect, useState, useCallback } from "react";
-import {
-  Box, Typography, Button, Dialog, DialogTitle, DialogContent, DialogActions,
-  TextField, Alert, Snackbar, IconButton, FormControl, InputLabel, Select, MenuItem,
-} from "@mui/material";
-import { DataGrid, GridColDef } from "@mui/x-data-grid";
-import AddIcon from "@mui/icons-material/Add";
-import DeleteIcon from "@mui/icons-material/Delete";
+import { useEffect, useState, useCallback, useMemo } from "react";
+import { ColumnDef } from "@tanstack/react-table";
+import { DataTable } from "@/components/ui/DataTable";
+import { Button } from "@/components/ui/Button";
+import { Dialog, DialogHeader, DialogBody, DialogFooter } from "@/components/ui/Dialog";
+import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
+import { useToast } from "@/components/ui/Toast";
+import { Plus, Trash2 } from "lucide-react";
 
 interface PlanTrabajo {
   id: number;
@@ -17,7 +18,10 @@ interface PlanTrabajo {
   creador: { id: number; nombre: string };
 }
 
-interface Sucursal { id: number; nombre: string; }
+interface Sucursal {
+  id: number;
+  nombre: string;
+}
 
 export default function PlanesTrabajoPage() {
   const [rows, setRows] = useState<PlanTrabajo[]>([]);
@@ -25,7 +29,7 @@ export default function PlanesTrabajoPage() {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState({ sucursal_id: "", convenio: "" });
-  const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" as "success" | "error" });
+  const { toast } = useToast();
 
   const fetchData = useCallback(async () => {
     try {
@@ -36,12 +40,14 @@ export default function PlanesTrabajoPage() {
       setRows(p);
       setSucursales(s);
     } catch (err) {
-      setSnackbar({ open: true, message: err instanceof Error ? err.message : "Error de conexión", severity: "error" });
+      toast(err instanceof Error ? err.message : "Error de conexion", "error");
     }
     setLoading(false);
   }, []);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const handleSave = async () => {
     const res = await fetch("/api/admin/planes-trabajo", {
@@ -52,71 +58,120 @@ export default function PlanesTrabajoPage() {
     if (res.ok) {
       setDialogOpen(false);
       setForm({ sucursal_id: "", convenio: "" });
-      setSnackbar({ open: true, message: "Plan de trabajo creado", severity: "success" });
+      toast("Plan de trabajo creado", "success");
       fetchData();
     } else {
       const data = await res.json();
-      setSnackbar({ open: true, message: data.error || "Error al crear", severity: "error" });
+      toast(data.error || "Error al crear", "error");
     }
   };
 
   const handleDelete = async (id: number) => {
+    if (!confirm("Eliminar este plan de trabajo?")) return;
     const res = await fetch("/api/admin/planes-trabajo", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id }),
     });
-    if (res.ok) { setSnackbar({ open: true, message: "Plan eliminado", severity: "success" }); fetchData(); }
+    if (res.ok) {
+      toast("Plan eliminado", "success");
+      fetchData();
+    }
   };
 
-  const columns: GridColDef[] = [
-    { field: "convenio", headerName: "Convenio", flex: 1 },
-    { field: "sucursal", headerName: "Sucursal", flex: 1, valueGetter: (_v: unknown, row: PlanTrabajo) => row.sucursal?.nombre ?? "—" },
-    { field: "creador", headerName: "Creado por", width: 160, valueGetter: (_v: unknown, row: PlanTrabajo) => row.creador?.nombre ?? "—" },
-    {
-      field: "created_at", headerName: "Fecha", width: 120,
-      valueGetter: (_v: unknown, row: PlanTrabajo) => new Date(row.created_at).toLocaleDateString("es-MX"),
-    },
-    {
-      field: "actions", headerName: "Acciones", width: 90, sortable: false,
-      renderCell: (p) => (
-        <IconButton size="small" onClick={() => handleDelete(p.row.id)} color="error" title="Eliminar">
-          <DeleteIcon fontSize="small" />
-        </IconButton>
-      ),
-    },
-  ];
+  const columns: ColumnDef<PlanTrabajo, unknown>[] = useMemo(
+    () => [
+      {
+        accessorKey: "convenio",
+        header: "Convenio",
+      },
+      {
+        id: "sucursal",
+        header: "Sucursal",
+        accessorFn: (row) => row.sucursal?.nombre ?? "\u2014",
+      },
+      {
+        id: "creador",
+        header: "Creado por",
+        size: 160,
+        accessorFn: (row) => row.creador?.nombre ?? "\u2014",
+      },
+      {
+        id: "created_at",
+        header: "Fecha",
+        size: 120,
+        accessorFn: (row) => new Date(row.created_at).toLocaleDateString("es-MX"),
+      },
+      {
+        id: "actions",
+        header: "Acciones",
+        size: 90,
+        enableSorting: false,
+        cell: ({ row }) => (
+          <button
+            onClick={() => handleDelete(row.original.id)}
+            className="p-1.5 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors"
+            title="Eliminar"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        ),
+      },
+    ],
+    []
+  );
+
+  const sucursalOptions = sucursales.map((s) => ({ value: String(s.id), label: s.nombre }));
 
   return (
-    <Box>
-      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3 }}>
-        <Typography variant="h4">Planes de Trabajo</Typography>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={() => setDialogOpen(true)}>Nuevo Plan</Button>
-      </Box>
-      <Box sx={{ bgcolor: "white", borderRadius: 2 }}>
-        <DataGrid rows={rows} columns={columns} loading={loading} pageSizeOptions={[10, 25]}
-          initialState={{ pagination: { paginationModel: { pageSize: 10 } } }}
-          disableRowSelectionOnClick autoHeight sx={{ border: "none", "& .MuiDataGrid-columnHeaders": { bgcolor: "#f5f5f5" } }} />
-      </Box>
-      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="xs" fullWidth>
-        <DialogTitle>Nuevo Plan de Trabajo</DialogTitle>
-        <DialogContent>
-          <FormControl fullWidth margin="normal" required>
-            <InputLabel>Sucursal</InputLabel>
-            <Select value={form.sucursal_id} label="Sucursal" onChange={(e) => setForm({ ...form, sucursal_id: e.target.value })}>
-              {sucursales.map((s) => <MenuItem key={s.id} value={String(s.id)}>{s.nombre}</MenuItem>)}
-            </Select>
-          </FormControl>
-          <TextField fullWidth label="Convenio" value={form.convenio} onChange={(e) => setForm({ ...form, convenio: e.target.value })} margin="normal" required autoFocus />
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setDialogOpen(false)} color="error" variant="outlined">Cancelar</Button>
-          <Button variant="contained" onClick={handleSave} disabled={!form.sucursal_id || !form.convenio}>Crear</Button>
-        </DialogActions>
+    <div>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="font-display text-xl font-bold text-slate-100">Planes de Trabajo</h1>
+        <Button
+          variant="primary"
+          icon={<Plus className="w-4 h-4" />}
+          onClick={() => setDialogOpen(true)}
+        >
+          Nuevo Plan
+        </Button>
+      </div>
+
+      <DataTable
+        data={rows}
+        columns={columns}
+        loading={loading}
+        pageSize={10}
+        pageSizeOptions={[10, 25]}
+        emptyMessage="No hay planes de trabajo"
+      />
+
+      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm">
+        <DialogHeader onClose={() => setDialogOpen(false)}>
+          Nuevo Plan de Trabajo
+        </DialogHeader>
+        <DialogBody className="flex flex-col gap-4">
+          <Select
+            label="Sucursal"
+            value={form.sucursal_id}
+            onChange={(e) => setForm({ ...form, sucursal_id: e.target.value })}
+            options={sucursalOptions}
+            placeholder="Seleccionar sucursal..."
+          />
+          <Input
+            label="Convenio"
+            value={form.convenio}
+            onChange={(e) => setForm({ ...form, convenio: e.target.value })}
+            required
+            autoFocus
+          />
+        </DialogBody>
+        <DialogFooter>
+          <Button variant="danger" onClick={() => setDialogOpen(false)}>Cancelar</Button>
+          <Button variant="primary" onClick={handleSave} disabled={!form.sucursal_id || !form.convenio}>
+            Crear
+          </Button>
+        </DialogFooter>
       </Dialog>
-      <Snackbar open={snackbar.open} autoHideDuration={3000} onClose={() => setSnackbar({ ...snackbar, open: false })}>
-        <Alert severity={snackbar.severity} variant="filled">{snackbar.message}</Alert>
-      </Snackbar>
-    </Box>
+    </div>
   );
 }

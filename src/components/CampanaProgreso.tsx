@@ -1,16 +1,9 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
-import {
-  Box, Typography, LinearProgress, Chip, IconButton, Tooltip,
-  Card, CardContent, Stack, Collapse,
-} from "@mui/material";
-import PauseIcon from "@mui/icons-material/Pause";
-import PlayArrowIcon from "@mui/icons-material/PlayArrow";
-import CancelIcon from "@mui/icons-material/Cancel";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import ExpandLessIcon from "@mui/icons-material/ExpandLess";
-import CheckCircleIcon from "@mui/icons-material/CheckCircle";
-import ErrorIcon from "@mui/icons-material/Error";
+import { Pause, Play, XCircle, ChevronDown, ChevronUp, CheckCircle, AlertCircle } from "lucide-react";
+import { Badge } from "@/components/ui/Badge";
+import { Tooltip } from "@/components/ui/Tooltip";
+import { LinearProgress } from "@/components/ui/LinearProgress";
 
 interface Campana {
   id: number;
@@ -24,13 +17,13 @@ interface Campana {
   created_at: string;
 }
 
-const ESTADO_COLORS: Record<string, string> = {
-  CREADA: "#9e9e9e",
-  EN_COLA: "#ff9800",
-  ENVIANDO: "#2196f3",
-  PAUSADA: "#ff5722",
-  COMPLETADA: "#4caf50",
-  CANCELADA: "#f44336",
+const ESTADO_BADGE: Record<string, "slate" | "orange" | "blue" | "red" | "green" | "amber"> = {
+  CREADA: "slate",
+  EN_COLA: "orange",
+  ENVIANDO: "blue",
+  PAUSADA: "amber",
+  COMPLETADA: "green",
+  CANCELADA: "red",
 };
 
 export default function CampanaProgreso() {
@@ -46,7 +39,7 @@ export default function CampanaProgreso() {
 
   useEffect(() => {
     fetchCampanas();
-    const interval = setInterval(fetchCampanas, 10000); // Poll every 10s
+    const interval = setInterval(fetchCampanas, 10000);
     return () => clearInterval(interval);
   }, [fetchCampanas]);
 
@@ -64,129 +57,99 @@ export default function CampanaProgreso() {
   if (campanas.length === 0) return null;
 
   return (
-    <Card elevation={0} sx={{ border: "1px solid", borderColor: "divider", borderRadius: 3, mb: 2 }}>
-      <CardContent sx={{ pb: "12px !important" }}>
-        <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1.5 }}>
-          Campañas WhatsApp
-        </Typography>
-        <Stack spacing={1}>
-          {campanas.map((c) => {
-            const pct = c.total_mensajes > 0 ? Math.round((c.enviados / c.total_mensajes) * 100) : 0;
-            const isActive = ["EN_COLA", "ENVIANDO"].includes(c.estado);
+    <div className="bg-surface rounded-xl border border-slate-800/60 p-4 mb-3">
+      <h3 className="text-sm font-bold text-slate-100 mb-3">Campañas WhatsApp</h3>
+      <div className="space-y-2">
+        {campanas.map((c) => {
+          const pct = c.total_mensajes > 0 ? Math.round((c.enviados / c.total_mensajes) * 100) : 0;
+          const isActive = ["EN_COLA", "ENVIANDO"].includes(c.estado);
 
-            return (
-              <Box key={c.id}>
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                  <Box sx={{ flex: 1, minWidth: 0 }}>
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                      <Typography variant="body2" fontWeight={600} noWrap sx={{ flex: 1 }}>
-                        {c.nombre}
-                      </Typography>
-                      <Chip
-                        label={c.estado}
-                        size="small"
-                        sx={{
-                          fontSize: 10, height: 20, fontWeight: 700,
-                          bgcolor: ESTADO_COLORS[c.estado] || "grey.500",
-                          color: "white",
-                        }}
-                      />
-                    </Box>
-                    <LinearProgress
-                      variant="determinate"
-                      value={pct}
-                      sx={{
-                        mt: 0.5, height: 6, borderRadius: 3,
-                        bgcolor: "grey.100",
-                        "& .MuiLinearProgress-bar": {
-                          bgcolor: isActive ? "#25D366" : ESTADO_COLORS[c.estado],
-                          borderRadius: 3,
-                        },
-                      }}
-                    />
-                    <Box sx={{ display: "flex", gap: 1.5, mt: 0.5 }}>
-                      <Typography variant="caption" color="text.secondary">{c.enviados}/{c.total_mensajes} enviados</Typography>
-                      {c.entregados > 0 && (
-                        <Typography variant="caption" sx={{ color: "#4caf50" }}>
-                          <CheckCircleIcon sx={{ fontSize: 10, mr: 0.3 }} />{c.entregados} entregados
-                        </Typography>
-                      )}
-                      {c.leidos > 0 && (
-                        <Typography variant="caption" sx={{ color: "#2196f3" }}>
-                          {c.leidos} leídos
-                        </Typography>
-                      )}
-                      {c.fallidos > 0 && (
-                        <Typography variant="caption" sx={{ color: "#f44336" }}>
-                          <ErrorIcon sx={{ fontSize: 10, mr: 0.3 }} />{c.fallidos} fallidos
-                        </Typography>
-                      )}
-                    </Box>
-                  </Box>
+          return (
+            <div key={c.id}>
+              <div className="flex items-center gap-2">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-semibold text-slate-200 truncate flex-1">{c.nombre}</span>
+                    <Badge color={ESTADO_BADGE[c.estado] ?? "slate"}>{c.estado}</Badge>
+                  </div>
+                  <div className="mt-1">
+                    <LinearProgress value={pct} color={isActive ? "green" : "blue"} />
+                  </div>
+                  <div className="flex gap-3 mt-1">
+                    <span className="text-xs text-slate-400">{c.enviados}/{c.total_mensajes} enviados</span>
+                    {c.entregados > 0 && (
+                      <span className="text-xs text-green-400 flex items-center gap-0.5">
+                        <CheckCircle className="w-2.5 h-2.5" />{c.entregados} entregados
+                      </span>
+                    )}
+                    {c.leidos > 0 && (
+                      <span className="text-xs text-blue-400">{c.leidos} leídos</span>
+                    )}
+                    {c.fallidos > 0 && (
+                      <span className="text-xs text-red-400 flex items-center gap-0.5">
+                        <AlertCircle className="w-2.5 h-2.5" />{c.fallidos} fallidos
+                      </span>
+                    )}
+                  </div>
+                </div>
 
-                  <Box sx={{ display: "flex", gap: 0.5 }}>
-                    {c.estado === "ENVIANDO" && (
-                      <Tooltip title="Pausar">
-                        <IconButton size="small" onClick={() => handleAction(c.id, "pause")}>
-                          <PauseIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                    )}
-                    {c.estado === "PAUSADA" && (
-                      <Tooltip title="Reanudar">
-                        <IconButton size="small" color="success" onClick={() => handleAction(c.id, "resume")}>
-                          <PlayArrowIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                    )}
-                    {isActive && (
-                      <Tooltip title="Cancelar">
-                        <IconButton size="small" color="error" onClick={() => handleAction(c.id, "cancel")}>
-                          <CancelIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                    )}
-                    <IconButton size="small" onClick={() => setExpanded(expanded === c.id ? null : c.id)}>
-                      {expanded === c.id ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
-                    </IconButton>
-                  </Box>
-                </Box>
+                <div className="flex gap-0.5 shrink-0">
+                  {c.estado === "ENVIANDO" && (
+                    <Tooltip content="Pausar">
+                      <button onClick={() => handleAction(c.id, "pause")} className="p-1.5 text-slate-400 hover:text-amber-400 hover:bg-slate-800/60 rounded-lg transition-colors">
+                        <Pause className="w-4 h-4" />
+                      </button>
+                    </Tooltip>
+                  )}
+                  {c.estado === "PAUSADA" && (
+                    <Tooltip content="Reanudar">
+                      <button onClick={() => handleAction(c.id, "resume")} className="p-1.5 text-slate-400 hover:text-green-400 hover:bg-green-500/10 rounded-lg transition-colors">
+                        <Play className="w-4 h-4" />
+                      </button>
+                    </Tooltip>
+                  )}
+                  {isActive && (
+                    <Tooltip content="Cancelar">
+                      <button onClick={() => handleAction(c.id, "cancel")} className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors">
+                        <XCircle className="w-4 h-4" />
+                      </button>
+                    </Tooltip>
+                  )}
+                  <button
+                    onClick={() => setExpanded(expanded === c.id ? null : c.id)}
+                    className="p-1.5 text-slate-500 hover:text-slate-300 hover:bg-slate-800/60 rounded-lg transition-colors"
+                  >
+                    {expanded === c.id ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
 
-                <Collapse in={expanded === c.id}>
-                  <Box sx={{ mt: 1.5, display: "flex", flexWrap: "wrap", gap: 1 }}>
+              {expanded === c.id && (
+                <div className="mt-2 animate-[fadeIn_150ms_ease-out]">
+                  <div className="flex flex-wrap gap-2">
                     {[
-                      { label: "Enviados", value: c.enviados, color: "#2196f3", bg: "#e3f2fd", always: true },
-                      { label: "Entregados", value: c.entregados, color: "#4caf50", bg: "#e8f5e9", always: false },
-                      { label: "Leídos", value: c.leidos, color: "#00bcd4", bg: "#e0f7fa", always: false },
-                      { label: "Fallidos", value: c.fallidos, color: "#f44336", bg: "#ffebee", always: false },
+                      { label: "Enviados", value: c.enviados, bg: "bg-blue-500/10", text: "text-blue-400", always: true },
+                      { label: "Entregados", value: c.entregados, bg: "bg-green-500/10", text: "text-green-400", always: false },
+                      { label: "Leídos", value: c.leidos, bg: "bg-teal-500/10", text: "text-teal-400", always: false },
+                      { label: "Fallidos", value: c.fallidos, bg: "bg-red-500/10", text: "text-red-400", always: false },
                     ]
                       .filter((s) => s.always || s.value > 0)
                       .map((s) => (
-                        <Box
-                          key={s.label}
-                          sx={{
-                            flex: "1 1 0", minWidth: 70, textAlign: "center",
-                            bgcolor: s.bg, borderRadius: 2, py: 1, px: 0.5,
-                          }}
-                        >
-                          <Typography variant="h5" fontWeight={700} sx={{ color: s.color, lineHeight: 1.2 }}>
-                            {s.value}
-                          </Typography>
-                          <Typography variant="caption" sx={{ color: s.color, fontWeight: 600 }}>
-                            {s.label}
-                          </Typography>
-                        </Box>
+                        <div key={s.label} className={`flex-1 min-w-[70px] text-center rounded-xl py-2 px-1 ${s.bg}`}>
+                          <span className={`block text-xl font-bold ${s.text} leading-tight`}>{s.value}</span>
+                          <span className={`text-[10px] font-semibold ${s.text}`}>{s.label}</span>
+                        </div>
                       ))}
-                  </Box>
-                  <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: "block" }}>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-2">
                     Creada: {new Date(c.created_at).toLocaleString("es-MX")}
-                  </Typography>
-                </Collapse>
-              </Box>
-            );
-          })}
-        </Stack>
-      </CardContent>
-    </Card>
+                  </p>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }

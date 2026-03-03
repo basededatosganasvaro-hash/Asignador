@@ -1,14 +1,14 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
-import {
-  Box, Typography, Button, Dialog, DialogTitle, DialogContent, DialogActions,
-  TextField, Chip, Alert, Snackbar, IconButton, FormControl, InputLabel, Select, MenuItem,
-} from "@mui/material";
-import { DataGrid, GridColDef } from "@mui/x-data-grid";
-import AddIcon from "@mui/icons-material/Add";
-import EditIcon from "@mui/icons-material/Edit";
-import BlockIcon from "@mui/icons-material/Block";
-import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import { Plus, Pencil, Ban, CheckCircle } from "lucide-react";
+import { ColumnDef } from "@tanstack/react-table";
+import { DataTable } from "@/components/ui/DataTable";
+import { Button } from "@/components/ui/Button";
+import { Badge } from "@/components/ui/Badge";
+import { Dialog, DialogHeader, DialogBody, DialogFooter } from "@/components/ui/Dialog";
+import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
+import { useToast } from "@/components/ui/Toast";
 
 interface Equipo {
   id: number;
@@ -30,7 +30,7 @@ export default function EquiposPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Equipo | null>(null);
   const [form, setForm] = useState({ nombre: "", sucursal_id: "", supervisor_id: "" });
-  const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" as "success" | "error" });
+  const { toast } = useToast();
 
   const fetchData = useCallback(async () => {
     try {
@@ -43,10 +43,10 @@ export default function EquiposPage() {
       setSucursales(s);
       setSupervisores(u.filter((u: { rol: string }) => u.rol === "supervisor"));
     } catch (err) {
-      setSnackbar({ open: true, message: err instanceof Error ? err.message : "Error de conexión", severity: "error" });
+      toast(err instanceof Error ? err.message : "Error de conexión", "error");
     }
     setLoading(false);
-  }, []);
+  }, [toast]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -68,11 +68,11 @@ export default function EquiposPage() {
     const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
     if (res.ok) {
       setDialogOpen(false);
-      setSnackbar({ open: true, message: editing ? "Equipo actualizado" : "Equipo creado", severity: "success" });
+      toast(editing ? "Equipo actualizado" : "Equipo creado", "success");
       fetchData();
     } else {
       const data = await res.json();
-      setSnackbar({ open: true, message: data.error || "Error al guardar", severity: "error" });
+      toast(data.error || "Error al guardar", "error");
     }
   };
 
@@ -80,66 +80,68 @@ export default function EquiposPage() {
     const res = await fetch(`/api/admin/organizacion/equipos/${row.id}`, {
       method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ activo: !row.activo }),
     });
-    if (res.ok) { setSnackbar({ open: true, message: row.activo ? "Desactivado" : "Activado", severity: "success" }); fetchData(); }
+    if (res.ok) { toast(row.activo ? "Desactivado" : "Activado", "success"); fetchData(); }
   };
 
-  const columns: GridColDef[] = [
-    { field: "nombre", headerName: "Nombre", flex: 1 },
-    { field: "sucursal", headerName: "Sucursal", flex: 1, valueGetter: (_v: unknown, row: Equipo) => row.sucursal?.nombre ?? "—" },
-    { field: "supervisor", headerName: "Supervisor", flex: 1, valueGetter: (_v: unknown, row: Equipo) => row.supervisor?.nombre ?? "Sin supervisor" },
-    { field: "miembros", headerName: "Miembros", width: 100, align: "center", headerAlign: "center", valueGetter: (_v: unknown, row: Equipo) => row._count?.miembros ?? 0 },
-    { field: "activo", headerName: "Estado", width: 100, renderCell: (p) => <Chip label={p.value ? "Activo" : "Inactivo"} color={p.value ? "success" : "default"} size="small" /> },
+  const columns: ColumnDef<Equipo, unknown>[] = [
+    { accessorKey: "nombre", header: "Nombre", cell: ({ getValue }) => <span className="font-medium text-slate-100">{getValue() as string}</span> },
+    { id: "sucursal", header: "Sucursal", cell: ({ row }) => <span>{row.original.sucursal?.nombre ?? "—"}</span> },
+    { id: "supervisor", header: "Supervisor", cell: ({ row }) => <span>{row.original.supervisor?.nombre ?? "Sin supervisor"}</span> },
+    { id: "miembros", header: "Miembros", cell: ({ row }) => <span className="text-center block">{row.original._count?.miembros ?? 0}</span> },
     {
-      field: "actions", headerName: "Acciones", width: 110, sortable: false,
-      renderCell: (p) => (
-        <Box>
-          <IconButton size="small" onClick={() => handleOpenEdit(p.row)} title="Editar"><EditIcon fontSize="small" /></IconButton>
-          <IconButton size="small" onClick={() => handleToggle(p.row)} color={p.row.activo ? "error" : "success"} title={p.row.activo ? "Desactivar" : "Activar"}>
-            {p.row.activo ? <BlockIcon fontSize="small" /> : <CheckCircleIcon fontSize="small" />}
-          </IconButton>
-        </Box>
+      accessorKey: "activo", header: "Estado",
+      cell: ({ getValue }) => <Badge color={getValue() ? "green" : "slate"}>{getValue() ? "Activo" : "Inactivo"}</Badge>,
+    },
+    {
+      id: "actions", header: "Acciones", enableSorting: false,
+      cell: ({ row }) => (
+        <div className="flex gap-1">
+          <button onClick={() => handleOpenEdit(row.original)} className="p-1.5 text-blue-400 hover:bg-blue-500/10 rounded-lg transition-colors" title="Editar">
+            <Pencil className="w-4 h-4" />
+          </button>
+          <button onClick={() => handleToggle(row.original)} className={`p-1.5 rounded-lg transition-colors ${row.original.activo ? "text-red-400 hover:bg-red-500/10" : "text-green-400 hover:bg-green-500/10"}`} title={row.original.activo ? "Desactivar" : "Activar"}>
+            {row.original.activo ? <Ban className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
+          </button>
+        </div>
       ),
     },
   ];
 
   return (
-    <Box>
-      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3 }}>
-        <Typography variant="h4">Equipos</Typography>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpenCreate}>Nuevo Equipo</Button>
-      </Box>
-      <Box sx={{ bgcolor: "white", borderRadius: 2 }}>
-        <DataGrid rows={rows} columns={columns} loading={loading} pageSizeOptions={[10, 25]}
-          initialState={{ pagination: { paginationModel: { pageSize: 10 } } }}
-          disableRowSelectionOnClick autoHeight sx={{ border: "none", "& .MuiDataGrid-columnHeaders": { bgcolor: "#f5f5f5" } }} />
-      </Box>
-      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="xs" fullWidth>
-        <DialogTitle>{editing ? "Editar Equipo" : "Nuevo Equipo"}</DialogTitle>
-        <DialogContent>
-          <TextField fullWidth label="Nombre" value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} margin="normal" required autoFocus />
-          <FormControl fullWidth margin="normal">
-            <InputLabel>Sucursal (opcional)</InputLabel>
-            <Select value={form.sucursal_id} label="Sucursal (opcional)" onChange={(e) => setForm({ ...form, sucursal_id: e.target.value })}>
-              <MenuItem value="">Sin sucursal</MenuItem>
-              {sucursales.map((s) => <MenuItem key={s.id} value={String(s.id)}>{s.nombre}</MenuItem>)}
-            </Select>
-          </FormControl>
-          <FormControl fullWidth margin="normal">
-            <InputLabel>Supervisor (opcional)</InputLabel>
-            <Select value={form.supervisor_id} label="Supervisor (opcional)" onChange={(e) => setForm({ ...form, supervisor_id: e.target.value })}>
-              <MenuItem value="">Sin supervisor</MenuItem>
-              {supervisores.map((s) => <MenuItem key={s.id} value={String(s.id)}>{s.nombre}</MenuItem>)}
-            </Select>
-          </FormControl>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setDialogOpen(false)} color="error" variant="outlined">Cancelar</Button>
-          <Button variant="contained" onClick={handleSave} disabled={!form.nombre}>{editing ? "Actualizar" : "Crear"}</Button>
-        </DialogActions>
+    <div>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="font-display text-xl font-bold text-slate-100">Equipos</h1>
+        <Button icon={<Plus className="w-4 h-4" />} onClick={handleOpenCreate}>Nuevo Equipo</Button>
+      </div>
+
+      <DataTable data={rows} columns={columns} loading={loading} pageSize={10} pageSizeOptions={[10, 25]} getRowId={(row) => String(row.id)} />
+
+      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm">
+        <DialogHeader onClose={() => setDialogOpen(false)}>
+          {editing ? "Editar Equipo" : "Nuevo Equipo"}
+        </DialogHeader>
+        <DialogBody className="space-y-4">
+          <Input label="Nombre" value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} required autoFocus />
+          <Select
+            label="Sucursal (opcional)"
+            value={form.sucursal_id}
+            onChange={(e) => setForm({ ...form, sucursal_id: e.target.value })}
+            options={sucursales.map((s) => ({ value: String(s.id), label: s.nombre }))}
+            placeholder="Sin sucursal"
+          />
+          <Select
+            label="Supervisor (opcional)"
+            value={form.supervisor_id}
+            onChange={(e) => setForm({ ...form, supervisor_id: e.target.value })}
+            options={supervisores.map((s) => ({ value: String(s.id), label: s.nombre }))}
+            placeholder="Sin supervisor"
+          />
+        </DialogBody>
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => setDialogOpen(false)}>Cancelar</Button>
+          <Button onClick={handleSave} disabled={!form.nombre}>{editing ? "Actualizar" : "Crear"}</Button>
+        </DialogFooter>
       </Dialog>
-      <Snackbar open={snackbar.open} autoHideDuration={3000} onClose={() => setSnackbar({ ...snackbar, open: false })}>
-        <Alert severity={snackbar.severity} variant="filled">{snackbar.message}</Alert>
-      </Snackbar>
-    </Box>
+    </div>
   );
 }

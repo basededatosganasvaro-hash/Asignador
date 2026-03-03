@@ -1,27 +1,34 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
-import {
-  Box, Typography, Card, CardContent, TextField, Button,
-  Alert, CircularProgress, Snackbar, Chip, Divider,
-} from "@mui/material";
-import SaveIcon from "@mui/icons-material/Save";
-import RestoreIcon from "@mui/icons-material/Restore";
-import WhatsAppIcon from "@mui/icons-material/WhatsApp";
+import { Save, RotateCcw } from "lucide-react";
+import { Alert } from "@/components/ui/Alert";
+import { Spinner } from "@/components/ui/Spinner";
+import { Button } from "@/components/ui/Button";
+import { Divider } from "@/components/ui/Divider";
+import { useToast } from "@/components/ui/Toast";
 import { WA_MENSAJES_DEFAULT, WA_ETAPAS_ORDEN } from "@/lib/whatsapp";
+
+function WhatsAppIcon({ className = "w-5 h-5" }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+    </svg>
+  );
+}
 
 const ETAPA_COLORES: Record<string, string> = {
   Asignado: "#42A5F5",
   Contactado: "#FFA726",
   Interesado: "#AB47BC",
-  "Negociación": "#66BB6A",
+  "Negociacion": "#66BB6A",
   Capturados: "#26C6DA",
 };
 
 const ETAPA_DESCRIPCIONES: Record<string, string> = {
   Asignado: "Primer contacto con el cliente asignado del pool",
   Contactado: "Seguimiento tras el primer contacto exitoso",
-  Interesado: "El cliente mostró interés, avanzar con trámite",
-  "Negociación": "Compartir propuesta y cerrar la venta",
+  Interesado: "El cliente mostro interes, avanzar con tramite",
+  "Negociacion": "Compartir propuesta y cerrar la venta",
   Capturados: "Clientes captados por ti directamente",
 };
 
@@ -29,7 +36,7 @@ export default function ConfiguracionPage() {
   const [plantillas, setPlantillas] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" as "success" | "error" });
+  const { toast } = useToast();
 
   const fetchPlantillas = useCallback(async () => {
     try {
@@ -37,7 +44,7 @@ export default function ConfiguracionPage() {
       if (res.ok) {
         setPlantillas(await res.json());
       } else {
-        // Si la API falla (ej: tabla no existe aún), usar defaults
+        // Si la API falla (ej: tabla no existe aun), usar defaults
         setPlantillas({ ...WA_MENSAJES_DEFAULT });
       }
     } catch {
@@ -69,156 +76,128 @@ export default function ConfiguracionPage() {
         body: JSON.stringify(plantillas),
       });
       if (res.ok) {
-        setSnackbar({ open: true, message: "Plantillas guardadas correctamente", severity: "success" });
+        toast("Plantillas guardadas correctamente", "success");
       } else {
         const data = await res.json();
-        setSnackbar({ open: true, message: data.error || "Error al guardar", severity: "error" });
+        toast(data.error || "Error al guardar", "error");
       }
     } catch {
-      setSnackbar({ open: true, message: "Error de conexión", severity: "error" });
+      toast("Error de conexion", "error");
     }
     setSaving(false);
   };
 
   if (loading) {
     return (
-      <Box sx={{ display: "flex", justifyContent: "center", mt: 8 }}>
-        <CircularProgress />
-      </Box>
+      <div className="flex justify-center mt-16">
+        <Spinner />
+      </div>
     );
   }
 
   return (
-    <Box>
+    <div>
       {/* Header */}
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 3, flexWrap: "wrap", gap: 1 }}>
-        <Box>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.5 }}>
-            <WhatsAppIcon sx={{ color: "#25D366", fontSize: 28 }} />
-            <Typography variant="h5" fontWeight={600}>Mensajes de WhatsApp</Typography>
-          </Box>
-          <Typography variant="body2" color="text.secondary">
-            Personaliza el mensaje que se enviará a tus clientes en cada etapa del embudo
-          </Typography>
-        </Box>
-        <Box sx={{ display: "flex", gap: 1 }}>
+      <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <WhatsAppIcon className="w-6 h-6 text-[#25D366]" />
+            <h1 className="text-xl font-semibold text-slate-100">Mensajes de WhatsApp</h1>
+          </div>
+          <p className="text-sm text-slate-500">
+            Personaliza el mensaje que se enviara a tus clientes en cada etapa del embudo
+          </p>
+        </div>
+        <div className="flex gap-2">
           <Button
-            variant="outlined"
-            size="small"
-            startIcon={<RestoreIcon />}
+            variant="outline"
+            size="sm"
+            icon={<RotateCcw className="w-4 h-4" />}
             onClick={handleResetAll}
-            sx={{ textTransform: "none" }}
           >
             Restaurar todos
           </Button>
           <Button
-            variant="contained"
-            size="small"
-            startIcon={saving ? <CircularProgress size={18} color="inherit" /> : <SaveIcon />}
+            variant="primary"
+            size="sm"
+            icon={<Save className="w-4 h-4" />}
             onClick={handleSave}
+            loading={saving}
             disabled={saving}
-            sx={{ textTransform: "none", fontWeight: 600 }}
           >
             {saving ? "Guardando..." : "Guardar cambios"}
           </Button>
-        </Box>
-      </Box>
+        </div>
+      </div>
 
       {/* Info de variables */}
-      <Alert severity="info" variant="outlined" sx={{ mb: 3 }}>
-        <Typography variant="body2" fontWeight={600} sx={{ mb: 0.5 }}>Variables disponibles:</Typography>
-        <Typography variant="body2">
+      <Alert variant="info" className="mb-6">
+        <p className="font-semibold text-sm mb-1">Variables disponibles:</p>
+        <p className="text-sm">
           <strong>{"{nombre}"}</strong> — Primer nombre del cliente &nbsp;&nbsp;|&nbsp;&nbsp;
           <strong>{"{promotor}"}</strong> — Tu nombre
-        </Typography>
+        </p>
       </Alert>
 
       {/* Plantillas por etapa */}
-      <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
+      <div className="flex flex-col gap-5">
         {WA_ETAPAS_ORDEN.map((etapa) => (
-          <Card
+          <div
             key={etapa}
-            variant="outlined"
-            sx={{
-              borderRadius: 3,
-              borderLeft: "4px solid",
-              borderLeftColor: ETAPA_COLORES[etapa] || "grey.400",
-            }}
+            className="bg-surface rounded-xl border border-slate-800/60 overflow-hidden"
+            style={{ borderLeftWidth: 4, borderLeftColor: ETAPA_COLORES[etapa] || "#94a3b8" }}
           >
-            <CardContent sx={{ pb: "16px !important" }}>
-              <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1.5 }}>
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                  <Chip
-                    label={etapa}
-                    size="small"
-                    sx={{
-                      bgcolor: ETAPA_COLORES[etapa] || "grey.400",
-                      color: "white",
-                      fontWeight: 700,
-                    }}
-                  />
-                  <Typography variant="caption" color="text.secondary">
+            <div className="p-5 pb-4">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <span
+                    className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold text-white"
+                    style={{ backgroundColor: ETAPA_COLORES[etapa] || "#94a3b8" }}
+                  >
+                    {etapa}
+                  </span>
+                  <span className="text-xs text-slate-500">
                     {ETAPA_DESCRIPCIONES[etapa]}
-                  </Typography>
-                </Box>
-                <Button
-                  size="small"
-                  startIcon={<RestoreIcon sx={{ fontSize: 14 }} />}
+                  </span>
+                </div>
+                <button
+                  className="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-slate-300 transition-colors"
                   onClick={() => handleReset(etapa)}
-                  sx={{ textTransform: "none", fontSize: 12 }}
                 >
+                  <RotateCcw className="w-3 h-3" />
                   Restaurar
-                </Button>
-              </Box>
+                </button>
+              </div>
 
-              <TextField
-                fullWidth
-                multiline
+              <textarea
+                className="w-full px-3 py-2 bg-slate-800/50 border border-slate-700 text-sm text-slate-200 placeholder-slate-600 rounded-lg focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500/60 outline-none transition-all resize-none"
                 rows={3}
                 value={plantillas[etapa] || ""}
                 onChange={(e) => handleChange(etapa, e.target.value)}
-                variant="outlined"
-                size="small"
                 placeholder={WA_MENSAJES_DEFAULT[etapa]}
-                sx={{
-                  "& .MuiOutlinedInput-root": {
-                    fontSize: 14,
-                    bgcolor: "grey.50",
-                  },
-                }}
               />
 
-              <Divider sx={{ my: 1.5 }} />
+              <Divider />
 
               {/* Preview */}
-              <Box sx={{ display: "flex", alignItems: "flex-start", gap: 1 }}>
-                <WhatsAppIcon sx={{ color: "#25D366", fontSize: 18, mt: 0.2 }} />
-                <Box>
-                  <Typography variant="caption" color="text.secondary" fontWeight={600}>
+              <div className="flex items-start gap-2">
+                <WhatsAppIcon className="w-4 h-4 text-[#25D366] mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-xs font-semibold text-slate-500">
                     Vista previa:
-                  </Typography>
-                  <Typography variant="body2" sx={{ fontSize: 13, color: "text.secondary", fontStyle: "italic" }}>
+                  </p>
+                  <p className="text-[13px] text-slate-500 italic">
                     {(plantillas[etapa] || "")
-                      .replace(/\{nombre\}/g, "Carlos Pérez López")
-                      .replace(/\{promotor\}/g, "Juan Pérez")
+                      .replace(/\{nombre\}/g, "Carlos Perez Lopez")
+                      .replace(/\{promotor\}/g, "Juan Perez")
                     || "—"}
-                  </Typography>
-                </Box>
-              </Box>
-            </CardContent>
-          </Card>
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
         ))}
-      </Box>
-
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={3000}
-        onClose={() => setSnackbar((p) => ({ ...p, open: false }))}
-      >
-        <Alert severity={snackbar.severity} variant="filled">
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
-    </Box>
+      </div>
+    </div>
   );
 }

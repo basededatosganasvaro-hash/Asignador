@@ -1,14 +1,7 @@
 "use client";
-import { ThemeProvider as MUIThemeProvider } from "@mui/material/styles";
-import CssBaseline from "@mui/material/CssBaseline";
-import theme from "@/theme/theme";
 import { ReactNode } from "react";
+import { ToastProvider } from "@/components/ui/Toast";
 
 export default function ThemeProvider({ children }: { children: ReactNode }) {
-  return (
-    <MUIThemeProvider theme={theme}>
-      <CssBaseline />
-      {children}
-    </MUIThemeProvider>
-  );
+  return <ToastProvider>{children}</ToastProvider>;
 }

@@ -1,31 +1,23 @@
 "use client";
 import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Tooltip } from "@/components/ui/Tooltip";
+import { Alert } from "@/components/ui/Alert";
+import { Spinner } from "@/components/ui/Spinner";
+import { useToast } from "@/components/ui/Toast";
 import {
-  Box,
-  Typography,
-  Card,
-  CardContent,
-  TextField,
-  Button,
-  Alert,
-  Snackbar,
-  CircularProgress,
-  Switch,
-  FormControlLabel,
-  Tooltip,
-  Chip,
-} from "@mui/material";
-import SaveIcon from "@mui/icons-material/Save";
-import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
-import SettingsIcon from "@mui/icons-material/Settings";
-import ScheduleIcon from "@mui/icons-material/Schedule";
-import AssignmentIcon from "@mui/icons-material/Assignment";
-import WhatsAppIcon from "@mui/icons-material/WhatsApp";
-import TimerIcon from "@mui/icons-material/Timer";
-import BurstModeIcon from "@mui/icons-material/BurstMode";
-import PauseCircleIcon from "@mui/icons-material/PauseCircle";
-import ShieldIcon from "@mui/icons-material/Shield";
-import InfoIcon from "@mui/icons-material/Info";
+  Save,
+  HelpCircle,
+  Settings,
+  Clock,
+  ClipboardList,
+  Timer,
+  Layers,
+  PauseCircle,
+  Shield,
+  Info,
+} from "lucide-react";
 
 interface Config {
   id: number;
@@ -68,10 +60,10 @@ interface WaField {
 }
 
 const GROUP_ICONS: Record<string, React.ReactNode> = {
-  "Intervalo entre mensajes": <TimerIcon sx={{ fontSize: 18, color: "text.secondary" }} />,
-  "Rafagas": <BurstModeIcon sx={{ fontSize: 18, color: "text.secondary" }} />,
-  "Pausas entre rafagas": <PauseCircleIcon sx={{ fontSize: 18, color: "text.secondary" }} />,
-  "Limite diario": <ShieldIcon sx={{ fontSize: 18, color: "text.secondary" }} />,
+  "Intervalo entre mensajes": <Timer className="w-4 h-4 text-slate-400" />,
+  "Rafagas": <Layers className="w-4 h-4 text-slate-400" />,
+  "Pausas entre rafagas": <PauseCircle className="w-4 h-4 text-slate-400" />,
+  "Limite diario": <Shield className="w-4 h-4 text-slate-400" />,
 };
 
 const WA_FIELD_GROUPS: { title: string; fields: WaField[] }[] = [
@@ -139,22 +131,15 @@ const WA_FIELD_GROUPS: { title: string; fields: WaField[] }[] = [
   },
 ];
 
-const cardSx = {
-  elevation: 0,
-  border: "1px solid",
-  borderColor: "divider",
-  borderRadius: 3,
-};
-
 export default function ConfiguracionPage() {
+  const { toast } = useToast();
   const [configs, setConfigs] = useState<Config[]>([]);
   const [maxRegistros, setMaxRegistros] = useState("300");
   const [horarioActivo, setHorarioActivo] = useState(true);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" as "success" | "error" });
 
-  // WhatsApp config state — display values (seconds for ms fields, raw for others)
+  // WhatsApp config state -- display values (seconds for ms fields, raw for others)
   const [waValues, setWaValues] = useState<Record<string, string>>(() => {
     const init: Record<string, string> = {};
     for (const [key, val] of Object.entries(WA_DEFAULTS)) {
@@ -168,7 +153,7 @@ export default function ConfiguracionPage() {
   useEffect(() => {
     fetch("/api/admin/configuracion")
       .then((res) => {
-        if (!res.ok) throw new Error("Error al cargar configuración");
+        if (!res.ok) throw new Error("Error al cargar configuracion");
         return res.json();
       })
       .then((data: Config[]) => {
@@ -190,7 +175,7 @@ export default function ConfiguracionPage() {
         setLoading(false);
       })
       .catch(() => {
-        setSnackbar({ open: true, message: "Error al cargar configuración", severity: "error" });
+        toast("Error al cargar configuracion", "error");
         setLoading(false);
       });
   }, []);
@@ -209,9 +194,9 @@ export default function ConfiguracionPage() {
     setSaving(false);
 
     if (res.ok) {
-      setSnackbar({ open: true, message: "Configuracion guardada", severity: "success" });
+      toast("Configuracion guardada", "success");
     } else {
-      setSnackbar({ open: true, message: "Error al guardar", severity: "error" });
+      toast("Error al guardar", "error");
     }
   };
 
@@ -268,183 +253,177 @@ export default function ConfiguracionPage() {
     }
 
     setWaSaving(false);
-    setSnackbar({
-      open: true,
-      message: allOk ? "Configuracion WhatsApp guardada" : "Error al guardar algunos valores",
-      severity: allOk ? "success" : "error",
-    });
+    toast(
+      allOk ? "Configuracion WhatsApp guardada" : "Error al guardar algunos valores",
+      allOk ? "success" : "error"
+    );
   };
 
   if (loading) {
     return (
-      <Box sx={{ display: "flex", justifyContent: "center", mt: 8 }}>
-        <CircularProgress />
-      </Box>
+      <div className="flex justify-center mt-20">
+        <Spinner size="lg" />
+      </div>
     );
   }
 
   return (
-    <Box>
+    <div>
       {/* Header de pagina */}
-      <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 3 }}>
-        <Box
-          sx={{
-            width: 48,
-            height: 48,
-            borderRadius: 2,
-            bgcolor: "primary.main",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <SettingsIcon sx={{ color: "white", fontSize: 28 }} />
-        </Box>
-        <Box>
-          <Typography variant="h5" fontWeight={700}>
+      <div className="flex items-center gap-3 mb-6">
+        <div className="w-12 h-12 rounded-xl bg-amber-500 flex items-center justify-center">
+          <Settings className="w-7 h-7 text-slate-950" />
+        </div>
+        <div>
+          <h1 className="font-display text-xl font-bold text-slate-100">
             Configuracion del Sistema
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
+          </h1>
+          <span className="text-sm text-slate-400">
             Administra los parametros operativos del sistema
-          </Typography>
-        </Box>
-      </Box>
+          </span>
+        </div>
+      </div>
 
       {/* Card Horario Operativo */}
-      <Card elevation={0} sx={{ ...cardSx, maxWidth: 700, mb: 3, borderTop: "3px solid #2196f3" }}>
-        <CardContent sx={{ p: 3 }}>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 1 }}>
-            <ScheduleIcon sx={{ color: "#2196f3" }} />
-            <Typography variant="h6" fontWeight={600}>
-              Horario Operativo
-            </Typography>
-            <Tooltip title="Controla la ventana horaria en que los promotores pueden acceder al sistema" arrow>
-              <HelpOutlineIcon sx={{ fontSize: 18, color: "text.disabled", cursor: "help" }} />
-            </Tooltip>
-          </Box>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2, ml: 4.5 }}>
-            Controla si el sistema aplica la restriccion de horario para promotores (08:55 - 19:15 L-V).
-          </Typography>
-          <Box sx={{ ml: 4.5 }}>
-            <Tooltip title="Cuando esta desactivado, los promotores pueden acceder en cualquier horario" arrow>
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={horarioActivo}
-                    color="success"
-                    onChange={async (e) => {
-                      const nuevoValor = e.target.checked;
-                      setHorarioActivo(nuevoValor);
-                      const res = await fetch("/api/admin/configuracion", {
-                        method: "PUT",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ clave: "horario_activo", valor: String(nuevoValor) }),
-                      });
-                      if (res.ok) {
-                        setSnackbar({ open: true, message: nuevoValor ? "Horario activado" : "Horario desactivado", severity: "success" });
-                      } else {
-                        setHorarioActivo(!nuevoValor);
-                        setSnackbar({ open: true, message: "Error al cambiar horario", severity: "error" });
-                      }
-                    }}
-                  />
-                }
-                label={horarioActivo ? "Horario activo" : "Horario desactivado (acceso libre)"}
-              />
-            </Tooltip>
-          </Box>
-        </CardContent>
-      </Card>
+      <div className="bg-surface rounded-xl border border-slate-800/60 p-5 max-w-[700px] mb-5 relative overflow-hidden">
+        <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-blue-500 to-blue-600" />
+        <div className="flex items-center gap-3 mb-2">
+          <Clock className="w-5 h-5 text-blue-400" />
+          <h2 className="text-lg font-semibold text-slate-100">
+            Horario Operativo
+          </h2>
+          <Tooltip content="Controla la ventana horaria en que los promotores pueden acceder al sistema">
+            <HelpCircle className="w-4 h-4 text-slate-600 cursor-help" />
+          </Tooltip>
+        </div>
+        <span className="text-sm text-slate-400 block mb-4 ml-8">
+          Controla si el sistema aplica la restriccion de horario para promotores (08:55 - 19:15 L-V).
+        </span>
+        <div className="ml-8">
+          <Tooltip content="Cuando esta desactivado, los promotores pueden acceder en cualquier horario">
+            <label className="inline-flex items-center gap-2 cursor-pointer">
+              <div className="relative inline-flex">
+                <input
+                  type="checkbox"
+                  checked={horarioActivo}
+                  onChange={async (e) => {
+                    const nuevoValor = e.target.checked;
+                    setHorarioActivo(nuevoValor);
+                    const res = await fetch("/api/admin/configuracion", {
+                      method: "PUT",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ clave: "horario_activo", valor: String(nuevoValor) }),
+                    });
+                    if (res.ok) {
+                      toast(nuevoValor ? "Horario activado" : "Horario desactivado", "success");
+                    } else {
+                      setHorarioActivo(!nuevoValor);
+                      toast("Error al cambiar horario", "error");
+                    }
+                  }}
+                  className="sr-only peer"
+                />
+                <div className="w-10 h-5 bg-slate-700 peer-checked:bg-amber-500 rounded-full transition-colors" />
+                <div className="absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-5" />
+              </div>
+              <span className="text-sm text-slate-300">
+                {horarioActivo ? "Horario activo" : "Horario desactivado (acceso libre)"}
+              </span>
+            </label>
+          </Tooltip>
+        </div>
+      </div>
 
       {/* Card Asignaciones */}
-      <Card elevation={0} sx={{ ...cardSx, maxWidth: 700, mb: 3, borderTop: "3px solid #4caf50" }}>
-        <CardContent sx={{ p: 3 }}>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 1 }}>
-            <AssignmentIcon sx={{ color: "#4caf50" }} />
-            <Typography variant="h6" fontWeight={600}>
-              Asignaciones
-            </Typography>
-            <Tooltip title="Configura los limites de asignacion de registros para promotores" arrow>
-              <HelpOutlineIcon sx={{ fontSize: 18, color: "text.disabled", cursor: "help" }} />
-            </Tooltip>
-          </Box>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2, ml: 4.5 }}>
-            Define cuantos registros puede solicitar cada promotor por dia.
-          </Typography>
-          <Box sx={{ ml: 4.5 }}>
-            <Tooltip title="Controla cuantos registros puede solicitar cada promotor en un dia" arrow>
-              <TextField
-                fullWidth
+      <div className="bg-surface rounded-xl border border-slate-800/60 p-5 max-w-[700px] mb-5 relative overflow-hidden">
+        <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-green-500 to-green-600" />
+        <div className="flex items-center gap-3 mb-2">
+          <ClipboardList className="w-5 h-5 text-green-400" />
+          <h2 className="text-lg font-semibold text-slate-100">
+            Asignaciones
+          </h2>
+          <Tooltip content="Configura los limites de asignacion de registros para promotores">
+            <HelpCircle className="w-4 h-4 text-slate-600 cursor-help" />
+          </Tooltip>
+        </div>
+        <span className="text-sm text-slate-400 block mb-4 ml-8">
+          Define cuantos registros puede solicitar cada promotor por dia.
+        </span>
+        <div className="ml-8">
+          <Tooltip content="Controla cuantos registros puede solicitar cada promotor en un dia">
+            <div>
+              <Input
                 label="Maximo de registros por dia por promotor"
                 type="number"
                 value={maxRegistros}
                 onChange={(e) => setMaxRegistros(e.target.value)}
                 helperText="Cantidad maxima de registros que un promotor puede solicitar en un dia"
-                inputProps={{ min: 1, max: 10000 }}
+                min={1}
+                max={10000}
               />
-            </Tooltip>
-            <Button
-              variant="contained"
-              color="success"
-              startIcon={saving ? <CircularProgress size={20} /> : <SaveIcon />}
-              onClick={handleSave}
-              disabled={saving}
-              sx={{ mt: 3 }}
-            >
-              Guardar Cambios
-            </Button>
-          </Box>
-        </CardContent>
-      </Card>
+            </div>
+          </Tooltip>
+          <Button
+            variant="primary"
+            icon={<Save className="w-4 h-4" />}
+            loading={saving}
+            onClick={handleSave}
+            className="mt-4 !bg-green-600 hover:!bg-green-500 !shadow-green-600/20"
+          >
+            Guardar Cambios
+          </Button>
+        </div>
+      </div>
 
       {/* Card WhatsApp Masivo */}
-      <Card elevation={0} sx={{ ...cardSx, maxWidth: 700, borderTop: "3px solid #25D366" }}>
-        <CardContent sx={{ p: 3 }}>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 1 }}>
-            <WhatsAppIcon sx={{ color: "#25D366" }} />
-            <Typography variant="h6" fontWeight={600}>
-              Configuracion de Envio Masivo WhatsApp
-            </Typography>
-            <Tooltip title="Parametros anti-spam que regulan la velocidad y volumen de envio de mensajes" arrow>
-              <HelpOutlineIcon sx={{ fontSize: 18, color: "text.disabled", cursor: "help" }} />
-            </Tooltip>
-          </Box>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2, ml: 4.5 }}>
-            Parametros anti-spam para el envio masivo de mensajes.
-          </Typography>
+      <div className="bg-surface rounded-xl border border-slate-800/60 p-5 max-w-[700px] relative overflow-hidden">
+        <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-emerald-500 to-emerald-400" />
+        <div className="flex items-center gap-3 mb-2">
+          {/* WhatsApp custom SVG icon */}
+          <svg className="w-5 h-5 text-emerald-400" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+          </svg>
+          <h2 className="text-lg font-semibold text-slate-100">
+            Configuracion de Envio Masivo WhatsApp
+          </h2>
+          <Tooltip content="Parametros anti-spam que regulan la velocidad y volumen de envio de mensajes">
+            <HelpCircle className="w-4 h-4 text-slate-600 cursor-help" />
+          </Tooltip>
+        </div>
+        <span className="text-sm text-slate-400 block mb-4 ml-8">
+          Parametros anti-spam para el envio masivo de mensajes.
+        </span>
 
-          <Box sx={{ ml: 4.5, mb: 3 }}>
-            <Chip
-              icon={<InfoIcon />}
-              label="Los cambios aplican a partir de la siguiente campana"
-              color="info"
-              variant="outlined"
-              size="small"
-            />
-          </Box>
+        <div className="ml-8 mb-5">
+          <Alert variant="info" icon={<Info className="w-4 h-4" />}>
+            Los cambios aplican a partir de la siguiente campana
+          </Alert>
+        </div>
 
-          <Box sx={{ ml: 4.5, display: "flex", flexDirection: "column", gap: 2.5 }}>
-            {WA_FIELD_GROUPS.map((group) => (
-              <Box key={group.title} sx={{ bgcolor: "grey.50", borderRadius: 2, p: 2 }}>
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1.5 }}>
-                  {GROUP_ICONS[group.title]}
-                  <Typography variant="subtitle2" color="text.secondary">
-                    {group.title}
-                  </Typography>
-                </Box>
-                <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
-                  {group.fields.map((field) => (
-                    <TextField
-                      key={field.key}
-                      sx={{ flex: group.fields.length === 1 ? "1 1 100%" : "1 1 calc(50% - 8px)" }}
-                      label={
-                        <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-                          {field.label}
-                          <Tooltip title={field.tooltip} arrow>
-                            <HelpOutlineIcon sx={{ fontSize: 16, color: "text.secondary" }} />
-                          </Tooltip>
-                        </Box>
-                      }
+        <div className="ml-8 flex flex-col gap-4">
+          {WA_FIELD_GROUPS.map((group) => (
+            <div key={group.title} className="bg-slate-800/40 rounded-xl p-4 border border-slate-700/40">
+              <div className="flex items-center gap-2 mb-3">
+                {GROUP_ICONS[group.title]}
+                <span className="text-sm font-medium text-slate-400">
+                  {group.title}
+                </span>
+              </div>
+              <div className="flex gap-3 flex-wrap">
+                {group.fields.map((field) => (
+                  <div
+                    key={field.key}
+                    className={group.fields.length === 1 ? "flex-1 basis-full" : "flex-1 basis-[calc(50%-6px)]"}
+                  >
+                    <div className="flex items-center gap-1 mb-1">
+                      <label className="block text-sm font-medium text-slate-300">
+                        {field.label}
+                      </label>
+                      <Tooltip content={field.tooltip}>
+                        <HelpCircle className="w-3.5 h-3.5 text-slate-500 cursor-help" />
+                      </Tooltip>
+                    </div>
+                    <input
                       type="number"
                       value={waValues[field.key]}
                       onChange={(e) => {
@@ -455,44 +434,41 @@ export default function ConfiguracionPage() {
                           return next;
                         });
                       }}
-                      error={!!waErrors[field.key]}
-                      helperText={waErrors[field.key] || field.unit}
-                      inputProps={{ min: 1 }}
-                      size="small"
+                      min={1}
+                      className={`
+                        w-full px-3 py-2 bg-slate-800/50 border text-slate-200
+                        placeholder-slate-600 rounded-lg text-sm
+                        focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500/60
+                        outline-none transition-all
+                        ${waErrors[field.key] ? "border-red-500/60" : "border-slate-700"}
+                      `.trim()}
                     />
-                  ))}
-                </Box>
-              </Box>
-            ))}
-          </Box>
+                    {waErrors[field.key] ? (
+                      <p className="mt-1 text-xs text-red-400">{waErrors[field.key]}</p>
+                    ) : (
+                      <p className="mt-1 text-xs text-slate-600">{field.unit}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
 
-          <Box sx={{ ml: 4.5, mt: 3 }}>
-            <Tooltip title="Guarda todos los parametros anti-spam" arrow>
-              <span>
-                <Button
-                  variant="contained"
-                  startIcon={waSaving ? <CircularProgress size={20} /> : <SaveIcon />}
-                  onClick={handleWaSave}
-                  disabled={waSaving}
-                  sx={{ bgcolor: "#25D366", "&:hover": { bgcolor: "#1da851" } }}
-                >
-                  Guardar Cambios
-                </Button>
-              </span>
-            </Tooltip>
-          </Box>
-        </CardContent>
-      </Card>
-
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={3000}
-        onClose={() => setSnackbar({ ...snackbar, open: false })}
-      >
-        <Alert severity={snackbar.severity} variant="filled">
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
-    </Box>
+        <div className="ml-8 mt-5">
+          <Tooltip content="Guarda todos los parametros anti-spam">
+            <Button
+              variant="primary"
+              icon={<Save className="w-4 h-4" />}
+              loading={waSaving}
+              onClick={handleWaSave}
+              className="!bg-emerald-600 hover:!bg-emerald-500 !shadow-emerald-600/20"
+            >
+              Guardar Cambios
+            </Button>
+          </Tooltip>
+        </div>
+      </div>
+    </div>
   );
 }

@@ -2,29 +2,24 @@
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import {
-  Drawer, List, ListItemButton, ListItemIcon, ListItemText,
-  Toolbar, Typography, Box, Divider, IconButton, Tooltip,
-} from "@mui/material";
-import DashboardIcon from "@mui/icons-material/Dashboard";
-import PeopleIcon from "@mui/icons-material/People";
-import SettingsIcon from "@mui/icons-material/Settings";
-import AssignmentIcon from "@mui/icons-material/Assignment";
-import BusinessIcon from "@mui/icons-material/Business";
-import MapIcon from "@mui/icons-material/Map";
-import LocationCityIcon from "@mui/icons-material/LocationCity";
-import GroupsIcon from "@mui/icons-material/Groups";
-import WorkIcon from "@mui/icons-material/Work";
-import FunnelIcon from "@mui/icons-material/FilterAlt";
-import TrendingUpIcon from "@mui/icons-material/TrendingUp";
-import InboxIcon from "@mui/icons-material/Inbox";
-import RuleIcon from "@mui/icons-material/Rule";
-import WhatsAppIcon from "@mui/icons-material/WhatsApp";
-import CompareArrowsIcon from "@mui/icons-material/CompareArrows";
-import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
-import MenuIcon from "@mui/icons-material/Menu";
+  LayoutDashboard, Users, Settings, ClipboardList, Building2,
+  Map, Building, UsersRound, Briefcase, Filter, TrendingUp,
+  Inbox, Scale, ArrowLeftRight, ChevronLeft, Menu,
+} from "lucide-react";
+import { Tooltip } from "@/components/ui/Tooltip";
+import { ReactNode } from "react";
 
-const DRAWER_WIDTH = 260;
-const DRAWER_COLLAPSED = 68;
+// WhatsApp SVG icon (brand icon - not in Lucide)
+function WhatsAppIcon({ className = "w-5 h-5" }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+    </svg>
+  );
+}
+
+const DRAWER_WIDTH = 256; // w-64
+const DRAWER_COLLAPSED = 72; // w-[72px]
 
 interface SidebarProps {
   rol: string;
@@ -38,167 +33,184 @@ export default function Sidebar({ rol, open, onToggle }: SidebarProps) {
   const isOperaciones = rol === "operaciones";
   const isPromotor = !isOperaciones && rol !== "admin" && rol !== "gerente_regional" && rol !== "gerente_sucursal" && rol !== "supervisor";
 
-  const navContent = (showLabels: boolean) => (
-    <>
-      <Toolbar sx={{ justifyContent: showLabels ? "space-between" : "center", minHeight: "64px !important", px: showLabels ? 2 : 0 }}>
-        {showLabels ? (
-          <>
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-              <AssignmentIcon sx={{ fontSize: 28 }} />
-              <Typography variant="h6" noWrap sx={{ fontWeight: 700, fontSize: "1rem" }}>Asignaciones</Typography>
-            </Box>
-            <IconButton onClick={onToggle} sx={{ color: "rgba(255,255,255,0.7)" }} size="small">
-              <ChevronLeftIcon />
-            </IconButton>
-          </>
-        ) : (
-          <IconButton onClick={onToggle} sx={{ color: "rgba(255,255,255,0.7)" }} size="small">
-            <MenuIcon />
-          </IconButton>
-        )}
-      </Toolbar>
-      <Divider sx={{ borderColor: "rgba(255,255,255,0.12)" }} />
-
-      {isOperaciones ? (
-        <List sx={{ px: showLabels ? 1 : 0.5, pt: 1 }}>
-          <NavItem label="Portabilidad" href="/operaciones/portabilidad" icon={<CompareArrowsIcon />} pathname={pathname} open={showLabels} />
-        </List>
-      ) : isPromotor ? (
-        <List sx={{ px: showLabels ? 1 : 0.5, pt: 1 }}>
-          <NavItem label="Mi Asignación" href="/promotor/oportunidades" icon={<TrendingUpIcon />} pathname={pathname} open={showLabels} />
-          <NavItem label="WhatsApp" href="/promotor/whatsapp" icon={<WhatsAppIcon />} exact pathname={pathname} open={showLabels} />
-          <NavItem label="Configuración" href="/promotor/configuracion" icon={<SettingsIcon />} exact pathname={pathname} open={showLabels} />
-        </List>
-      ) : (
-        <List sx={{ px: showLabels ? 1 : 0.5, pt: 1 }}>
-          <NavItem label="Dashboard" href="/admin" icon={<DashboardIcon />} exact pathname={pathname} open={showLabels} />
-          <NavItem label="Bandeja" href="/admin/bandeja" icon={<InboxIcon />} pathname={pathname} open={showLabels} />
-          <NavItem label="Usuarios" href="/admin/usuarios" icon={<PeopleIcon />} exact pathname={pathname} open={showLabels} />
-          <NavItem label="Embudo" href="/admin/embudo" icon={<FunnelIcon />} exact pathname={pathname} open={showLabels} />
-          <NavItem label="Convenio Reglas" href="/admin/convenio-reglas" icon={<RuleIcon />} exact pathname={pathname} open={showLabels} />
-
-          <Divider sx={{ borderColor: "rgba(255,255,255,0.12)", my: 1 }} />
-          {showLabels && (
-            <Typography sx={{ px: 1.5, py: 0.5, fontSize: "0.7rem", fontWeight: 700, color: "rgba(255,255,255,0.45)", letterSpacing: 1 }}>
-              ORGANIZACIÓN
-            </Typography>
-          )}
-          <NavItem label="Regiones" href="/admin/organizacion/regiones" icon={<MapIcon />} pathname={pathname} indent open={showLabels} />
-          <NavItem label="Zonas" href="/admin/organizacion/zonas" icon={<BusinessIcon />} pathname={pathname} indent open={showLabels} />
-          <NavItem label="Sucursales" href="/admin/organizacion/sucursales" icon={<LocationCityIcon />} pathname={pathname} indent open={showLabels} />
-          <NavItem label="Equipos" href="/admin/organizacion/equipos" icon={<GroupsIcon />} pathname={pathname} indent open={showLabels} />
-
-          <Divider sx={{ borderColor: "rgba(255,255,255,0.12)", my: 1 }} />
-          {showLabels && (
-            <Typography sx={{ px: 1.5, py: 0.5, fontSize: "0.7rem", fontWeight: 700, color: "rgba(255,255,255,0.45)", letterSpacing: 1 }}>
-              MENSAJERÍA
-            </Typography>
-          )}
-          <NavItem label="WhatsApp" href="/admin/whatsapp" icon={<WhatsAppIcon />} exact pathname={pathname} open={showLabels} />
-
-          <Divider sx={{ borderColor: "rgba(255,255,255,0.12)", my: 1 }} />
-          <NavItem label="Planes de Trabajo" href="/admin/planes-trabajo" icon={<WorkIcon />} exact pathname={pathname} open={showLabels} />
-          <NavItem label="Configuracion" href="/admin/configuracion" icon={<SettingsIcon />} exact pathname={pathname} open={showLabels} />
-
-        </List>
-      )}
-    </>
-  );
-
-  const drawerPaperSx = {
-    boxSizing: "border-box" as const,
-    bgcolor: "#1a237e",
-    color: "white",
-    overflowX: "hidden" as const,
-  };
-
   return (
     <>
       {/* Mini-rail: always visible */}
-      <Drawer
-        variant="permanent"
-        sx={{
-          width: DRAWER_COLLAPSED,
-          flexShrink: 0,
-          "& .MuiDrawer-paper": {
-            ...drawerPaperSx,
-            width: DRAWER_COLLAPSED,
-          },
-        }}
+      <aside
+        className="fixed left-0 top-0 h-full bg-sidebar text-white flex flex-col z-50
+                   shadow-2xl shadow-black/40 border-r border-slate-800/50
+                   w-[72px] transition-all duration-300"
       >
-        {navContent(false)}
-      </Drawer>
+        <SidebarContent
+          showLabels={false}
+          pathname={pathname}
+          rol={rol}
+          isOperaciones={isOperaciones}
+          isPromotor={isPromotor}
+          onToggle={onToggle}
+        />
+      </aside>
 
-      {/* Expanded overlay drawer */}
-      <Drawer
-        variant="temporary"
-        open={open}
-        onClose={onToggle}
-        sx={{
-          "& .MuiDrawer-paper": {
-            ...drawerPaperSx,
-            width: DRAWER_WIDTH,
-          },
-        }}
-        ModalProps={{ keepMounted: true }}
-      >
-        {navContent(true)}
-      </Drawer>
+      {/* Expanded overlay */}
+      {open && (
+        <>
+          <div
+            className="fixed inset-0 bg-black/40 z-40"
+            onClick={onToggle}
+          />
+          <aside
+            className="fixed left-0 top-0 h-full bg-sidebar text-white flex flex-col z-50
+                       shadow-2xl shadow-black/40 border-r border-slate-800/50
+                       w-64 animate-slide-in-left"
+          >
+            <SidebarContent
+              showLabels={true}
+              pathname={pathname}
+              rol={rol}
+              isOperaciones={isOperaciones}
+              isPromotor={isPromotor}
+              onToggle={onToggle}
+            />
+          </aside>
+        </>
+      )}
     </>
   );
 }
 
-const navItemSx = (open: boolean) => ({
-  borderRadius: 1,
-  mb: 0.5,
-  color: "rgba(255,255,255,0.7)",
-  justifyContent: open ? "initial" : "center",
-  px: open ? 1.5 : 1,
-  minHeight: 44,
-  "&.Mui-selected": {
-    bgcolor: "rgba(255,255,255,0.12)",
-    color: "white",
-    "&:hover": { bgcolor: "rgba(255,255,255,0.16)" },
-  },
-  "&:hover": { bgcolor: "rgba(255,255,255,0.08)" },
-});
+function SidebarContent({
+  showLabels,
+  pathname,
+  rol,
+  isOperaciones,
+  isPromotor,
+  onToggle,
+}: {
+  showLabels: boolean;
+  pathname: string;
+  rol: string;
+  isOperaciones: boolean;
+  isPromotor: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <>
+      {/* Header */}
+      <div className={`flex items-center min-h-[64px] border-b border-slate-800/50 ${showLabels ? "justify-between px-4" : "justify-center"}`}>
+        {showLabels ? (
+          <>
+            <div className="flex items-center gap-2">
+              <div className="w-9 h-9 bg-gradient-to-br from-amber-500 to-amber-600 rounded-lg flex items-center justify-center font-bold text-sm text-slate-950 shadow-lg shadow-amber-500/20">
+                SA
+              </div>
+              <span className="text-sm font-bold text-slate-100 whitespace-nowrap">Asignaciones</span>
+            </div>
+            <button onClick={onToggle} className="p-1.5 text-slate-500 hover:text-slate-300 transition-colors rounded-lg hover:bg-slate-800/50">
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+          </>
+        ) : (
+          <button onClick={onToggle} className="p-1.5 text-slate-500 hover:text-slate-300 transition-colors rounded-lg hover:bg-slate-800/50">
+            <Menu className="w-5 h-5" />
+          </button>
+        )}
+      </div>
+
+      {/* Navigation */}
+      <nav className={`flex-1 overflow-y-auto py-2 ${showLabels ? "px-2" : "px-1"}`}>
+        {isOperaciones ? (
+          <NavItem label="Portabilidad" href="/operaciones/portabilidad" icon={<ArrowLeftRight className="w-5 h-5" />} pathname={pathname} showLabels={showLabels} />
+        ) : isPromotor ? (
+          <>
+            <NavItem label="Mi Asignación" href="/promotor/oportunidades" icon={<TrendingUp className="w-5 h-5" />} pathname={pathname} showLabels={showLabels} />
+            <NavItem label="WhatsApp" href="/promotor/whatsapp" icon={<WhatsAppIcon />} pathname={pathname} showLabels={showLabels} exact />
+            <NavItem label="Configuración" href="/promotor/configuracion" icon={<Settings className="w-5 h-5" />} pathname={pathname} showLabels={showLabels} exact />
+          </>
+        ) : (
+          <>
+            <NavItem label="Dashboard" href="/admin" icon={<LayoutDashboard className="w-5 h-5" />} pathname={pathname} showLabels={showLabels} exact />
+            <NavItem label="Bandeja" href="/admin/bandeja" icon={<Inbox className="w-5 h-5" />} pathname={pathname} showLabels={showLabels} />
+            <NavItem label="Usuarios" href="/admin/usuarios" icon={<Users className="w-5 h-5" />} pathname={pathname} showLabels={showLabels} exact />
+            <NavItem label="Embudo" href="/admin/embudo" icon={<Filter className="w-5 h-5" />} pathname={pathname} showLabels={showLabels} exact />
+            <NavItem label="Convenio Reglas" href="/admin/convenio-reglas" icon={<Scale className="w-5 h-5" />} pathname={pathname} showLabels={showLabels} exact />
+
+            {/* Divider + Section */}
+            <div className="h-px bg-slate-800/50 my-2" />
+            {showLabels && (
+              <p className="px-3 py-1 text-[10px] font-semibold text-slate-600 uppercase tracking-widest">
+                Organización
+              </p>
+            )}
+            <NavItem label="Regiones" href="/admin/organizacion/regiones" icon={<Map className="w-5 h-5" />} pathname={pathname} showLabels={showLabels} indent />
+            <NavItem label="Zonas" href="/admin/organizacion/zonas" icon={<Building2 className="w-5 h-5" />} pathname={pathname} showLabels={showLabels} indent />
+            <NavItem label="Sucursales" href="/admin/organizacion/sucursales" icon={<Building className="w-5 h-5" />} pathname={pathname} showLabels={showLabels} indent />
+            <NavItem label="Equipos" href="/admin/organizacion/equipos" icon={<UsersRound className="w-5 h-5" />} pathname={pathname} showLabels={showLabels} indent />
+
+            <div className="h-px bg-slate-800/50 my-2" />
+            {showLabels && (
+              <p className="px-3 py-1 text-[10px] font-semibold text-slate-600 uppercase tracking-widest">
+                Mensajería
+              </p>
+            )}
+            <NavItem label="WhatsApp" href="/admin/whatsapp" icon={<WhatsAppIcon />} pathname={pathname} showLabels={showLabels} exact />
+
+            <div className="h-px bg-slate-800/50 my-2" />
+            <NavItem label="Planes de Trabajo" href="/admin/planes-trabajo" icon={<Briefcase className="w-5 h-5" />} pathname={pathname} showLabels={showLabels} exact />
+            <NavItem label="Configuración" href="/admin/configuracion" icon={<Settings className="w-5 h-5" />} pathname={pathname} showLabels={showLabels} exact />
+          </>
+        )}
+      </nav>
+    </>
+  );
+}
 
 function NavItem({
-  label, href, icon, pathname, exact = false, indent = false, open,
+  label,
+  href,
+  icon,
+  pathname,
+  exact = false,
+  indent = false,
+  showLabels,
 }: {
-  label: string; href: string; icon: React.ReactNode;
-  pathname: string; exact?: boolean; indent?: boolean; open: boolean;
+  label: string;
+  href: string;
+  icon: ReactNode;
+  pathname: string;
+  exact?: boolean;
+  indent?: boolean;
+  showLabels: boolean;
 }) {
   const isActive = exact ? pathname === href : pathname.startsWith(href);
 
-  const button = (
-    <ListItemButton
-      component={Link}
+  const linkContent = (
+    <Link
       href={href}
-      selected={isActive}
-      sx={{ ...navItemSx(open), ...(indent && open ? { pl: 3 } : {}) }}
+      className={`
+        relative flex items-center gap-3 rounded-lg text-sm mb-0.5
+        transition-all duration-150
+        ${showLabels ? "px-3 py-2.5" : "justify-center px-2 py-2.5"}
+        ${indent && showLabels ? "pl-6" : ""}
+        ${
+          isActive
+            ? "bg-amber-500/10 text-amber-400"
+            : "text-slate-500 hover:bg-slate-800/50 hover:text-slate-300"
+        }
+      `.trim()}
     >
-      <ListItemIcon sx={{ color: "inherit", minWidth: open ? 36 : 0, justifyContent: "center" }}>
-        {icon}
-      </ListItemIcon>
-      {open && (
-        <ListItemText
-          primary={label}
-          primaryTypographyProps={{ fontSize: indent ? "0.875rem" : undefined, noWrap: true }}
-        />
+      <span className={showLabels ? "" : ""}>{icon}</span>
+      {showLabels && <span className="whitespace-nowrap">{label}</span>}
+      {isActive && (
+        <div className="absolute right-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-amber-500 rounded-l" />
       )}
-    </ListItemButton>
+    </Link>
   );
 
-  if (!open) {
-    return (
-      <Tooltip title={label} placement="right" arrow>
-        {button}
-      </Tooltip>
-    );
+  if (!showLabels) {
+    return <Tooltip content={label} position="right">{linkContent}</Tooltip>;
   }
 
-  return button;
+  return linkContent;
 }
 
 export { DRAWER_WIDTH, DRAWER_COLLAPSED };

@@ -1,0 +1,44 @@
+@import "tailwindcss";
+
+@theme {
+  --color-base: #0B0F1A;
+  --color-surface: #131825;
+  --color-surface-hover: #1A2035;
+  --color-elevated: #1E2538;
+  --color-sidebar: #080C15;
+
+  --font-display: "Plus Jakarta Sans", system-ui, sans-serif;
+  --font-body: "Inter", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+
+  --animate-fade-in: fadeIn 0.4s ease-out;
+  --animate-slide-up: slideUp 0.4s ease-out;
+  --animate-scale-in: scaleIn 0.2s ease-out;
+  --animate-toast-in: toastIn 0.3s ease;
+  --animate-toast-out: toastOut 0.3s ease;
+
+  @keyframes fadeIn {
+    0% { opacity: 0; }
+    100% { opacity: 1; }
+  }
+
+  @keyframes slideUp {
+    0% { opacity: 0; transform: translateY(12px); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes scaleIn {
+    0% { opacity: 0; transform: scale(0.95); }
+    100% { opacity: 1; transform: scale(1); }
+  }
+
+  @keyframes toastIn {
+    0% { opacity: 0; transform: translateX(30px); }
+    100% { opacity: 1; transform: translateX(0); }
+  }
+
+  @keyframes toastOut {
+    0% { opacity: 1; transform: translateX(0); }
+    100% { opacity: 0; transform: translateX(30px); }
+  }
+}

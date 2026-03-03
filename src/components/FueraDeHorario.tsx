@@ -1,7 +1,6 @@
 "use client";
 
-import { Box, Typography, Paper } from "@mui/material";
-import AccessTimeIcon from "@mui/icons-material/AccessTime";
+import { Clock } from "lucide-react";
 
 interface Props {
   mensaje?: string;
@@ -17,48 +16,27 @@ export default function FueraDeHorario({
   horarioFin = "19:15",
 }: Props) {
   return (
-    <Box
-      sx={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        bgcolor: "rgba(0,0,0,0.6)",
-        zIndex: 9999,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-      }}
-    >
-      <Paper
-        elevation={6}
-        sx={{
-          p: 5,
-          maxWidth: 440,
-          textAlign: "center",
-          borderRadius: 3,
-        }}
-      >
-        <AccessTimeIcon sx={{ fontSize: 64, color: "text.secondary", mb: 2 }} />
-        <Typography variant="h5" fontWeight={600} gutterBottom>
+    <div className="fixed inset-0 bg-black/60 z-[9999] flex items-center justify-center">
+      <div className="bg-surface rounded-xl border border-slate-800/60 p-10 max-w-[440px] text-center shadow-2xl shadow-black/50">
+        <Clock className="w-16 h-16 text-slate-400 mx-auto mb-4" />
+        <h2 className="text-xl font-semibold text-slate-100 mb-2">
           Fuera de horario
-        </Typography>
-        <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
+        </h2>
+        <p className="text-base text-slate-400 mb-2">
           {mensaje || `El sistema opera de ${horarioInicio} a ${horarioFin}.`}
-        </Typography>
-        <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
+        </p>
+        <p className="text-base text-slate-400 mb-2">
           Lunes a Viernes
-        </Typography>
+        </p>
         {horaActual && (
-          <Typography variant="body2" color="text.disabled">
-            Hora actual: {horaActual} (Hora Centro de México)
-          </Typography>
+          <p className="text-sm text-slate-500">
+            Hora actual: {horaActual} (Hora Centro de Mexico)
+          </p>
         )}
-        <Typography variant="body2" color="text.disabled" sx={{ mt: 1 }}>
+        <p className="text-sm text-slate-500 mt-2">
           Puedes consultar tus registros pero no realizar operaciones.
-        </Typography>
-      </Paper>
-    </Box>
+        </p>
+      </div>
+    </div>
   );
 }

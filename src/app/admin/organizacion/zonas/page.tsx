@@ -1,14 +1,14 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
-import {
-  Box, Typography, Button, Dialog, DialogTitle, DialogContent, DialogActions,
-  TextField, Chip, Alert, Snackbar, IconButton, FormControl, InputLabel, Select, MenuItem,
-} from "@mui/material";
-import { DataGrid, GridColDef } from "@mui/x-data-grid";
-import AddIcon from "@mui/icons-material/Add";
-import EditIcon from "@mui/icons-material/Edit";
-import BlockIcon from "@mui/icons-material/Block";
-import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import { Plus, Pencil, Ban, CheckCircle } from "lucide-react";
+import { ColumnDef } from "@tanstack/react-table";
+import { DataTable } from "@/components/ui/DataTable";
+import { Button } from "@/components/ui/Button";
+import { Badge } from "@/components/ui/Badge";
+import { Dialog, DialogHeader, DialogBody, DialogFooter } from "@/components/ui/Dialog";
+import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
+import { useToast } from "@/components/ui/Toast";
 
 interface Zona {
   id: number;
@@ -27,7 +27,7 @@ export default function ZonasPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Zona | null>(null);
   const [form, setForm] = useState({ nombre: "", region_id: "" });
-  const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" as "success" | "error" });
+  const { toast } = useToast();
 
   const fetchData = useCallback(async () => {
     try {
@@ -38,10 +38,10 @@ export default function ZonasPage() {
       setRows(z);
       setRegiones(r);
     } catch (err) {
-      setSnackbar({ open: true, message: err instanceof Error ? err.message : "Error de conexión", severity: "error" });
+      toast(err instanceof Error ? err.message : "Error de conexión", "error");
     }
     setLoading(false);
-  }, []);
+  }, [toast]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -54,11 +54,11 @@ export default function ZonasPage() {
     const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ nombre: form.nombre, region_id: Number(form.region_id) }) });
     if (res.ok) {
       setDialogOpen(false);
-      setSnackbar({ open: true, message: editing ? "Zona actualizada" : "Zona creada", severity: "success" });
+      toast(editing ? "Zona actualizada" : "Zona creada", "success");
       fetchData();
     } else {
       const data = await res.json();
-      setSnackbar({ open: true, message: data.error || "Error al guardar", severity: "error" });
+      toast(data.error || "Error al guardar", "error");
     }
   };
 
@@ -66,57 +66,60 @@ export default function ZonasPage() {
     const res = await fetch(`/api/admin/organizacion/zonas/${row.id}`, {
       method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ activo: !row.activo }),
     });
-    if (res.ok) { setSnackbar({ open: true, message: row.activo ? "Desactivada" : "Activada", severity: "success" }); fetchData(); }
+    if (res.ok) { toast(row.activo ? "Desactivada" : "Activada", "success"); fetchData(); }
   };
 
-  const columns: GridColDef[] = [
-    { field: "nombre", headerName: "Nombre", flex: 1 },
-    { field: "region", headerName: "Región", flex: 1, valueGetter: (_v: unknown, row: Zona) => row.region?.nombre ?? "—" },
-    { field: "sucursales", headerName: "Sucursales", width: 110, align: "center", headerAlign: "center", valueGetter: (_v: unknown, row: Zona) => row._count?.sucursales ?? 0 },
-    { field: "activo", headerName: "Estado", width: 100, renderCell: (p) => <Chip label={p.value ? "Activo" : "Inactivo"} color={p.value ? "success" : "default"} size="small" /> },
+  const columns: ColumnDef<Zona, unknown>[] = [
+    { accessorKey: "nombre", header: "Nombre", cell: ({ getValue }) => <span className="font-medium text-slate-100">{getValue() as string}</span> },
+    { id: "region", header: "Región", cell: ({ row }) => <span>{row.original.region?.nombre ?? "—"}</span> },
+    { id: "sucursales", header: "Sucursales", cell: ({ row }) => <span className="text-center block">{row.original._count?.sucursales ?? 0}</span> },
     {
-      field: "actions", headerName: "Acciones", width: 110, sortable: false,
-      renderCell: (p) => (
-        <Box>
-          <IconButton size="small" onClick={() => handleOpenEdit(p.row)} title="Editar"><EditIcon fontSize="small" /></IconButton>
-          <IconButton size="small" onClick={() => handleToggle(p.row)} color={p.row.activo ? "error" : "success"} title={p.row.activo ? "Desactivar" : "Activar"}>
-            {p.row.activo ? <BlockIcon fontSize="small" /> : <CheckCircleIcon fontSize="small" />}
-          </IconButton>
-        </Box>
+      accessorKey: "activo", header: "Estado",
+      cell: ({ getValue }) => <Badge color={getValue() ? "green" : "slate"}>{getValue() ? "Activo" : "Inactivo"}</Badge>,
+    },
+    {
+      id: "actions", header: "Acciones", enableSorting: false,
+      cell: ({ row }) => (
+        <div className="flex gap-1">
+          <button onClick={() => handleOpenEdit(row.original)} className="p-1.5 text-blue-400 hover:bg-blue-500/10 rounded-lg transition-colors" title="Editar">
+            <Pencil className="w-4 h-4" />
+          </button>
+          <button onClick={() => handleToggle(row.original)} className={`p-1.5 rounded-lg transition-colors ${row.original.activo ? "text-red-400 hover:bg-red-500/10" : "text-green-400 hover:bg-green-500/10"}`} title={row.original.activo ? "Desactivar" : "Activar"}>
+            {row.original.activo ? <Ban className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
+          </button>
+        </div>
       ),
     },
   ];
 
   return (
-    <Box>
-      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3 }}>
-        <Typography variant="h4">Zonas</Typography>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpenCreate}>Nueva Zona</Button>
-      </Box>
-      <Box sx={{ bgcolor: "white", borderRadius: 2 }}>
-        <DataGrid rows={rows} columns={columns} loading={loading} pageSizeOptions={[10, 25]}
-          initialState={{ pagination: { paginationModel: { pageSize: 10 } } }}
-          disableRowSelectionOnClick autoHeight sx={{ border: "none", "& .MuiDataGrid-columnHeaders": { bgcolor: "#f5f5f5" } }} />
-      </Box>
-      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="xs" fullWidth>
-        <DialogTitle>{editing ? "Editar Zona" : "Nueva Zona"}</DialogTitle>
-        <DialogContent>
-          <TextField fullWidth label="Nombre" value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} margin="normal" required autoFocus />
-          <FormControl fullWidth margin="normal" required>
-            <InputLabel>Región</InputLabel>
-            <Select value={form.region_id} label="Región" onChange={(e) => setForm({ ...form, region_id: e.target.value })}>
-              {regiones.map((r) => <MenuItem key={r.id} value={String(r.id)}>{r.nombre}</MenuItem>)}
-            </Select>
-          </FormControl>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setDialogOpen(false)} color="error" variant="outlined">Cancelar</Button>
-          <Button variant="contained" onClick={handleSave} disabled={!form.nombre || !form.region_id}>{editing ? "Actualizar" : "Crear"}</Button>
-        </DialogActions>
+    <div>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="font-display text-xl font-bold text-slate-100">Zonas</h1>
+        <Button icon={<Plus className="w-4 h-4" />} onClick={handleOpenCreate}>Nueva Zona</Button>
+      </div>
+
+      <DataTable data={rows} columns={columns} loading={loading} pageSize={10} pageSizeOptions={[10, 25]} getRowId={(row) => String(row.id)} />
+
+      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm">
+        <DialogHeader onClose={() => setDialogOpen(false)}>
+          {editing ? "Editar Zona" : "Nueva Zona"}
+        </DialogHeader>
+        <DialogBody className="space-y-4">
+          <Input label="Nombre" value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} required autoFocus />
+          <Select
+            label="Región"
+            value={form.region_id}
+            onChange={(e) => setForm({ ...form, region_id: e.target.value })}
+            options={regiones.map((r) => ({ value: String(r.id), label: r.nombre }))}
+            placeholder="Seleccionar..."
+          />
+        </DialogBody>
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => setDialogOpen(false)}>Cancelar</Button>
+          <Button onClick={handleSave} disabled={!form.nombre || !form.region_id}>{editing ? "Actualizar" : "Crear"}</Button>
+        </DialogFooter>
       </Dialog>
-      <Snackbar open={snackbar.open} autoHideDuration={3000} onClose={() => setSnackbar({ ...snackbar, open: false })}>
-        <Alert severity={snackbar.severity} variant="filled">{snackbar.message}</Alert>
-      </Snackbar>
-    </Box>
+    </div>
   );
 }

@@ -1,5 +1,4 @@
 "use client";
-import { Box, Typography, Paper } from "@mui/material";
 import {
   BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -31,20 +30,28 @@ export default function ChartRenderer({ config }: ChartRendererProps) {
   });
 
   return (
-    <Paper variant="outlined" sx={{ p: 2, my: 1 }}>
+    <div className="bg-surface rounded-xl border border-slate-800/60 p-4 my-2">
       {title && (
-        <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
+        <h4 className="text-sm font-semibold text-slate-100 mb-2">
           {title}
-        </Typography>
+        </h4>
       )}
-      <Box sx={{ width: "100%", height: 300 }}>
+      <div className="w-full h-[300px]">
         <ResponsiveContainer>
           {type === "bar" ? (
             <BarChart data={data}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-              <YAxis tick={{ fontSize: 12 }} />
-              <Tooltip />
+              <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+              <XAxis dataKey="name" tick={{ fontSize: 12, fill: "#94a3b8" }} />
+              <YAxis tick={{ fontSize: 12, fill: "#94a3b8" }} />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: "#1E2538",
+                  border: "1px solid rgba(51, 65, 85, 0.6)",
+                  borderRadius: "0.5rem",
+                  color: "#e2e8f0",
+                  fontSize: "0.75rem",
+                }}
+              />
               <Legend />
               {datasets.map((ds, i) => (
                 <Bar key={ds.label} dataKey={ds.label} fill={ds.color || COLORS[i % COLORS.length]} />
@@ -52,10 +59,18 @@ export default function ChartRenderer({ config }: ChartRendererProps) {
             </BarChart>
           ) : type === "line" ? (
             <LineChart data={data}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-              <YAxis tick={{ fontSize: 12 }} />
-              <Tooltip />
+              <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+              <XAxis dataKey="name" tick={{ fontSize: 12, fill: "#94a3b8" }} />
+              <YAxis tick={{ fontSize: 12, fill: "#94a3b8" }} />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: "#1E2538",
+                  border: "1px solid rgba(51, 65, 85, 0.6)",
+                  borderRadius: "0.5rem",
+                  color: "#e2e8f0",
+                  fontSize: "0.75rem",
+                }}
+              />
               <Legend />
               {datasets.map((ds, i) => (
                 <Line key={ds.label} type="monotone" dataKey={ds.label} stroke={ds.color || COLORS[i % COLORS.length]} strokeWidth={2} />
@@ -63,10 +78,18 @@ export default function ChartRenderer({ config }: ChartRendererProps) {
             </LineChart>
           ) : (
             <PieChart>
-              <Tooltip />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: "#1E2538",
+                  border: "1px solid rgba(51, 65, 85, 0.6)",
+                  borderRadius: "0.5rem",
+                  color: "#e2e8f0",
+                  fontSize: "0.75rem",
+                }}
+              />
               <Legend />
               <Pie
-                data={data.map((d, i) => ({ name: d.name, value: d[datasets[0]?.label] as number }))}
+                data={data.map((d) => ({ name: d.name, value: d[datasets[0]?.label] as number }))}
                 cx="50%" cy="50%" outerRadius={100} dataKey="value" label
               >
                 {data.map((_, i) => (
@@ -76,7 +99,7 @@ export default function ChartRenderer({ config }: ChartRendererProps) {
             </PieChart>
           )}
         </ResponsiveContainer>
-      </Box>
-    </Paper>
+      </div>
+    </div>
   );
 }

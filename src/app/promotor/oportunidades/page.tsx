@@ -1,29 +1,40 @@
 "use client";
 import { useEffect, useState, useCallback, useMemo } from "react";
-import {
-  Box, Typography, Chip, CircularProgress, Alert, Stack,
-  MenuItem, Select, FormControl,
-  IconButton, Tooltip, Button,
-  Card, CardContent, Dialog, DialogTitle, DialogContent,
-  DialogActions, TextField, Snackbar, Paper, Divider, Grid,
-  LinearProgress,
-} from "@mui/material";
-import { DataGrid, GridColDef, GridRenderCellParams, GridRowSelectionModel, GridRowId, GridToolbarColumnsButton, GridToolbarFilterButton } from "@mui/x-data-grid";
-import VisibilityIcon from "@mui/icons-material/Visibility";
-import WhatsAppIcon from "@mui/icons-material/WhatsApp";
-import PhoneIcon from "@mui/icons-material/Phone";
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import PersonAddIcon from "@mui/icons-material/PersonAdd";
-import AssignmentIndIcon from "@mui/icons-material/AssignmentInd";
-import CampaignIcon from "@mui/icons-material/Campaign";
-import SyncIcon from "@mui/icons-material/Sync";
-import TelegramIcon from "@mui/icons-material/Telegram";
+import { ColumnDef, RowSelectionState, VisibilityState } from "@tanstack/react-table";
+import { Eye, Phone, ArrowLeft, UserPlus, ClipboardList, Megaphone, RefreshCw } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { buildWhatsAppUrl, formatPhoneForWA, WA_MENSAJES_DEFAULT } from "@/lib/whatsapp";
 import CaptacionModal from "@/components/CaptacionModal";
 import SolicitarAsignacionDialog from "@/components/SolicitarAsignacionDialog";
 import CampanaCrearDialog from "@/components/CampanaCrearDialog";
+import { DataTable, createSelectionColumn } from "@/components/ui/DataTable";
+import { Dialog, DialogHeader, DialogBody, DialogFooter } from "@/components/ui/Dialog";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Tooltip } from "@/components/ui/Tooltip";
+import { Spinner } from "@/components/ui/Spinner";
+import { ToastProvider, useToast } from "@/components/ui/Toast";
+
+// ════════════════════════════════════════════
+// INLINE SVG ICONS
+// ════════════════════════════════════════════
+
+function WhatsAppIcon({ className = "w-5 h-5" }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+    </svg>
+  );
+}
+
+function TelegramIcon({ className = "w-5 h-5" }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z" />
+    </svg>
+  );
+}
 
 // ════════════════════════════════════════════
 // TIPOS
@@ -216,12 +227,25 @@ function ConfettiEffect({ onDone }: { onDone: () => void }) {
 }
 
 // ════════════════════════════════════════════
-// PÁGINA PRINCIPAL
+// PÁGINA PRINCIPAL (wrapper con ToastProvider)
 // ════════════════════════════════════════════
 
 export default function OportunidadesPage() {
+  return (
+    <ToastProvider>
+      <OportunidadesContent />
+    </ToastProvider>
+  );
+}
+
+// ════════════════════════════════════════════
+// CONTENIDO PRINCIPAL
+// ════════════════════════════════════════════
+
+function OportunidadesContent() {
   const { data: session } = useSession();
   const promotorNombre = session?.user?.nombre || "su promotor";
+  const { toast } = useToast();
   const [plantillas, setPlantillas] = useState<Record<string, string>>({ ...WA_MENSAJES_DEFAULT });
   const [rows, setRows] = useState<Oportunidad[]>([]);
   const [etapas, setEtapas] = useState<Etapa[]>([]);
@@ -229,10 +253,9 @@ export default function OportunidadesPage() {
   const [cardFiltro, setCardFiltro] = useState<FiltroCard>("Asignado"); // default: Asignado
   const [observaciones, setObservaciones] = useState<Record<number, string>>({});
   const [transitioning, setTransitioning] = useState<number | null>(null);
-  const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" as "success" | "error" | "warning" });
   const [confetti, setConfetti] = useState(false);
   const [syncing, setSyncing] = useState(false);
-  const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>(() => {
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(() => {
     if (typeof window !== "undefined") {
       try {
         const saved = localStorage.getItem("promotor_columns");
@@ -240,14 +263,14 @@ export default function OportunidadesPage() {
       } catch { /* ignore */ }
     }
     // Por defecto: ocultar todas las columnas extras del cliente
-    const defaults: Record<string, boolean> = {};
+    const defaults: VisibilityState = {};
     for (const col of CLIENTE_EXTRA_COLUMNS) {
       defaults[col.field] = false;
     }
     return defaults;
   });
 
-  const handleColumnVisibilityChange = useCallback((model: Record<string, boolean>) => {
+  const handleColumnVisibilityChange = useCallback((model: VisibilityState) => {
     // Enforcar columnas obligatorias
     const enforced = { ...model };
     for (const col of LOCKED_COLUMNS) {
@@ -261,7 +284,7 @@ export default function OportunidadesPage() {
   const router = useRouter();
   const [captacionOpen, setCaptacionOpen] = useState(false);
   const [asignacionOpen, setAsignacionOpen] = useState(false);
-  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [campanaOpen, setCampanaOpen] = useState(false);
 
   // Modal Ver detalle
@@ -287,7 +310,7 @@ export default function OportunidadesPage() {
         fetch("/api/promotor/plantillas-whatsapp"),
       ]);
       if (!resOps.ok || !resEtapas.ok) {
-        setSnackbar({ open: true, message: "Error al cargar datos", severity: "error" });
+        toast("Error al cargar datos", "error");
         return;
       }
       setRows(await resOps.json());
@@ -296,11 +319,11 @@ export default function OportunidadesPage() {
         setPlantillas(await resPlantillas.json());
       }
     } catch {
-      setSnackbar({ open: true, message: "Error de conexión al cargar datos", severity: "error" });
+      toast("Error de conexion al cargar datos", "error");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [toast]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -313,17 +336,17 @@ export default function OportunidadesPage() {
       if (res.ok) {
         let msg = data.sincronizados > 0
           ? `${data.sincronizados} capacidad${data.sincronizados !== 1 ? "es" : ""} sincronizada${data.sincronizados !== 1 ? "s" : ""}`
-          : "Todo al día, sin capacidades nuevas";
+          : "Todo al dia, sin capacidades nuevas";
         if (data.errores) {
           msg += ` (${data.errores} con error)`;
         }
-        setSnackbar({ open: true, message: msg, severity: data.errores ? "warning" : "success" });
+        toast(msg, data.errores ? "warning" : "success");
         if (data.sincronizados > 0) fetchData();
       } else {
-        setSnackbar({ open: true, message: data.error || "Error al sincronizar", severity: "error" });
+        toast(data.error || "Error al sincronizar", "error");
       }
     } catch {
-      setSnackbar({ open: true, message: "Error de conexión", severity: "error" });
+      toast("Error de conexion", "error");
     }
     setSyncing(false);
   };
@@ -414,22 +437,22 @@ export default function OportunidadesPage() {
         const result = await res.json();
         if (result.confetti) {
           setConfetti(true);
-          setSnackbar({ open: true, message: "Venta registrada!", severity: "success" });
+          toast("Venta registrada!", "success");
         } else if (result.devuelta_al_pool) {
-          setSnackbar({ open: true, message: "Cliente devuelto al pool", severity: "success" });
+          toast("Cliente devuelto al pool", "success");
         } else if (result.enviada_a_bandeja) {
-          setSnackbar({ open: true, message: "Enviado a bandeja de supervisor", severity: "success" });
+          toast("Enviado a bandeja de supervisor", "success");
         } else {
-          setSnackbar({ open: true, message: "Etapa actualizada", severity: "success" });
+          toast("Etapa actualizada", "success");
         }
         setObservaciones((p) => { const next = { ...p }; delete next[opId]; return next; });
         fetchData();
       } else {
         const err = await res.json().catch(() => ({ error: "Error al cambiar etapa" }));
-        setSnackbar({ open: true, message: err.error || "Error al cambiar etapa", severity: "error" });
+        toast(err.error || "Error al cambiar etapa", "error");
       }
     } catch {
-      setSnackbar({ open: true, message: "Error de conexión al cambiar etapa", severity: "error" });
+      toast("Error de conexion al cambiar etapa", "error");
     } finally {
       setTransitioning(null);
     }
@@ -449,14 +472,14 @@ export default function OportunidadesPage() {
       setVerDialog({ open: true, loading: false, data: await res.json() });
     } else {
       setVerDialog({ open: false, loading: false, data: null });
-      setSnackbar({ open: true, message: "Error al cargar detalle", severity: "error" });
+      toast("Error al cargar detalle", "error");
     }
   };
 
   // ─── Modal Ver capacidad IMSS ───
   const openCapDialog = (row: Oportunidad) => {
     setCapDialog({ open: true, loading: true, data: null });
-    // datos de capacidad están en los campos de la row (vienen de captacion.datos_json)
+    // datos de capacidad estan en los campos de la row (vienen de captacion.datos_json)
     const datos: Record<string, unknown> = {
       nombres: row.nombres,
       convenio: row.convenio,
@@ -475,240 +498,263 @@ export default function OportunidadesPage() {
     setCapDialog({ open: true, loading: false, data: datos });
   };
 
-  // ─── Columnas DataGrid ───
-  const columns: GridColDef[] = useMemo(() => [
-    {
-      field: "nombres", headerName: "Cliente", flex: 1.3, minWidth: 160,
-      renderCell: (p) => (
-        <Box sx={{ display: "flex", flexDirection: "column", justifyContent: "center", height: "100%" }}>
-          <Typography variant="body2" fontWeight={600} noWrap sx={{ fontSize: 12 }}>{p.value}</Typography>
-          <Typography variant="caption" color="text.secondary" noWrap sx={{ fontSize: 10 }}>{p.row.tipo_cliente}</Typography>
-        </Box>
-      ),
-    },
-    {
-      field: "convenio", headerName: "Convenio", flex: 0.9, minWidth: 120,
-      renderCell: (p) => <Typography variant="body2" noWrap sx={{ fontSize: 12 }}>{p.value}</Typography>,
-    },
-    {
-      field: "estado", headerName: "Ubicación", width: 150,
-      renderCell: (p) => (
-        <Box sx={{ display: "flex", flexDirection: "column", justifyContent: "center", height: "100%" }}>
-          <Typography variant="body2" noWrap sx={{ fontSize: 12 }}>{p.value}</Typography>
-          <Typography variant="caption" color="text.secondary" noWrap sx={{ fontSize: 10 }}>{p.row.municipio}</Typography>
-        </Box>
-      ),
-    },
-    {
-      field: "tel_1", headerName: "Teléfono", width: 130,
-      renderCell: (p) => p.value
-        ? (
-          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-            <PhoneIcon sx={{ fontSize: 12, color: "success.main" }} />
-            <Typography variant="body2" sx={{ fontSize: 12 }}>{p.value}</Typography>
-          </Box>
-        )
-        : <Typography variant="body2" color="text.disabled" sx={{ fontSize: 12 }}>—</Typography>,
-    },
-    {
-      field: "etapa", headerName: "Etapa", width: 180, sortable: false,
-      renderCell: (p) => {
-        const etapa = p.row.etapa;
-        if (!etapa) return <Chip label="Sin etapa" size="small" sx={{ height: 22 }} />;
-        const trans = transMap[etapa.id] || [];
-        const isLoading = transitioning === p.row.id;
+  // ─── Derive selectedIds from rowSelection ───
+  const selectedIds = useMemo(() => {
+    return Object.keys(rowSelection).filter((k) => rowSelection[k]).map(Number);
+  }, [rowSelection]);
 
-        if (isLoading) return <CircularProgress size={18} />;
+  // ─── Columnas DataTable ───
+  const columns: ColumnDef<Oportunidad, unknown>[] = useMemo(() => [
+    createSelectionColumn<Oportunidad>(),
+    {
+      accessorKey: "nombres",
+      header: "Cliente",
+      size: 200,
+      minSize: 160,
+      cell: ({ row }) => (
+        <div className="flex flex-col justify-center">
+          <span className="text-xs font-semibold text-slate-200 truncate">{row.original.nombres}</span>
+          <span className="text-[10px] text-slate-500 truncate">{row.original.tipo_cliente}</span>
+        </div>
+      ),
+    },
+    {
+      accessorKey: "convenio",
+      header: "Convenio",
+      size: 150,
+      minSize: 120,
+      cell: ({ row }) => <span className="text-xs text-slate-300 truncate">{row.original.convenio}</span>,
+    },
+    {
+      accessorKey: "estado",
+      header: "Ubicacion",
+      size: 150,
+      cell: ({ row }) => (
+        <div className="flex flex-col justify-center">
+          <span className="text-xs text-slate-200 truncate">{row.original.estado}</span>
+          <span className="text-[10px] text-slate-500 truncate">{row.original.municipio}</span>
+        </div>
+      ),
+    },
+    {
+      accessorKey: "tel_1",
+      header: "Telefono",
+      size: 130,
+      cell: ({ row }) => row.original.tel_1
+        ? (
+          <div className="flex items-center gap-1">
+            <Phone className="w-3 h-3 text-green-400" />
+            <span className="text-xs text-slate-300">{row.original.tel_1}</span>
+          </div>
+        )
+        : <span className="text-xs text-slate-600">—</span>,
+    },
+    {
+      accessorKey: "etapa",
+      header: "Etapa",
+      size: 180,
+      enableSorting: false,
+      cell: ({ row }) => {
+        const etapa = row.original.etapa;
+        if (!etapa) {
+          return (
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-slate-700/50 text-slate-400">
+              Sin etapa
+            </span>
+          );
+        }
+        const trans = transMap[etapa.id] || [];
+        const isLoading = transitioning === row.original.id;
+
+        if (isLoading) return <Spinner size="sm" />;
 
         if (trans.length === 0) {
-          return <Chip label={etapa.nombre} size="small" sx={{ bgcolor: etapa.color, color: "white", fontWeight: 600, height: 22, fontSize: 11 }} />;
+          return (
+            <span
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold text-white"
+              style={{ backgroundColor: etapa.color }}
+            >
+              {etapa.nombre}
+            </span>
+          );
         }
 
         return (
-          <FormControl size="small" fullWidth>
-            <Select
-              value=""
-              displayEmpty
-              renderValue={() => (
-                <Chip label={etapa.nombre} size="small" sx={{ bgcolor: etapa.color, color: "white", fontWeight: 600, height: 22, fontSize: 11 }} />
-              )}
-              onChange={(e) => handleTransicion(p.row.id, Number(e.target.value))}
-              onClick={(e) => e.stopPropagation()}
-              sx={{
-                "& .MuiOutlinedInput-notchedOutline": { border: "none" },
-                "& .MuiSelect-select": { py: 0.3, pl: 0 },
-              }}
-            >
-              {trans.map((t) => (
-                <MenuItem key={t.id} value={t.id}>
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                    {t.etapa_destino && (
-                      <Box sx={{ width: 10, height: 10, borderRadius: "50%", bgcolor: t.etapa_destino.color, flexShrink: 0 }} />
-                    )}
-                    <Box>
-                      <Typography variant="body2" fontWeight={500} sx={{ fontSize: 12 }}>{t.nombre_accion}</Typography>
-                      <Typography variant="caption" color="text.secondary" sx={{ fontSize: 10 }}>
-                        {t.etapa_destino ? `→ ${t.etapa_destino.nombre}` : "→ Pool"}
-                      </Typography>
-                    </Box>
-                  </Box>
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+          <select
+            value=""
+            onChange={(e) => {
+              if (e.target.value) handleTransicion(row.original.id, Number(e.target.value));
+            }}
+            onClick={(e) => e.stopPropagation()}
+            className="px-2 py-1 rounded-lg text-[11px] font-semibold text-white border-none outline-none cursor-pointer appearance-none pr-6"
+            style={{
+              backgroundColor: etapa.color,
+              backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`,
+              backgroundRepeat: "no-repeat",
+              backgroundPosition: "right 4px center",
+            }}
+          >
+            <option value="" disabled hidden>{etapa.nombre}</option>
+            {trans.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.nombre_accion}{t.etapa_destino ? ` → ${t.etapa_destino.nombre}` : " → Pool"}
+              </option>
+            ))}
+          </select>
         );
       },
     },
     ...(cardFiltro === "Venta" ? [
       {
-        field: "num_operacion",
-        headerName: "No. Operacion",
-        width: 150,
-        renderCell: (p: GridRenderCellParams) => (
-          <Typography variant="body2" fontWeight={500} sx={{ fontSize: 12 }}>{p.value || "—"}</Typography>
+        accessorKey: "num_operacion",
+        header: "No. Operacion",
+        size: 150,
+        cell: ({ row }: { row: { original: Oportunidad } }) => (
+          <span className="text-xs font-medium text-slate-300">{row.original.num_operacion || "—"}</span>
         ),
-      } satisfies GridColDef,
+      } as ColumnDef<Oportunidad, unknown>,
       {
-        field: "monto_venta",
-        headerName: "Monto",
-        width: 130,
-        renderCell: (p: GridRenderCellParams) => (
-          <Typography variant="body2" fontWeight={700} sx={{ color: "#2E7D32", fontSize: 12 }}>
-            {p.value != null
-              ? Number(p.value).toLocaleString("es-MX", { style: "currency", currency: "MXN" })
+        accessorKey: "monto_venta",
+        header: "Monto",
+        size: 130,
+        cell: ({ row }: { row: { original: Oportunidad } }) => (
+          <span className="text-xs font-bold text-green-500">
+            {row.original.monto_venta != null
+              ? Number(row.original.monto_venta).toLocaleString("es-MX", { style: "currency", currency: "MXN" })
               : "—"}
-          </Typography>
+          </span>
         ),
-      } satisfies GridColDef,
+      } as ColumnDef<Oportunidad, unknown>,
     ] : []),
     ...(cardFiltro === "capacidades" ? [
       {
-        field: "imss_capacidad_actual",
-        headerName: "Capacidad",
-        width: 110,
-        renderCell: (p: GridRenderCellParams) => (
-          <Typography variant="body2" fontWeight={600} sx={{ fontSize: 12, color: "#4caf50" }}>
-            {p.value != null ? `$${Number(p.value).toLocaleString("es-MX")}` : "—"}
-          </Typography>
+        accessorKey: "imss_capacidad_actual",
+        header: "Capacidad",
+        size: 110,
+        cell: ({ row }: { row: { original: Oportunidad } }) => (
+          <span className="text-xs font-semibold text-green-400">
+            {row.original.imss_capacidad_actual != null ? `$${Number(row.original.imss_capacidad_actual).toLocaleString("es-MX")}` : "—"}
+          </span>
         ),
-      } satisfies GridColDef,
+      } as ColumnDef<Oportunidad, unknown>,
       {
-        field: "imss_num_creditos",
-        headerName: "Créditos",
-        width: 90,
-        renderCell: (p: GridRenderCellParams) => (
-          <Typography variant="body2" sx={{ fontSize: 12 }}>{p.value ?? "—"}</Typography>
+        accessorKey: "imss_num_creditos",
+        header: "Creditos",
+        size: 90,
+        cell: ({ row }: { row: { original: Oportunidad } }) => (
+          <span className="text-xs text-slate-300">{(row.original.imss_num_creditos as string | number | null) ?? "—"}</span>
         ),
-      } satisfies GridColDef,
+      } as ColumnDef<Oportunidad, unknown>,
     ] : []),
     // All client extra columns (hidden by default)
     ...CLIENTE_EXTRA_COLUMNS.map((col) => ({
-      field: col.field,
-      headerName: col.headerName,
-      width: col.width || 120,
-      renderCell: (p: GridRenderCellParams) => (
-        <Typography variant="body2" noWrap sx={{ fontSize: 12 }}>{p.value ?? "—"}</Typography>
+      accessorKey: col.field,
+      header: col.headerName,
+      size: col.width || 120,
+      cell: ({ row }: { row: { original: Oportunidad } }) => (
+        <span className="text-xs text-slate-300 truncate">{(row.original[col.field] as string | null) ?? "—"}</span>
       ),
-    } satisfies GridColDef)),
+    } as ColumnDef<Oportunidad, unknown>)),
     {
-      field: "wa_estado", headerName: "WA", width: 90, sortable: false,
-      renderCell: (p: GridRenderCellParams) => {
-        const estado = p.value as string | null;
-        if (!estado) return <Typography variant="body2" color="text.disabled" sx={{ fontSize: 10 }}>—</Typography>;
+      accessorKey: "wa_estado",
+      header: "WA",
+      size: 90,
+      enableSorting: false,
+      cell: ({ row }) => {
+        const estado = row.original.wa_estado as string | null;
+        if (!estado) return <span className="text-[10px] text-slate-600">—</span>;
         const colorMap: Record<string, string> = {
           PENDIENTE: "#9e9e9e", ENVIANDO: "#ff9800", ENVIADO: "#2196f3",
           ENTREGADO: "#4caf50", LEIDO: "#00bcd4", FALLIDO: "#f44336",
         };
+        const bgColor = colorMap[estado] || "#9e9e9e";
         return (
-          <Chip
-            label={estado}
-            size="small"
-            sx={{ bgcolor: colorMap[estado] || "grey.500", color: "white", fontWeight: 700, fontSize: 9, height: 20 }}
-          />
+          <span
+            className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold text-white"
+            style={{ backgroundColor: bgColor }}
+          >
+            {estado}
+          </span>
         );
       },
     },
     {
-      field: "__obs", headerName: "Observaciones", flex: 1, minWidth: 150, sortable: false,
-      renderCell: (p) => (
-        <TextField
-          size="small"
-          variant="standard"
+      id: "__obs",
+      header: "Observaciones",
+      size: 200,
+      minSize: 150,
+      enableSorting: false,
+      cell: ({ row }) => (
+        <input
+          type="text"
           placeholder="Nota opcional..."
-          fullWidth
-          value={observaciones[p.row.id] || ""}
-          onChange={(e) => setObservaciones((prev) => ({ ...prev, [p.row.id]: e.target.value }))}
+          className="w-full bg-transparent border-none outline-none text-xs text-slate-300 placeholder-slate-600 py-0.5"
+          value={observaciones[row.original.id] || ""}
+          onChange={(e) => setObservaciones((prev) => ({ ...prev, [row.original.id]: e.target.value }))}
           onClick={(e) => e.stopPropagation()}
-          InputProps={{ disableUnderline: true, sx: { fontSize: 12 } }}
-          sx={{ "& input": { py: 0.3 } }}
         />
       ),
     },
     {
-      field: "__acciones", headerName: "", width: cardFiltro === "capacidades" ? 160 : 130, sortable: false,
-      renderCell: (p) => {
-        const etapaNombre = p.row.origen === "CAPTACION" ? "Capturados" : (p.row.etapa?.nombre || "Asignado");
-        const waUrl = buildWhatsAppUrl(p.row.tel_1 || "", p.row.nombres || "", etapaNombre, promotorNombre, plantillas);
+      id: "__acciones",
+      header: "",
+      size: cardFiltro === "capacidades" ? 160 : 130,
+      enableSorting: false,
+      cell: ({ row }) => {
+        const etapaNombre = row.original.origen === "CAPTACION" ? "Capturados" : (row.original.etapa?.nombre || "Asignado");
+        const waUrl = buildWhatsAppUrl(row.original.tel_1 || "", row.original.nombres || "", etapaNombre, promotorNombre, plantillas);
         return (
-          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-            <Tooltip title="Ver detalle">
-              <IconButton
-                size="small"
-                color="primary"
-                onClick={(e) => { e.stopPropagation(); openVerDialog(p.row.id); }}
+          <div className="flex items-center gap-1">
+            <Tooltip content="Ver detalle">
+              <button
+                className="p-1.5 text-blue-400 hover:bg-blue-500/10 rounded-lg transition-colors"
+                onClick={(e) => { e.stopPropagation(); openVerDialog(row.original.id); }}
               >
-                <VisibilityIcon sx={{ fontSize: 18 }} />
-              </IconButton>
+                <Eye className="w-4 h-4" />
+              </button>
             </Tooltip>
             {cardFiltro === "capacidades" && (
-              <Tooltip title="Ver datos IMSS">
-                <IconButton
-                  size="small"
-                  sx={{ color: "#4caf50" }}
-                  onClick={(e) => { e.stopPropagation(); openCapDialog(p.row); }}
+              <Tooltip content="Ver datos IMSS">
+                <button
+                  className="p-1.5 text-green-400 hover:bg-green-500/10 rounded-lg transition-colors"
+                  onClick={(e) => { e.stopPropagation(); openCapDialog(row.original); }}
                 >
-                  <AssignmentIndIcon sx={{ fontSize: 18 }} />
-                </IconButton>
+                  <ClipboardList className="w-4 h-4" />
+                </button>
               </Tooltip>
             )}
-            <Tooltip title={waUrl ? "Enviar WhatsApp" : "Sin teléfono"}>
-              <span>
-                <IconButton
-                  size="small"
-                  disabled={!waUrl}
-                  onClick={(e) => { e.stopPropagation(); if (waUrl) window.open(waUrl, "_blank"); }}
-                  sx={{ color: waUrl ? "#25D366" : undefined }}
-                >
-                  <WhatsAppIcon sx={{ fontSize: 18 }} />
-                </IconButton>
-              </span>
+            <Tooltip content={waUrl ? "Enviar WhatsApp" : "Sin telefono"}>
+              <button
+                className={`p-1.5 rounded-lg transition-colors ${waUrl ? "text-[#25D366] hover:bg-green-500/10" : "text-slate-600 cursor-not-allowed"}`}
+                disabled={!waUrl}
+                onClick={(e) => { e.stopPropagation(); if (waUrl) window.open(waUrl, "_blank"); }}
+              >
+                <WhatsAppIcon className="w-4 h-4" />
+              </button>
             </Tooltip>
-            <Tooltip title={p.row.curp || p.row.nss ? "Copiar datos Telegram" : "Sin CURP ni NSS"}>
-              <span>
-                <IconButton
-                  size="small"
-                  disabled={!p.row.curp && !p.row.nss}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    const cadena = `${p.row.nombres || ""}, ${p.row.curp || ""}, ${p.row.nss || ""}`;
-                    navigator.clipboard.writeText(cadena).then(() => {
-                      setSnackbar({ open: true, message: "Copiado al portapapeles", severity: "success" });
-                    });
-                  }}
-                  sx={{ color: p.row.curp || p.row.nss ? "#0088cc" : undefined }}
-                >
-                  <TelegramIcon sx={{ fontSize: 18 }} />
-                </IconButton>
-              </span>
+            <Tooltip content={row.original.curp || row.original.nss ? "Copiar datos Telegram" : "Sin CURP ni NSS"}>
+              <button
+                className={`p-1.5 rounded-lg transition-colors ${row.original.curp || row.original.nss ? "text-[#0088cc] hover:bg-blue-500/10" : "text-slate-600 cursor-not-allowed"}`}
+                disabled={!row.original.curp && !row.original.nss}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const cadena = `${row.original.nombres || ""}, ${row.original.curp || ""}, ${row.original.nss || ""}`;
+                  navigator.clipboard.writeText(cadena).then(() => {
+                    toast("Copiado al portapapeles", "success");
+                  });
+                }}
+              >
+                <TelegramIcon className="w-4 h-4" />
+              </button>
             </Tooltip>
-          </Box>
+          </div>
         );
       },
     },
   // eslint-disable-next-line react-hooks/exhaustive-deps
   ], [transMap, transitioning, observaciones, cardFiltro, promotorNombre, plantillas]);
 
-  // Destinatarios para la campaña: filas seleccionadas con teléfono
+  // Destinatarios para la campana: filas seleccionadas con telefono
   const destinatariosSeleccionados = useMemo(() => {
     const selectedSet = new Set(selectedIds.map(Number));
     return rows
@@ -720,14 +766,14 @@ export default function OportunidadesPage() {
       }));
   }, [rows, selectedIds]);
 
-  // Mensaje inicial sugerido según la etapa activa
+  // Mensaje inicial sugerido segun la etapa activa
   const mensajeInicial = useMemo(() => {
     if (!cardFiltro) return plantillas["Asignado"] || "";
     return plantillas[cardFiltro === "capturados" ? "Capturados" : cardFiltro] || plantillas["Asignado"] || "";
   }, [cardFiltro, plantillas]);
 
   if (loading) return (
-    <Box sx={{ display: "flex", justifyContent: "center", mt: 8 }}><CircularProgress /></Box>
+    <div className="flex justify-center mt-20"><Spinner size="lg" /></div>
   );
 
   // ─── Cards para el pipeline ───
@@ -738,57 +784,49 @@ export default function OportunidadesPage() {
   ];
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", height: "calc(100vh - 64px)" }}>
+    <div className="flex flex-col" style={{ height: "calc(100vh - 64px)" }}>
       {confetti && <ConfettiEffect onDone={() => setConfetti(false)} />}
 
       {/* Header */}
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1.5, flexWrap: "wrap", gap: 1, flexShrink: 0 }}>
-        <Box>
-          <Typography variant="h5" fontWeight={600}>Mi Asignación</Typography>
-          <Typography variant="body2" color="text.secondary">
-            Gestiona tus oportunidades activas
-          </Typography>
-        </Box>
-        <Box sx={{ display: "flex", gap: 1 }}>
-          <Tooltip title="Actualizar Capacidades">
+      <div className="flex items-center justify-between mb-3 flex-wrap gap-2 shrink-0">
+        <div>
+          <h1 className="text-xl font-semibold text-slate-100">Mi Asignacion</h1>
+          <p className="text-sm text-slate-500">Gestiona tus oportunidades activas</p>
+        </div>
+        <div className="flex gap-2">
+          <Tooltip content="Actualizar Capacidades">
             <Button
-              variant="outlined"
-              size="small"
+              variant="outline"
+              size="sm"
               onClick={handleSyncCapacidades}
               disabled={syncing}
-              sx={{ textTransform: "none", fontWeight: 600, minWidth: 40, px: 1, borderColor: "#4caf50", color: "#4caf50", "&:hover": { borderColor: "#388e3c", bgcolor: "#4caf5010" } }}
+              className="border-green-500/30 text-green-400 hover:bg-green-500/10 min-w-[40px] px-2"
             >
-              {syncing ? <CircularProgress size={18} color="inherit" /> : <SyncIcon />}
+              {syncing ? <Spinner size="sm" /> : <RefreshCw className="w-4 h-4" />}
             </Button>
           </Tooltip>
           <Button
-            variant="outlined"
-            size="small"
-            startIcon={<PersonAddIcon />}
+            variant="outline"
+            size="sm"
+            icon={<UserPlus className="w-4 h-4" />}
             onClick={() => setCaptacionOpen(true)}
-            sx={{ textTransform: "none", fontWeight: 600 }}
           >
             Captar Cliente
           </Button>
           <Button
-            variant="contained"
-            size="small"
-            startIcon={<AssignmentIndIcon />}
+            variant="primary"
+            size="sm"
+            icon={<ClipboardList className="w-4 h-4" />}
             onClick={() => setAsignacionOpen(true)}
-            sx={{ textTransform: "none", fontWeight: 600 }}
           >
-            Solicitar Asignación
+            Solicitar Asignacion
           </Button>
-        </Box>
-      </Box>
+        </div>
+      </div>
 
       {/* ═══════ 7 CARDS PIPELINE ═══════ */}
-      <Box
-        sx={{
-          display: "flex", gap: 1.5, mb: 1.5, overflowX: "auto", pb: 0.5, flexShrink: 0,
-          "&::-webkit-scrollbar": { height: 4 },
-          "&::-webkit-scrollbar-thumb": { bgcolor: "grey.300", borderRadius: 2 },
-        }}
+      <div
+        className="flex gap-3 mb-3 overflow-x-auto pb-1 shrink-0 scrollbar-thin"
       >
         {cardItems.map((item) => {
           const count = conteos[item.key] || 0;
@@ -796,362 +834,365 @@ export default function OportunidadesPage() {
           const pct = totalOps > 0 ? Math.round((count / totalOps) * 100) : 0;
 
           return (
-            <Paper
+            <div
               key={item.key}
-              elevation={isSelected ? 4 : 0}
               onClick={() => setCardFiltro(isSelected ? "" : item.key)}
-              sx={{
-                px: 2.5, py: 1.5, cursor: "pointer", minWidth: 120, flex: 1,
-                borderRadius: 2.5, textAlign: "center",
-                bgcolor: isSelected ? item.color : "background.paper",
-                color: isSelected ? "white" : "text.primary",
-                border: "2px solid",
-                borderColor: isSelected ? item.color : count > 0 ? item.color : "grey.200",
-                "&:hover": {
-                  bgcolor: isSelected ? item.color : `${item.color}15`,
-                  borderColor: item.color,
-                  transform: "translateY(-2px)",
-                  boxShadow: 3,
-                },
-                transition: "all 0.2s ease",
+              className="px-4 py-3 cursor-pointer min-w-[120px] flex-1 rounded-xl text-center border-2 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg"
+              style={{
+                backgroundColor: isSelected ? item.color : "var(--color-surface, #1e293b)",
+                color: isSelected ? "white" : "var(--color-text-primary, #e2e8f0)",
+                borderColor: isSelected ? item.color : count > 0 ? item.color : "rgba(100,116,139,0.2)",
+                boxShadow: isSelected ? `0 4px 14px ${item.color}40` : undefined,
               }}
             >
-              <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, justifyContent: "center", mb: 0.5 }}>
-                <Box sx={{
-                  width: 8, height: 8, borderRadius: "50%",
-                  bgcolor: isSelected ? "rgba(255,255,255,0.8)" : item.color,
-                }} />
-                <Typography
-                  variant="caption"
-                  fontWeight={600}
-                  sx={{ color: isSelected ? "rgba(255,255,255,0.9)" : "text.secondary", whiteSpace: "nowrap", fontSize: 10 }}
+              <div className="flex items-center gap-1 justify-center mb-1">
+                <span
+                  className="w-2 h-2 rounded-full"
+                  style={{ backgroundColor: isSelected ? "rgba(255,255,255,0.8)" : item.color }}
+                />
+                <span
+                  className="text-[10px] font-semibold whitespace-nowrap"
+                  style={{ color: isSelected ? "rgba(255,255,255,0.9)" : "var(--color-text-secondary, #94a3b8)" }}
                 >
                   {item.label}
-                </Typography>
-              </Box>
-              <Typography variant="h4" fontWeight={800} sx={{ lineHeight: 1.1, color: isSelected ? "white" : item.color }}>
+                </span>
+              </div>
+              <p
+                className="text-3xl font-extrabold leading-tight"
+                style={{ color: isSelected ? "white" : item.color }}
+              >
                 {count}
-              </Typography>
+              </p>
               {item.key === "Venta" && totalVentaMonto > 0 && (
-                <Typography variant="caption" fontWeight={700} sx={{ color: isSelected ? "rgba(255,255,255,0.9)" : item.color, display: "block", mt: 0.3, fontSize: 10 }}>
+                <span
+                  className="text-[10px] font-bold block mt-0.5"
+                  style={{ color: isSelected ? "rgba(255,255,255,0.9)" : item.color }}
+                >
                   {totalVentaMonto.toLocaleString("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 0 })}
-                </Typography>
+                </span>
               )}
-              <LinearProgress
-                variant="determinate"
-                value={pct}
-                sx={{
-                  mt: 1, height: 4, borderRadius: 2,
-                  bgcolor: isSelected ? "rgba(255,255,255,0.3)" : "grey.100",
-                  "& .MuiLinearProgress-bar": { bgcolor: isSelected ? "white" : item.color, borderRadius: 2 },
-                }}
-              />
-              <Typography variant="caption" sx={{ color: isSelected ? "rgba(255,255,255,0.8)" : "text.disabled", fontSize: 9 }}>
+              {/* Progress bar */}
+              <div className="mt-2 h-1 rounded-full overflow-hidden" style={{ backgroundColor: isSelected ? "rgba(255,255,255,0.3)" : "rgba(100,116,139,0.15)" }}>
+                <div
+                  className="h-full rounded-full transition-all duration-300"
+                  style={{ width: `${pct}%`, backgroundColor: isSelected ? "white" : item.color }}
+                />
+              </div>
+              <span
+                className="text-[9px]"
+                style={{ color: isSelected ? "rgba(255,255,255,0.8)" : "var(--color-text-disabled, #475569)" }}
+              >
                 {pct}% del total
-              </Typography>
-            </Paper>
+              </span>
+            </div>
           );
         })}
-      </Box>
+      </div>
 
       {/* ═══════ FILTROS + GRID ═══════ */}
-      <Card elevation={0} sx={{ border: "1px solid", borderColor: "divider", borderRadius: 3, overflow: "hidden", flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
+      <div className="bg-surface rounded-xl border border-slate-800/60 overflow-hidden flex-1 flex flex-col min-h-0">
         {/* Barra superior */}
-        <Box sx={{ display: "flex", alignItems: "center", gap: 2, flexWrap: "wrap", px: 2.5, py: 1, bgcolor: "grey.50", borderBottom: "1px solid", borderColor: "divider", flexShrink: 0 }}>
+        <div className="flex items-center gap-3 flex-wrap px-4 py-2 bg-slate-800/30 border-b border-slate-800/40 shrink-0">
           {cardFiltro && (
-            <Chip
-              label={cardFiltro === "capturados" ? "Capturados" : cardFiltro === "capacidades" ? "Capacidades" : cardFiltro}
-              onDelete={() => setCardFiltro("")}
-              size="small"
-              sx={{
-                fontWeight: 600, height: 22, fontSize: 11,
-                bgcolor: CARD_COLORS[cardFiltro] || "primary.main",
-                color: "white",
-                "& .MuiChip-deleteIcon": { color: "rgba(255,255,255,0.7)" },
-              }}
-            />
+            <span
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold text-white"
+              style={{ backgroundColor: CARD_COLORS[cardFiltro] || "#6366f1" }}
+            >
+              {cardFiltro === "capturados" ? "Capturados" : cardFiltro === "capacidades" ? "Capacidades" : cardFiltro}
+              <button
+                onClick={() => setCardFiltro("")}
+                className="ml-0.5 hover:opacity-70 transition-opacity"
+              >
+                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </span>
           )}
 
-          <Typography variant="body2" color="text.secondary" sx={{ flex: 1, fontSize: 12 }}>
+          <span className="text-xs text-slate-500 flex-1">
             {filtered.length} resultado{filtered.length !== 1 ? "s" : ""}
-          </Typography>
+          </span>
 
           {selectedIds.length > 0 && (
             <Button
-              size="small"
-              variant="contained"
-              startIcon={<CampaignIcon />}
+              size="sm"
+              icon={<Megaphone className="w-4 h-4" />}
               onClick={() => setCampanaOpen(true)}
-              sx={{ textTransform: "none", fontWeight: 600, bgcolor: "#25D366", "&:hover": { bgcolor: "#1da851" }, fontSize: 12 }}
+              className="bg-[#25D366] text-white hover:bg-[#1da851] shadow-lg shadow-green-500/20"
             >
               WhatsApp Masivo ({selectedIds.length})
             </Button>
           )}
-        </Box>
+        </div>
 
-        {/* DataGrid */}
+        {/* DataTable */}
         {filtered.length === 0 ? (
-          <Box sx={{ textAlign: "center", py: 8, color: "text.secondary" }}>
-            <Typography>Sin oportunidades en esta vista</Typography>
-          </Box>
+          <div className="text-center py-16 text-slate-500">
+            <p>Sin oportunidades en esta vista</p>
+          </div>
         ) : (
-          <DataGrid
-            rows={filtered}
-            columns={columns}
-            pageSizeOptions={[25, 50, 100]}
-            initialState={{ pagination: { paginationModel: { pageSize: 25 } } }}
-            checkboxSelection
-            disableRowSelectionOnClick
-            rowSelectionModel={{ type: "include" as const, ids: new Set<GridRowId>(selectedIds) }}
-            onRowSelectionModelChange={(model: GridRowSelectionModel) =>
-              setSelectedIds(Array.from(model.ids).map(Number))
-            }
-            rowHeight={40}
-            columnVisibilityModel={columnVisibility}
-            onColumnVisibilityModelChange={handleColumnVisibilityChange}
-            slots={{
-              toolbar: () => (
-                <Box sx={{ display: "flex", gap: 1, px: 1, py: 0.5, borderBottom: "1px solid", borderColor: "grey.100" }}>
-                  <GridToolbarColumnsButton />
-                  <GridToolbarFilterButton />
-                </Box>
-              ),
-            }}
-            sx={{
-              border: "none",
-              fontSize: 12,
-              flex: 1,
-              "& .MuiDataGrid-columnHeader": {
-                bgcolor: "background.paper", fontSize: 10, fontWeight: 700,
-                color: "text.secondary", textTransform: "uppercase", letterSpacing: "0.05em",
-              },
-              "& .MuiDataGrid-row:hover": { bgcolor: "action.hover" },
-              "& .MuiDataGrid-cell": { borderColor: "grey.100", display: "flex", alignItems: "center" },
-              "& .MuiDataGrid-footerContainer": { borderColor: "grey.100" },
-              "& .MuiDataGrid-columnSeparator": { color: "grey.200" },
-            }}
-          />
+          <div className="flex-1 min-h-0 overflow-auto">
+            <DataTable
+              data={filtered}
+              columns={columns}
+              pageSize={25}
+              pageSizeOptions={[25, 50, 100]}
+              enableRowSelection={true}
+              rowSelection={rowSelection}
+              onRowSelectionChange={setRowSelection}
+              columnVisibility={columnVisibility}
+              onColumnVisibilityChange={handleColumnVisibilityChange}
+              getRowId={(row) => String(row.id)}
+              className="border-0 rounded-none"
+            />
+          </div>
         )}
-      </Card>
+      </div>
 
-      {/* ═══════ DIALOG: NUM OPERACIÓN (VENTA) ═══════ */}
-      <Dialog open={ventaDialog.open} onClose={() => setVentaDialog((p) => ({ ...p, open: false }))} maxWidth="xs" fullWidth PaperProps={{ sx: { borderRadius: 3 } }}>
-        <DialogTitle>
-          <Typography variant="h6" fontWeight={700}>Registrar Venta</Typography>
-          <Typography variant="body2" color="text.secondary">Completa los datos para registrar la venta</Typography>
-        </DialogTitle>
-        <DialogContent>
-          <TextField
-            autoFocus
-            fullWidth
-            label="Número de operación"
-            value={ventaDialog.numOp}
-            onChange={(e) => setVentaDialog((p) => ({ ...p, numOp: e.target.value }))}
-            margin="dense"
-            size="small"
-            required
-          />
-          <TextField
-            fullWidth
-            label="Monto de la venta (MXN)"
-            type="number"
-            inputProps={{ min: 0, step: "0.01" }}
-            value={ventaDialog.monto}
-            onChange={(e) => setVentaDialog((p) => ({ ...p, monto: e.target.value }))}
-            margin="dense"
-            size="small"
-            required
-            InputProps={{
-              startAdornment: <Typography variant="body2" sx={{ mr: 0.5, color: "text.secondary" }}>$</Typography>,
-            }}
-          />
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setVentaDialog((p) => ({ ...p, open: false }))} color="error" variant="outlined">Cancelar</Button>
+      {/* ═══════ DIALOG: NUM OPERACION (VENTA) ═══════ */}
+      <Dialog open={ventaDialog.open} onClose={() => setVentaDialog((p) => ({ ...p, open: false }))} maxWidth="sm">
+        <DialogHeader onClose={() => setVentaDialog((p) => ({ ...p, open: false }))}>
+          <div>
+            <span className="text-lg font-bold text-slate-100">Registrar Venta</span>
+            <p className="text-sm text-slate-400 mt-0.5">Completa los datos para registrar la venta</p>
+          </div>
+        </DialogHeader>
+        <DialogBody>
+          <div className="space-y-3">
+            <Input
+              autoFocus
+              label="Numero de operacion"
+              value={ventaDialog.numOp}
+              onChange={(e) => setVentaDialog((p) => ({ ...p, numOp: e.target.value }))}
+              required
+            />
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-1">Monto de la venta (MXN)</label>
+              <div className="relative">
+                <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-sm text-slate-500">$</span>
+                <input
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={ventaDialog.monto}
+                  onChange={(e) => setVentaDialog((p) => ({ ...p, monto: e.target.value }))}
+                  required
+                  className="w-full pl-7 pr-3 py-2 bg-slate-800/50 border border-slate-700 text-slate-200 placeholder-slate-600 rounded-lg text-sm focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500/60 outline-none transition-all"
+                />
+              </div>
+            </div>
+          </div>
+        </DialogBody>
+        <DialogFooter>
+          <Button variant="danger" size="sm" onClick={() => setVentaDialog((p) => ({ ...p, open: false }))}>
+            Cancelar
+          </Button>
           <Button
-            variant="contained"
-            color="success"
+            variant="primary"
+            size="sm"
             onClick={handleVentaConfirm}
             disabled={ventaDialog.saving || !ventaDialog.numOp.trim() || !ventaDialog.monto}
+            loading={ventaDialog.saving}
+            className="bg-green-600 hover:bg-green-500 shadow-green-600/20"
           >
-            {ventaDialog.saving ? <CircularProgress size={20} color="inherit" /> : "Registrar Venta"}
+            Registrar Venta
           </Button>
-        </DialogActions>
+        </DialogFooter>
       </Dialog>
 
       {/* ═══════ DIALOG: VER DETALLE ═══════ */}
       <Dialog
         open={verDialog.open}
         onClose={() => setVerDialog({ open: false, loading: false, data: null })}
-        maxWidth="md"
-        fullWidth
-        PaperProps={{ sx: { borderRadius: 3 } }}
+        maxWidth="2xl"
       >
-        <DialogTitle sx={{ display: "flex", alignItems: "center", gap: 1, pb: 1 }}>
-          <Typography variant="h6" fontWeight={700} sx={{ flex: 1 }}>Detalle del Cliente</Typography>
-          {verDialog.data?.etapa && (
-            <Chip label={verDialog.data.etapa.nombre} size="small" sx={{ bgcolor: verDialog.data.etapa.color, color: "white", fontWeight: 600 }} />
-          )}
-        </DialogTitle>
-        <DialogContent>
+        <DialogHeader onClose={() => setVerDialog({ open: false, loading: false, data: null })}>
+          <div className="flex items-center gap-2 flex-1">
+            <span className="text-lg font-bold text-slate-100 flex-1">Detalle del Cliente</span>
+            {verDialog.data?.etapa && (
+              <span
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold text-white"
+                style={{ backgroundColor: verDialog.data.etapa.color }}
+              >
+                {verDialog.data.etapa.nombre}
+              </span>
+            )}
+          </div>
+        </DialogHeader>
+        <DialogBody>
           {verDialog.loading ? (
-            <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}><CircularProgress /></Box>
+            <div className="flex justify-center py-12"><Spinner size="lg" /></div>
           ) : verDialog.data ? (
-            <Grid container spacing={3} sx={{ mt: 0 }}>
-              <Grid size={{ xs: 12, md: 6 }}>
-                <Card variant="outlined" sx={{ borderRadius: 2 }}>
-                  <CardContent>
-                    <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1.5, textTransform: "uppercase", letterSpacing: 1, fontSize: 11 }}>
-                      Información del cliente
-                    </Typography>
-                    <Stack spacing={1.2}>
-                      <DetailRow label="Nombre" value={verDialog.data.cliente.nombres} />
-                      <DetailRow label="Convenio" value={verDialog.data.cliente.convenio} />
-                      <DetailRow label="Estado" value={verDialog.data.cliente.estado} />
-                      <DetailRow label="Municipio" value={verDialog.data.cliente.municipio} />
-                      <DetailRow label="Oferta" value={verDialog.data.cliente.oferta} />
-                      <Divider />
-                      <DetailRow label="Tel 1" value={verDialog.data.cliente.tel_1} />
-                      <DetailRow label="Tel 2" value={verDialog.data.cliente.tel_2} />
-                      <DetailRow label="CURP" value={verDialog.data.cliente.curp} />
-                      <DetailRow label="RFC" value={verDialog.data.cliente.rfc} />
-                      <DetailRow label="NSS" value={verDialog.data.cliente.nss} />
-                      <DetailRow label="Num. Empleado" value={verDialog.data.cliente.num_empleado} />
-                      {verDialog.data.num_operacion && (
-                        <>
-                          <Divider />
-                          <DetailRow label="No. Operación" value={verDialog.data.num_operacion} />
-                        </>
-                      )}
-                    </Stack>
-                  </CardContent>
-                </Card>
-              </Grid>
-              <Grid size={{ xs: 12, md: 6 }}>
-                <Card variant="outlined" sx={{ borderRadius: 2 }}>
-                  <CardContent>
-                    <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1.5, textTransform: "uppercase", letterSpacing: 1, fontSize: 11 }}>
-                      Historial
-                    </Typography>
-                    {verDialog.data.historial.length === 0 ? (
-                      <Typography variant="body2" color="text.secondary">Sin historial aún.</Typography>
-                    ) : (
-                      <Stack spacing={1.5}>
-                        {verDialog.data.historial.map((entry) => (
-                          <Box key={entry.id} sx={{ display: "flex", gap: 1.5, alignItems: "flex-start" }}>
-                            <Box sx={{
-                              width: 8, height: 8, borderRadius: "50%", mt: 0.8, flexShrink: 0,
-                              bgcolor: entry.etapa_nueva?.color || "grey.400",
-                            }} />
-                            <Box sx={{ flex: 1, minWidth: 0 }}>
-                              <Box sx={{ display: "flex", gap: 0.5, alignItems: "center", flexWrap: "wrap" }}>
-                                {entry.etapa_anterior && (
-                                  <Chip label={entry.etapa_anterior.nombre} size="small"
-                                    sx={{ height: 18, fontSize: 10, bgcolor: entry.etapa_anterior.color, color: "white" }} />
-                                )}
-                                {entry.etapa_anterior && entry.etapa_nueva && (
-                                  <Typography variant="caption" color="text.secondary">→</Typography>
-                                )}
-                                {entry.etapa_nueva && (
-                                  <Chip label={entry.etapa_nueva.nombre} size="small"
-                                    sx={{ height: 18, fontSize: 10, bgcolor: entry.etapa_nueva.color, color: "white" }} />
-                                )}
-                              </Box>
-                              {entry.nota && <Typography variant="body2" sx={{ mt: 0.3, fontSize: 12 }}>{entry.nota}</Typography>}
-                              <Typography variant="caption" color="text.secondary" sx={{ fontSize: 10 }}>
-                                {entry.usuario.nombre} · {new Date(entry.created_at).toLocaleString("es-MX")}
-                              </Typography>
-                            </Box>
-                          </Box>
-                        ))}
-                      </Stack>
-                    )}
-                  </CardContent>
-                </Card>
-              </Grid>
-            </Grid>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Informacion del cliente */}
+              <div className="bg-surface rounded-xl border border-slate-800/60 p-5">
+                <h4 className="text-[11px] font-semibold text-slate-500 uppercase tracking-widest mb-3">
+                  Informacion del cliente
+                </h4>
+                <div className="space-y-2.5">
+                  <DetailRow label="Nombre" value={verDialog.data.cliente.nombres} />
+                  <DetailRow label="Convenio" value={verDialog.data.cliente.convenio} />
+                  <DetailRow label="Estado" value={verDialog.data.cliente.estado} />
+                  <DetailRow label="Municipio" value={verDialog.data.cliente.municipio} />
+                  <DetailRow label="Oferta" value={verDialog.data.cliente.oferta} />
+                  <div className="h-px bg-slate-800/40 my-3" />
+                  <DetailRow label="Tel 1" value={verDialog.data.cliente.tel_1} />
+                  <DetailRow label="Tel 2" value={verDialog.data.cliente.tel_2} />
+                  <DetailRow label="CURP" value={verDialog.data.cliente.curp} />
+                  <DetailRow label="RFC" value={verDialog.data.cliente.rfc} />
+                  <DetailRow label="NSS" value={verDialog.data.cliente.nss} />
+                  <DetailRow label="Num. Empleado" value={verDialog.data.cliente.num_empleado} />
+                  {verDialog.data.num_operacion && (
+                    <>
+                      <div className="h-px bg-slate-800/40 my-3" />
+                      <DetailRow label="No. Operacion" value={verDialog.data.num_operacion} />
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Historial */}
+              <div className="bg-surface rounded-xl border border-slate-800/60 p-5">
+                <h4 className="text-[11px] font-semibold text-slate-500 uppercase tracking-widest mb-3">
+                  Historial
+                </h4>
+                {verDialog.data.historial.length === 0 ? (
+                  <p className="text-sm text-slate-500">Sin historial aun.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {verDialog.data.historial.map((entry) => (
+                      <div key={entry.id} className="flex gap-3 items-start">
+                        <span
+                          className="w-2 h-2 rounded-full mt-1.5 shrink-0"
+                          style={{ backgroundColor: entry.etapa_nueva?.color || "#64748b" }}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex gap-1 items-center flex-wrap">
+                            {entry.etapa_anterior && (
+                              <span
+                                className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium text-white"
+                                style={{ backgroundColor: entry.etapa_anterior.color }}
+                              >
+                                {entry.etapa_anterior.nombre}
+                              </span>
+                            )}
+                            {entry.etapa_anterior && entry.etapa_nueva && (
+                              <span className="text-xs text-slate-500">→</span>
+                            )}
+                            {entry.etapa_nueva && (
+                              <span
+                                className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium text-white"
+                                style={{ backgroundColor: entry.etapa_nueva.color }}
+                              >
+                                {entry.etapa_nueva.nombre}
+                              </span>
+                            )}
+                          </div>
+                          {entry.nota && <p className="text-xs text-slate-300 mt-0.5">{entry.nota}</p>}
+                          <p className="text-[10px] text-slate-500">
+                            {entry.usuario.nombre} · {new Date(entry.created_at).toLocaleString("es-MX")}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
           ) : null}
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setVerDialog({ open: false, loading: false, data: null })} startIcon={<ArrowBackIcon />}>
+        </DialogBody>
+        <DialogFooter>
+          <Button
+            variant="ghost"
+            size="sm"
+            icon={<ArrowLeft className="w-4 h-4" />}
+            onClick={() => setVerDialog({ open: false, loading: false, data: null })}
+          >
             Cerrar
           </Button>
-        </DialogActions>
+        </DialogFooter>
       </Dialog>
 
       {/* ═══════ DIALOG: VER DATOS IMSS (CAPACIDADES) ═══════ */}
       <Dialog
         open={capDialog.open}
         onClose={() => setCapDialog({ open: false, loading: false, data: null })}
-        maxWidth="sm"
-        fullWidth
-        PaperProps={{ sx: { borderRadius: 3 } }}
+        maxWidth="lg"
       >
-        <DialogTitle sx={{ display: "flex", alignItems: "center", gap: 1, pb: 1 }}>
-          <Typography variant="h6" fontWeight={700} sx={{ flex: 1 }}>Datos IMSS</Typography>
-          <Chip label="Capacidades" size="small" sx={{ bgcolor: "#4caf50", color: "white", fontWeight: 600 }} />
-        </DialogTitle>
-        <DialogContent>
+        <DialogHeader onClose={() => setCapDialog({ open: false, loading: false, data: null })}>
+          <div className="flex items-center gap-2 flex-1">
+            <span className="text-lg font-bold text-slate-100 flex-1">Datos IMSS</span>
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold text-white bg-green-600">
+              Capacidades
+            </span>
+          </div>
+        </DialogHeader>
+        <DialogBody>
           {capDialog.loading ? (
-            <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}><CircularProgress /></Box>
+            <div className="flex justify-center py-12"><Spinner size="lg" /></div>
           ) : capDialog.data ? (
-            <Stack spacing={2} sx={{ mt: 1 }}>
-              <Card variant="outlined" sx={{ borderRadius: 2 }}>
-                <CardContent>
-                  <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1.5, textTransform: "uppercase", letterSpacing: 1, fontSize: 11 }}>
-                    Datos del Cliente
-                  </Typography>
-                  <Stack spacing={1}>
-                    <DetailRow label="Nombre" value={String(capDialog.data.nombres || "—")} />
-                    <DetailRow label="Convenio" value={String(capDialog.data.convenio || "—")} />
-                    <DetailRow label="Teléfono" value={String(capDialog.data.tel_1 || capDialog.data.imss_telefonos || "—")} />
-                    <DetailRow label="NSS" value={String(capDialog.data.nss || "—")} />
-                    <DetailRow label="CURP" value={String(capDialog.data.curp || "—")} />
-                    <DetailRow label="RFC" value={String(capDialog.data.rfc || "—")} />
-                    <DetailRow label="No. Empleado" value={String(capDialog.data.numero_empleado || "—")} />
-                  </Stack>
-                </CardContent>
-              </Card>
-              <Card variant="outlined" sx={{ borderRadius: 2, borderColor: "#4caf50" }}>
-                <CardContent>
-                  <Typography variant="subtitle2" sx={{ mb: 1.5, textTransform: "uppercase", letterSpacing: 1, fontSize: 11, color: "#4caf50" }}>
-                    Información IMSS
-                  </Typography>
-                  <Stack spacing={1}>
-                    <DetailRow label="Capacidad Actual" value={
-                      capDialog.data.imss_capacidad_actual != null
-                        ? `$${Number(capDialog.data.imss_capacidad_actual).toLocaleString("es-MX")}`
-                        : "—"
-                    } />
-                    <DetailRow label="Num. Créditos" value={String(capDialog.data.imss_num_creditos ?? "—")} />
-                    <DetailRow label="Teléfonos IMSS" value={String(capDialog.data.imss_telefonos || "—")} />
-                    {capDialog.data.fecha_solicitud ? (
-                      <DetailRow label="Fecha Solicitud" value={new Date(String(capDialog.data.fecha_solicitud)).toLocaleString("es-MX")} />
-                    ) : null}
-                  </Stack>
-                  {capDialog.data.respuesta ? (
-                    <>
-                      <Divider sx={{ my: 1.5 }} />
-                      <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1, fontSize: 11 }}>
-                        RESPUESTA COMPLETA
-                      </Typography>
-                      <Paper sx={{ p: 1.5, bgcolor: "grey.50", borderRadius: 1, maxHeight: 200, overflow: "auto" }}>
-                        <Typography variant="body2" sx={{ fontSize: 11, whiteSpace: "pre-wrap", fontFamily: "monospace" }}>
-                          {String(capDialog.data.respuesta)}
-                        </Typography>
-                      </Paper>
-                    </>
+            <div className="space-y-4">
+              {/* Datos del Cliente */}
+              <div className="bg-surface rounded-xl border border-slate-800/60 p-5">
+                <h4 className="text-[11px] font-semibold text-slate-500 uppercase tracking-widest mb-3">
+                  Datos del Cliente
+                </h4>
+                <div className="space-y-2">
+                  <DetailRow label="Nombre" value={String(capDialog.data.nombres || "—")} />
+                  <DetailRow label="Convenio" value={String(capDialog.data.convenio || "—")} />
+                  <DetailRow label="Telefono" value={String(capDialog.data.tel_1 || capDialog.data.imss_telefonos || "—")} />
+                  <DetailRow label="NSS" value={String(capDialog.data.nss || "—")} />
+                  <DetailRow label="CURP" value={String(capDialog.data.curp || "—")} />
+                  <DetailRow label="RFC" value={String(capDialog.data.rfc || "—")} />
+                  <DetailRow label="No. Empleado" value={String(capDialog.data.numero_empleado || "—")} />
+                </div>
+              </div>
+
+              {/* Informacion IMSS */}
+              <div className="bg-surface rounded-xl border border-green-500/30 p-5">
+                <h4 className="text-[11px] font-semibold text-green-400 uppercase tracking-widest mb-3">
+                  Informacion IMSS
+                </h4>
+                <div className="space-y-2">
+                  <DetailRow label="Capacidad Actual" value={
+                    capDialog.data.imss_capacidad_actual != null
+                      ? `$${Number(capDialog.data.imss_capacidad_actual).toLocaleString("es-MX")}`
+                      : "—"
+                  } />
+                  <DetailRow label="Num. Creditos" value={String(capDialog.data.imss_num_creditos ?? "—")} />
+                  <DetailRow label="Telefonos IMSS" value={String(capDialog.data.imss_telefonos || "—")} />
+                  {capDialog.data.fecha_solicitud ? (
+                    <DetailRow label="Fecha Solicitud" value={new Date(String(capDialog.data.fecha_solicitud)).toLocaleString("es-MX")} />
                   ) : null}
-                </CardContent>
-              </Card>
-            </Stack>
+                </div>
+                {capDialog.data.respuesta ? (
+                  <>
+                    <div className="h-px bg-slate-800/40 my-3" />
+                    <h5 className="text-[11px] font-semibold text-slate-500 mb-2">
+                      RESPUESTA COMPLETA
+                    </h5>
+                    <div className="p-3 bg-slate-800/50 rounded-lg max-h-[200px] overflow-auto">
+                      <pre className="text-[11px] text-slate-300 whitespace-pre-wrap font-mono">
+                        {String(capDialog.data.respuesta)}
+                      </pre>
+                    </div>
+                  </>
+                ) : null}
+              </div>
+            </div>
           ) : null}
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setCapDialog({ open: false, loading: false, data: null })} startIcon={<ArrowBackIcon />}>
+        </DialogBody>
+        <DialogFooter>
+          <Button
+            variant="ghost"
+            size="sm"
+            icon={<ArrowLeft className="w-4 h-4" />}
+            onClick={() => setCapDialog({ open: false, loading: false, data: null })}
+          >
             Cerrar
           </Button>
-        </DialogActions>
+        </DialogFooter>
       </Dialog>
 
       {/* ═══════ MODALS ═══════ */}
@@ -1161,7 +1202,7 @@ export default function OportunidadesPage() {
         onSuccess={(opId) => {
           setCaptacionOpen(false);
           fetchData();
-          setSnackbar({ open: true, message: "Cliente captado exitosamente", severity: "success" });
+          toast("Cliente captado exitosamente", "success");
         }}
       />
 
@@ -1171,7 +1212,7 @@ export default function OportunidadesPage() {
         onSuccess={() => {
           setAsignacionOpen(false);
           fetchData();
-          setSnackbar({ open: true, message: "Asignación completada", severity: "success" });
+          toast("Asignacion completada", "success");
         }}
       />
 
@@ -1180,25 +1221,21 @@ export default function OportunidadesPage() {
         onClose={() => setCampanaOpen(false)}
         onSuccess={() => {
           setCampanaOpen(false);
-          setSelectedIds([]);
-          setSnackbar({ open: true, message: "Campaña creada exitosamente", severity: "success" });
+          setRowSelection({});
+          toast("Campana creada exitosamente", "success");
         }}
         destinatarios={destinatariosSeleccionados}
         mensajeInicial={mensajeInicial}
       />
-
-      <Snackbar open={snackbar.open} autoHideDuration={3000} onClose={() => setSnackbar((p) => ({ ...p, open: false }))}>
-        <Alert severity={snackbar.severity} variant="filled">{snackbar.message}</Alert>
-      </Snackbar>
-    </Box>
+    </div>
   );
 }
 
 function DetailRow({ label, value }: { label: string; value: string | null | undefined }) {
   return (
-    <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-      <Typography variant="caption" color="text.secondary" sx={{ fontSize: 12 }}>{label}</Typography>
-      <Typography variant="body2" fontWeight={500} sx={{ fontSize: 13 }}>{value || "—"}</Typography>
-    </Box>
+    <div className="flex justify-between items-center">
+      <span className="text-xs text-slate-500">{label}</span>
+      <span className="text-[13px] font-medium text-slate-200">{value || "—"}</span>
+    </div>
   );
 }

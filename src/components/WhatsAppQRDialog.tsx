@@ -1,11 +1,10 @@
 "use client";
 import { useState, useEffect, useRef, useCallback } from "react";
-import {
-  Dialog, DialogTitle, DialogContent, DialogActions,
-  Button, Typography, Box, CircularProgress, Alert,
-} from "@mui/material";
-import QrCode2Icon from "@mui/icons-material/QrCode2";
-import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import { Dialog, DialogHeader, DialogBody, DialogFooter } from "@/components/ui/Dialog";
+import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/ui/Alert";
+import { Spinner } from "@/components/ui/Spinner";
+import { QrCode, CheckCircle } from "lucide-react";
 
 interface Props {
   open: boolean;
@@ -39,7 +38,7 @@ export default function WhatsAppQRDialog({ open, onClose, onConnected }: Props) 
     // 1. Trigger connection
     fetch("/api/whatsapp/sesion/connect", { method: "POST" })
       .then((res) => {
-        if (!res.ok) throw new Error("Error al iniciar conexión");
+        if (!res.ok) throw new Error("Error al iniciar conexion");
       })
       .catch((err) => {
         setStatus("error");
@@ -62,7 +61,7 @@ export default function WhatsAppQRDialog({ open, onClose, onConnected }: Props) 
           setQrData(data.qr_code);
         } else if (data.estado === "DESCONECTADO") {
           setStatus("error");
-          setError("WhatsApp se desconectó. Intenta de nuevo.");
+          setError("WhatsApp se desconecto. Intenta de nuevo.");
           stopPolling();
         }
       } catch {
@@ -83,56 +82,59 @@ export default function WhatsAppQRDialog({ open, onClose, onConnected }: Props) 
   };
 
   return (
-    <Dialog open={open} onClose={handleClose} maxWidth="xs" fullWidth PaperProps={{ sx: { borderRadius: 3 } }}>
-      <DialogTitle sx={{ textAlign: "center", pb: 1 }}>
-        <QrCode2Icon sx={{ fontSize: 40, color: "#25D366", mb: 1 }} />
-        <Typography variant="h6" fontWeight={700}>Conectar WhatsApp</Typography>
-        <Typography variant="body2" color="text.secondary">
-          Escanea el código QR con tu WhatsApp
-        </Typography>
-      </DialogTitle>
-      <DialogContent sx={{ textAlign: "center", pb: 2 }}>
+    <Dialog open={open} onClose={handleClose} maxWidth="sm">
+      <DialogHeader onClose={handleClose}>
+        <div className="flex flex-col items-center w-full text-center">
+          <QrCode className="w-10 h-10 text-[#25D366] mb-2" />
+          <span className="text-lg font-bold text-slate-100">Conectar WhatsApp</span>
+          <span className="text-sm text-slate-400 font-normal mt-0.5">
+            Escanea el codigo QR con tu WhatsApp
+          </span>
+        </div>
+      </DialogHeader>
+
+      <DialogBody className="text-center">
         {status === "connecting" && (
-          <Box sx={{ py: 4 }}>
-            <CircularProgress sx={{ color: "#25D366" }} />
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-              Generando código QR...
-            </Typography>
-          </Box>
+          <div className="py-8 flex flex-col items-center">
+            <Spinner size="lg" className="text-[#25D366]" />
+            <p className="text-sm text-slate-400 mt-4">
+              Generando codigo QR...
+            </p>
+          </div>
         )}
 
         {status === "qr" && qrData && (
-          <Box sx={{ py: 2 }}>
-            <Box
-              component="img"
+          <div className="py-4 flex flex-col items-center">
+            <img
               src={`https://api.qrserver.com/v1/create-qr-code/?size=256x256&data=${encodeURIComponent(qrData)}`}
               alt="QR Code"
-              sx={{ width: 256, height: 256, mx: "auto", borderRadius: 2, border: "4px solid #25D366" }}
+              className="w-64 h-64 mx-auto rounded-lg border-4 border-[#25D366]"
             />
-            <Typography variant="caption" color="text.secondary" sx={{ mt: 2, display: "block" }}>
+            <p className="text-xs text-slate-400 mt-4 block">
               Abre WhatsApp {">"} Dispositivos vinculados {">"} Vincular dispositivo
-            </Typography>
-          </Box>
+            </p>
+          </div>
         )}
 
         {status === "connected" && (
-          <Box sx={{ py: 4 }}>
-            <CheckCircleIcon sx={{ fontSize: 64, color: "#25D366" }} />
-            <Typography variant="h6" fontWeight={600} sx={{ mt: 1, color: "#25D366" }}>
+          <div className="py-8 flex flex-col items-center">
+            <CheckCircle className="w-16 h-16 text-[#25D366]" />
+            <p className="text-lg font-semibold text-[#25D366] mt-2">
               Conectado
-            </Typography>
-          </Box>
+            </p>
+          </div>
         )}
 
         {status === "error" && (
-          <Alert severity="error" sx={{ mt: 2 }}>{error || "Error de conexión"}</Alert>
+          <Alert variant="error" className="mt-4">{error || "Error de conexion"}</Alert>
         )}
-      </DialogContent>
-      <DialogActions sx={{ px: 3, pb: 2, justifyContent: "center" }}>
-        <Button onClick={handleClose} color="error" variant="outlined">
+      </DialogBody>
+
+      <DialogFooter className="justify-center">
+        <Button variant="danger" onClick={handleClose}>
           Cancelar
         </Button>
-      </DialogActions>
+      </DialogFooter>
     </Dialog>
   );
 }

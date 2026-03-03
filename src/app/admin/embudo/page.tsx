@@ -1,15 +1,16 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
-import {
-  Box, Typography, Button, Dialog, DialogTitle, DialogContent, DialogActions,
-  TextField, Chip, Alert, Snackbar, IconButton, FormControl, InputLabel,
-  Select, MenuItem, Checkbox, FormControlLabel, Divider,
-} from "@mui/material";
-import { DataGrid, GridColDef } from "@mui/x-data-grid";
-import AddIcon from "@mui/icons-material/Add";
-import EditIcon from "@mui/icons-material/Edit";
-import BlockIcon from "@mui/icons-material/Block";
-import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import { Plus, Pencil, Ban, CheckCircle } from "lucide-react";
+import { ColumnDef } from "@tanstack/react-table";
+import { DataTable } from "@/components/ui/DataTable";
+import { Button } from "@/components/ui/Button";
+import { Badge } from "@/components/ui/Badge";
+import { Dialog, DialogHeader, DialogBody, DialogFooter } from "@/components/ui/Dialog";
+import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
+import { Checkbox } from "@/components/ui/Checkbox";
+import { Divider } from "@/components/ui/Divider";
+import { useToast } from "@/components/ui/Toast";
 
 interface Etapa {
   id: number;
@@ -32,10 +33,10 @@ interface Transicion {
   etapa_destino: { id: number; nombre: string; color: string } | null;
 }
 
-const TIPO_COLORS: Record<string, "primary" | "warning" | "error" | "success" | "default"> = {
-  AVANCE: "primary",
-  SALIDA: "warning",
-  FINAL: "success",
+const TIPO_COLORS: Record<string, "blue" | "yellow" | "green" | "slate"> = {
+  AVANCE: "blue",
+  SALIDA: "yellow",
+  FINAL: "green",
 };
 
 export default function EmbudoPage() {
@@ -43,14 +44,12 @@ export default function EmbudoPage() {
   const [transiciones, setTransiciones] = useState<Transicion[]>([]);
   const [loadingE, setLoadingE] = useState(true);
   const [loadingT, setLoadingT] = useState(true);
-  const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" as "success" | "error" });
+  const { toast } = useToast();
 
-  // Dialog Etapa
   const [etapaDialogOpen, setEtapaDialogOpen] = useState(false);
   const [editingEtapa, setEditingEtapa] = useState<Etapa | null>(null);
   const [etapaForm, setEtapaForm] = useState({ nombre: "", orden: "", tipo: "AVANCE", timer_horas: "", color: "#1565c0" });
 
-  // Dialog Transicion
   const [transDialogOpen, setTransDialogOpen] = useState(false);
   const [transForm, setTransForm] = useState({
     etapa_origen_id: "", etapa_destino_id: "", nombre_accion: "",
@@ -63,10 +62,10 @@ export default function EmbudoPage() {
       if (!res.ok) throw new Error("Error al cargar etapas");
       setEtapas(await res.json());
     } catch (err) {
-      setSnackbar({ open: true, message: err instanceof Error ? err.message : "Error de conexión", severity: "error" });
+      toast(err instanceof Error ? err.message : "Error de conexión", "error");
     }
     setLoadingE(false);
-  }, []);
+  }, [toast]);
 
   const fetchTransiciones = useCallback(async () => {
     try {
@@ -74,10 +73,10 @@ export default function EmbudoPage() {
       if (!res.ok) throw new Error("Error al cargar transiciones");
       setTransiciones(await res.json());
     } catch (err) {
-      setSnackbar({ open: true, message: err instanceof Error ? err.message : "Error de conexión", severity: "error" });
+      toast(err instanceof Error ? err.message : "Error de conexión", "error");
     }
     setLoadingT(false);
-  }, []);
+  }, [toast]);
 
   useEffect(() => { fetchEtapas(); fetchTransiciones(); }, [fetchEtapas, fetchTransiciones]);
 
@@ -91,11 +90,11 @@ export default function EmbudoPage() {
     const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
     if (res.ok) {
       setEtapaDialogOpen(false);
-      setSnackbar({ open: true, message: editingEtapa ? "Etapa actualizada" : "Etapa creada", severity: "success" });
+      toast(editingEtapa ? "Etapa actualizada" : "Etapa creada", "success");
       fetchEtapas();
     } else {
       const data = await res.json();
-      setSnackbar({ open: true, message: data.error || "Error", severity: "error" });
+      toast(data.error || "Error", "error");
     }
   };
 
@@ -103,7 +102,7 @@ export default function EmbudoPage() {
     const res = await fetch(`/api/admin/embudo/etapas/${etapa.id}`, {
       method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ activo: !etapa.activo }),
     });
-    if (res.ok) { setSnackbar({ open: true, message: etapa.activo ? "Desactivada" : "Activada", severity: "success" }); fetchEtapas(); }
+    if (res.ok) { toast(etapa.activo ? "Desactivada" : "Activada", "success"); fetchEtapas(); }
   };
 
   const handleSaveTransicion = async () => {
@@ -119,11 +118,11 @@ export default function EmbudoPage() {
     if (res.ok) {
       setTransDialogOpen(false);
       setTransForm({ etapa_origen_id: "", etapa_destino_id: "", nombre_accion: "", requiere_nota: true, requiere_supervisor: false, devuelve_al_pool: false });
-      setSnackbar({ open: true, message: "Transicion creada", severity: "success" });
+      toast("Transicion creada", "success");
       fetchTransiciones();
     } else {
       const data = await res.json();
-      setSnackbar({ open: true, message: data.error || "Error", severity: "error" });
+      toast(data.error || "Error", "error");
     }
   };
 
@@ -131,147 +130,157 @@ export default function EmbudoPage() {
     const res = await fetch(`/api/admin/embudo/transiciones/${t.id}`, {
       method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ activo: !t.activo }),
     });
-    if (res.ok) { setSnackbar({ open: true, message: t.activo ? "Desactivada" : "Activada", severity: "success" }); fetchTransiciones(); }
+    if (res.ok) { toast(t.activo ? "Desactivada" : "Activada", "success"); fetchTransiciones(); }
   };
 
-  const etapaColumns: GridColDef[] = [
-    { field: "orden", headerName: "#", width: 60, align: "center", headerAlign: "center" },
+  const etapaColumns: ColumnDef<Etapa, unknown>[] = [
+    { accessorKey: "orden", header: "#", size: 60, cell: ({ getValue }) => <span className="text-center block text-slate-500">{getValue() as number}</span> },
     {
-      field: "nombre", headerName: "Nombre", flex: 1,
-      renderCell: (p) => (
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          <Box sx={{ width: 12, height: 12, borderRadius: "50%", bgcolor: p.row.color, flexShrink: 0 }} />
-          {p.value}
-        </Box>
+      accessorKey: "nombre", header: "Nombre",
+      cell: ({ row }) => (
+        <div className="flex items-center gap-2">
+          <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: row.original.color }} />
+          <span className="font-medium text-slate-100">{row.original.nombre}</span>
+        </div>
       ),
     },
-    { field: "tipo", headerName: "Tipo", width: 100, renderCell: (p) => <Chip label={p.value} color={TIPO_COLORS[p.value] ?? "default"} size="small" /> },
-    { field: "timer_horas", headerName: "Timer (h)", width: 100, align: "center", headerAlign: "center", valueGetter: (_v: unknown, row: Etapa) => row.timer_horas ?? "—" },
-    { field: "activo", headerName: "Estado", width: 90, renderCell: (p) => <Chip label={p.value ? "Activo" : "Inactivo"} color={p.value ? "success" : "default"} size="small" /> },
     {
-      field: "actions", headerName: "Acciones", width: 110, sortable: false,
-      renderCell: (p) => (
-        <Box>
-          <IconButton size="small" onClick={() => { setEditingEtapa(p.row); setEtapaForm({ nombre: p.row.nombre, orden: String(p.row.orden), tipo: p.row.tipo, timer_horas: p.row.timer_horas ? String(p.row.timer_horas) : "", color: p.row.color }); setEtapaDialogOpen(true); }}><EditIcon fontSize="small" /></IconButton>
-          <IconButton size="small" onClick={() => handleToggleEtapa(p.row)} color={p.row.activo ? "error" : "success"}>
-            {p.row.activo ? <BlockIcon fontSize="small" /> : <CheckCircleIcon fontSize="small" />}
-          </IconButton>
-        </Box>
+      accessorKey: "tipo", header: "Tipo",
+      cell: ({ getValue }) => <Badge color={TIPO_COLORS[getValue() as string] ?? "slate"}>{getValue() as string}</Badge>,
+    },
+    {
+      accessorKey: "timer_horas", header: "Timer (h)", size: 100,
+      cell: ({ getValue }) => <span className="text-center block text-slate-400">{(getValue() as number | null) ?? "—"}</span>,
+    },
+    {
+      accessorKey: "activo", header: "Estado", size: 90,
+      cell: ({ getValue }) => <Badge color={getValue() ? "green" : "slate"}>{getValue() ? "Activo" : "Inactivo"}</Badge>,
+    },
+    {
+      id: "actions", header: "Acciones", size: 110, enableSorting: false,
+      cell: ({ row }) => (
+        <div className="flex gap-1">
+          <button onClick={() => { setEditingEtapa(row.original); setEtapaForm({ nombre: row.original.nombre, orden: String(row.original.orden), tipo: row.original.tipo, timer_horas: row.original.timer_horas ? String(row.original.timer_horas) : "", color: row.original.color }); setEtapaDialogOpen(true); }} className="p-1.5 text-blue-400 hover:bg-blue-500/10 rounded-lg transition-colors">
+            <Pencil className="w-4 h-4" />
+          </button>
+          <button onClick={() => handleToggleEtapa(row.original)} className={`p-1.5 rounded-lg transition-colors ${row.original.activo ? "text-red-400 hover:bg-red-500/10" : "text-green-400 hover:bg-green-500/10"}`}>
+            {row.original.activo ? <Ban className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
+          </button>
+        </div>
       ),
     },
   ];
 
-  const transColumns: GridColDef[] = [
+  const transColumns: ColumnDef<Transicion, unknown>[] = [
     {
-      field: "etapa_origen", headerName: "Desde", flex: 1,
-      renderCell: (p) => <Chip label={p.row.etapa_origen?.nombre ?? "—"} size="small" sx={{ bgcolor: p.row.etapa_origen?.color, color: "white" }} />,
+      id: "etapa_origen", header: "Desde",
+      cell: ({ row }) => (
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium text-white" style={{ backgroundColor: row.original.etapa_origen?.color }}>
+          {row.original.etapa_origen?.nombre ?? "—"}
+        </span>
+      ),
     },
     {
-      field: "etapa_destino", headerName: "Hacia", flex: 1,
-      renderCell: (p) => p.row.devuelve_al_pool
-        ? <Chip label="Pool" size="small" color="default" />
-        : <Chip label={p.row.etapa_destino?.nombre ?? "—"} size="small" sx={{ bgcolor: p.row.etapa_destino?.color, color: "white" }} />,
+      id: "etapa_destino", header: "Hacia",
+      cell: ({ row }) => row.original.devuelve_al_pool
+        ? <Badge color="slate">Pool</Badge>
+        : row.original.etapa_destino
+          ? <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium text-white" style={{ backgroundColor: row.original.etapa_destino.color }}>{row.original.etapa_destino.nombre}</span>
+          : <span className="text-slate-500">—</span>,
     },
-    { field: "nombre_accion", headerName: "Acción", flex: 1 },
-    { field: "requiere_nota", headerName: "Nota", width: 70, align: "center", headerAlign: "center", renderCell: (p) => p.value ? "✓" : "—" },
-    { field: "requiere_supervisor", headerName: "Sup.", width: 70, align: "center", headerAlign: "center", renderCell: (p) => p.value ? "✓" : "—" },
-    { field: "activo", headerName: "Estado", width: 90, renderCell: (p) => <Chip label={p.value ? "Activo" : "Inactivo"} color={p.value ? "success" : "default"} size="small" /> },
+    { accessorKey: "nombre_accion", header: "Acción", cell: ({ getValue }) => <span className="font-medium text-slate-100">{getValue() as string}</span> },
+    { accessorKey: "requiere_nota", header: "Nota", size: 70, cell: ({ getValue }) => <span className="text-center block">{getValue() ? "✓" : "—"}</span> },
+    { accessorKey: "requiere_supervisor", header: "Sup.", size: 70, cell: ({ getValue }) => <span className="text-center block">{getValue() ? "✓" : "—"}</span> },
+    { accessorKey: "activo", header: "Estado", size: 90, cell: ({ getValue }) => <Badge color={getValue() ? "green" : "slate"}>{getValue() ? "Activo" : "Inactivo"}</Badge> },
     {
-      field: "actions", headerName: "", width: 70, sortable: false,
-      renderCell: (p) => (
-        <IconButton size="small" onClick={() => handleToggleTransicion(p.row)} color={p.row.activo ? "error" : "success"}>
-          {p.row.activo ? <BlockIcon fontSize="small" /> : <CheckCircleIcon fontSize="small" />}
-        </IconButton>
+      id: "actions", header: "", size: 70, enableSorting: false,
+      cell: ({ row }) => (
+        <button onClick={() => handleToggleTransicion(row.original)} className={`p-1.5 rounded-lg transition-colors ${row.original.activo ? "text-red-400 hover:bg-red-500/10" : "text-green-400 hover:bg-green-500/10"}`}>
+          {row.original.activo ? <Ban className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
+        </button>
       ),
     },
   ];
 
   return (
-    <Box>
-      <Typography variant="h4" sx={{ mb: 3 }}>Embudo de Ventas</Typography>
+    <div>
+      <h1 className="font-display text-xl font-bold text-slate-100 mb-6">Embudo de Ventas</h1>
 
       {/* ETAPAS */}
-      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
-        <Typography variant="h6">Etapas</Typography>
-        <Button variant="contained" startIcon={<AddIcon />} size="small" onClick={() => { setEditingEtapa(null); setEtapaForm({ nombre: "", orden: "", tipo: "AVANCE", timer_horas: "", color: "#1565c0" }); setEtapaDialogOpen(true); }}>
+      <div className="flex justify-between items-center mb-3">
+        <h2 className="text-lg font-semibold text-slate-100">Etapas</h2>
+        <Button size="sm" icon={<Plus className="w-4 h-4" />} onClick={() => { setEditingEtapa(null); setEtapaForm({ nombre: "", orden: "", tipo: "AVANCE", timer_horas: "", color: "#1565c0" }); setEtapaDialogOpen(true); }}>
           Nueva Etapa
         </Button>
-      </Box>
-      <Box sx={{ bgcolor: "white", borderRadius: 2, mb: 4 }}>
-        <DataGrid rows={etapas} columns={etapaColumns} loading={loadingE} pageSizeOptions={[10]} initialState={{ pagination: { paginationModel: { pageSize: 10 } } }} disableRowSelectionOnClick autoHeight sx={{ border: "none", "& .MuiDataGrid-columnHeaders": { bgcolor: "#f5f5f5" } }} />
-      </Box>
+      </div>
+      <DataTable data={etapas} columns={etapaColumns} loading={loadingE} pageSize={10} getRowId={(row) => String(row.id)} className="mb-6" />
 
-      <Divider sx={{ mb: 3 }} />
+      <Divider />
 
       {/* TRANSICIONES */}
-      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
-        <Typography variant="h6">Transiciones</Typography>
-        <Button variant="outlined" startIcon={<AddIcon />} size="small" onClick={() => setTransDialogOpen(true)}>
+      <div className="flex justify-between items-center mb-3 mt-3">
+        <h2 className="text-lg font-semibold text-slate-100">Transiciones</h2>
+        <Button variant="secondary" size="sm" icon={<Plus className="w-4 h-4" />} onClick={() => setTransDialogOpen(true)}>
           Nueva Transición
         </Button>
-      </Box>
-      <Box sx={{ bgcolor: "white", borderRadius: 2 }}>
-        <DataGrid rows={transiciones} columns={transColumns} loading={loadingT} pageSizeOptions={[25]} initialState={{ pagination: { paginationModel: { pageSize: 25 } } }} disableRowSelectionOnClick autoHeight sx={{ border: "none", "& .MuiDataGrid-columnHeaders": { bgcolor: "#f5f5f5" } }} />
-      </Box>
+      </div>
+      <DataTable data={transiciones} columns={transColumns} loading={loadingT} pageSize={25} pageSizeOptions={[25, 50]} getRowId={(row) => String(row.id)} />
 
       {/* Dialog Etapa */}
-      <Dialog open={etapaDialogOpen} onClose={() => setEtapaDialogOpen(false)} maxWidth="xs" fullWidth>
-        <DialogTitle>{editingEtapa ? "Editar Etapa" : "Nueva Etapa"}</DialogTitle>
-        <DialogContent>
-          <TextField fullWidth label="Nombre" value={etapaForm.nombre} onChange={(e) => setEtapaForm({ ...etapaForm, nombre: e.target.value })} margin="normal" required />
-          <TextField fullWidth label="Orden" type="number" value={etapaForm.orden} onChange={(e) => setEtapaForm({ ...etapaForm, orden: e.target.value })} margin="normal" required />
-          <FormControl fullWidth margin="normal">
-            <InputLabel>Tipo</InputLabel>
-            <Select value={etapaForm.tipo} label="Tipo" onChange={(e) => setEtapaForm({ ...etapaForm, tipo: e.target.value })}>
-              <MenuItem value="AVANCE">AVANCE</MenuItem>
-              <MenuItem value="SALIDA">SALIDA</MenuItem>
-              <MenuItem value="FINAL">FINAL</MenuItem>
-            </Select>
-          </FormControl>
-          <TextField fullWidth label="Timer (horas, opcional)" type="number" value={etapaForm.timer_horas} onChange={(e) => setEtapaForm({ ...etapaForm, timer_horas: e.target.value })} margin="normal" />
-          <Box sx={{ display: "flex", alignItems: "center", gap: 2, mt: 1 }}>
-            <TextField label="Color (hex)" value={etapaForm.color} onChange={(e) => setEtapaForm({ ...etapaForm, color: e.target.value })} sx={{ flex: 1 }} />
-            <Box sx={{ width: 36, height: 36, borderRadius: 1, bgcolor: etapaForm.color, border: "1px solid #ccc" }} />
-          </Box>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setEtapaDialogOpen(false)} color="error" variant="outlined">Cancelar</Button>
-          <Button variant="contained" onClick={handleSaveEtapa}>{editingEtapa ? "Actualizar" : "Crear"}</Button>
-        </DialogActions>
+      <Dialog open={etapaDialogOpen} onClose={() => setEtapaDialogOpen(false)} maxWidth="sm">
+        <DialogHeader onClose={() => setEtapaDialogOpen(false)}>
+          {editingEtapa ? "Editar Etapa" : "Nueva Etapa"}
+        </DialogHeader>
+        <DialogBody className="space-y-4">
+          <Input label="Nombre" value={etapaForm.nombre} onChange={(e) => setEtapaForm({ ...etapaForm, nombre: e.target.value })} required />
+          <Input label="Orden" type="number" value={etapaForm.orden} onChange={(e) => setEtapaForm({ ...etapaForm, orden: e.target.value })} required />
+          <Select label="Tipo" value={etapaForm.tipo} onChange={(e) => setEtapaForm({ ...etapaForm, tipo: e.target.value })} options={[{ value: "AVANCE", label: "AVANCE" }, { value: "SALIDA", label: "SALIDA" }, { value: "FINAL", label: "FINAL" }]} />
+          <Input label="Timer (horas, opcional)" type="number" value={etapaForm.timer_horas} onChange={(e) => setEtapaForm({ ...etapaForm, timer_horas: e.target.value })} />
+          <div className="flex items-center gap-3">
+            <Input label="Color (hex)" value={etapaForm.color} onChange={(e) => setEtapaForm({ ...etapaForm, color: e.target.value })} />
+            <div className="w-9 h-9 rounded-lg border border-slate-700 shrink-0 mt-6" style={{ backgroundColor: etapaForm.color }} />
+          </div>
+        </DialogBody>
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => setEtapaDialogOpen(false)}>Cancelar</Button>
+          <Button onClick={handleSaveEtapa}>{editingEtapa ? "Actualizar" : "Crear"}</Button>
+        </DialogFooter>
       </Dialog>
 
       {/* Dialog Transicion */}
-      <Dialog open={transDialogOpen} onClose={() => setTransDialogOpen(false)} maxWidth="xs" fullWidth>
-        <DialogTitle>Nueva Transición</DialogTitle>
-        <DialogContent>
-          <FormControl fullWidth margin="normal" required>
-            <InputLabel>Desde etapa</InputLabel>
-            <Select value={transForm.etapa_origen_id} label="Desde etapa" onChange={(e) => setTransForm({ ...transForm, etapa_origen_id: e.target.value })}>
-              {etapas.filter(e => e.activo).map((e) => <MenuItem key={e.id} value={String(e.id)}><Box sx={{ display: "flex", alignItems: "center", gap: 1 }}><Box sx={{ width: 10, height: 10, borderRadius: "50%", bgcolor: e.color }} />{e.nombre}</Box></MenuItem>)}
-            </Select>
-          </FormControl>
-          <FormControlLabel control={<Checkbox checked={transForm.devuelve_al_pool} onChange={(e) => setTransForm({ ...transForm, devuelve_al_pool: e.target.checked, etapa_destino_id: "" })} />} label="Devuelve al pool" sx={{ mt: 1 }} />
+      <Dialog open={transDialogOpen} onClose={() => setTransDialogOpen(false)} maxWidth="sm">
+        <DialogHeader onClose={() => setTransDialogOpen(false)}>Nueva Transición</DialogHeader>
+        <DialogBody className="space-y-4">
+          <Select
+            label="Desde etapa"
+            value={transForm.etapa_origen_id}
+            onChange={(e) => setTransForm({ ...transForm, etapa_origen_id: e.target.value })}
+            options={etapas.filter(e => e.activo).map((e) => ({ value: String(e.id), label: e.nombre }))}
+            placeholder="Seleccionar..."
+          />
+          <Checkbox
+            label="Devuelve al pool"
+            checked={transForm.devuelve_al_pool}
+            onChange={(e) => setTransForm({ ...transForm, devuelve_al_pool: (e.target as HTMLInputElement).checked, etapa_destino_id: "" })}
+          />
           {!transForm.devuelve_al_pool && (
-            <FormControl fullWidth margin="normal">
-              <InputLabel>Hacia etapa</InputLabel>
-              <Select value={transForm.etapa_destino_id} label="Hacia etapa" onChange={(e) => setTransForm({ ...transForm, etapa_destino_id: e.target.value })}>
-                {etapas.filter(e => e.activo).map((e) => <MenuItem key={e.id} value={String(e.id)}><Box sx={{ display: "flex", alignItems: "center", gap: 1 }}><Box sx={{ width: 10, height: 10, borderRadius: "50%", bgcolor: e.color }} />{e.nombre}</Box></MenuItem>)}
-              </Select>
-            </FormControl>
+            <Select
+              label="Hacia etapa"
+              value={transForm.etapa_destino_id}
+              onChange={(e) => setTransForm({ ...transForm, etapa_destino_id: e.target.value })}
+              options={etapas.filter(e => e.activo).map((e) => ({ value: String(e.id), label: e.nombre }))}
+              placeholder="Seleccionar..."
+            />
           )}
-          <TextField fullWidth label="Nombre de acción" value={transForm.nombre_accion} onChange={(e) => setTransForm({ ...transForm, nombre_accion: e.target.value })} margin="normal" required />
-          <FormControlLabel control={<Checkbox checked={transForm.requiere_nota} onChange={(e) => setTransForm({ ...transForm, requiere_nota: e.target.checked })} />} label="Requiere nota" />
-          <FormControlLabel control={<Checkbox checked={transForm.requiere_supervisor} onChange={(e) => setTransForm({ ...transForm, requiere_supervisor: e.target.checked })} />} label="Requiere supervisor" />
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setTransDialogOpen(false)} color="error" variant="outlined">Cancelar</Button>
-          <Button variant="contained" onClick={handleSaveTransicion} disabled={!transForm.etapa_origen_id || !transForm.nombre_accion}>Crear</Button>
-        </DialogActions>
+          <Input label="Nombre de acción" value={transForm.nombre_accion} onChange={(e) => setTransForm({ ...transForm, nombre_accion: e.target.value })} required />
+          <Checkbox label="Requiere nota" checked={transForm.requiere_nota} onChange={(e) => setTransForm({ ...transForm, requiere_nota: (e.target as HTMLInputElement).checked })} />
+          <Checkbox label="Requiere supervisor" checked={transForm.requiere_supervisor} onChange={(e) => setTransForm({ ...transForm, requiere_supervisor: (e.target as HTMLInputElement).checked })} />
+        </DialogBody>
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => setTransDialogOpen(false)}>Cancelar</Button>
+          <Button onClick={handleSaveTransicion} disabled={!transForm.etapa_origen_id || !transForm.nombre_accion}>Crear</Button>
+        </DialogFooter>
       </Dialog>
-
-      <Snackbar open={snackbar.open} autoHideDuration={3000} onClose={() => setSnackbar({ ...snackbar, open: false })}>
-        <Alert severity={snackbar.severity} variant="filled">{snackbar.message}</Alert>
-      </Snackbar>
-    </Box>
+    </div>
   );
 }

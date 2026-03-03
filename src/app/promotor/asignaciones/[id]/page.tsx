@@ -1,22 +1,17 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
-import {
-  Box,
-  Typography,
-  Button,
-  Chip,
-  LinearProgress,
-  Alert,
-  Snackbar,
-  CircularProgress,
-  Card,
-  CardContent,
-  Tooltip,
-} from "@mui/material";
-import { DataGrid, GridColDef, GridRenderEditCellParams } from "@mui/x-data-grid";
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import DownloadIcon from "@mui/icons-material/Download";
+import { ColumnDef } from "@tanstack/react-table";
+import { ArrowLeft, Download } from "lucide-react";
+import { Badge } from "@/components/ui/Badge";
+import { Alert } from "@/components/ui/Alert";
+import { Spinner } from "@/components/ui/Spinner";
+import { LinearProgress } from "@/components/ui/LinearProgress";
+import { Card } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
+import { Tooltip } from "@/components/ui/Tooltip";
+import { DataTable } from "@/components/ui/DataTable";
+import { useToast } from "@/components/ui/Toast";
 
 interface ClienteRow {
   id: number;
@@ -50,11 +45,7 @@ export default function AsignacionDetallePage() {
   const router = useRouter();
   const [data, setData] = useState<AsignacionDetail | null>(null);
   const [loading, setLoading] = useState(true);
-  const [snackbar, setSnackbar] = useState({
-    open: false,
-    message: "",
-    severity: "success" as "success" | "error",
-  });
+  const { toast } = useToast();
 
   const fetchData = useCallback(async () => {
     try {
@@ -63,7 +54,7 @@ export default function AsignacionDetallePage() {
         setData(await res.json());
       }
     } catch {
-      /* error de conexión, data queda null */
+      /* error de conexion, data queda null */
     } finally {
       setLoading(false);
     }
@@ -73,79 +64,23 @@ export default function AsignacionDetallePage() {
     fetchData();
   }, [fetchData]);
 
-  const handleProcessRowUpdate = async (
-    newRow: ClienteRow,
-    oldRow: ClienteRow
-  ) => {
-    // Determinar que campo cambio
-    const changes: Record<string, string> = {};
-
-    if (newRow.tel_1 !== oldRow.tel_1) changes.tel_1 = newRow.tel_1 || "";
-    if (newRow.num_empleado !== oldRow.num_empleado)
-      changes.num_empleado = newRow.num_empleado || "";
-    if (newRow.curp !== oldRow.curp) changes.curp = newRow.curp || "";
-    if (newRow.rfc !== oldRow.rfc) changes.rfc = newRow.rfc || "";
-
-    if (Object.keys(changes).length === 0) return oldRow;
-
-    const res = await fetch(`/api/clientes/${newRow.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(changes),
-    });
-
-    if (res.ok) {
-      const updated = await res.json();
-      setSnackbar({ open: true, message: "Guardado", severity: "success" });
-
-      // Actualizar conteo de tel_1
-      setData((prev) => {
-        if (!prev) return prev;
-        const newRegistros = prev.registros.map((r) =>
-          r.id === updated.id ? updated : r
-        );
-        const registrosConTel1 = newRegistros.filter(
-          (r) => r.tel_1 && r.tel_1.trim() !== ""
-        ).length;
-        return {
-          ...prev,
-          registros: newRegistros,
-          registros_con_tel1: registrosConTel1,
-          puede_descargar:
-            registrosConTel1 === prev.cantidad_registros &&
-            prev.cantidad_registros > 0,
-        };
-      });
-
-      return updated;
-    } else {
-      const err = await res.json();
-      setSnackbar({
-        open: true,
-        message: err.error || "Error al guardar",
-        severity: "error",
-      });
-      return oldRow;
-    }
-  };
-
   const handleDownload = () => {
     window.open(`/api/asignaciones/${params.id}/excel`, "_blank");
   };
 
   if (loading) {
     return (
-      <Box sx={{ display: "flex", justifyContent: "center", mt: 8 }}>
-        <CircularProgress />
-      </Box>
+      <div className="flex justify-center mt-16">
+        <Spinner />
+      </div>
     );
   }
 
   if (!data) {
     return (
-      <Box sx={{ mt: 4 }}>
-        <Alert severity="error">Asignacion no encontrada</Alert>
-      </Box>
+      <div className="mt-8">
+        <Alert variant="error">Asignacion no encontrada</Alert>
+      </div>
     );
   }
 
@@ -154,189 +89,116 @@ export default function AsignacionDetallePage() {
       ? (data.registros_con_tel1 / data.cantidad_registros) * 100
       : 0;
 
-  const columns: GridColDef[] = [
-    { field: "nombres", headerName: "Nombre", flex: 1, minWidth: 200 },
+  const columns: ColumnDef<ClienteRow, unknown>[] = [
+    { accessorKey: "nombres", header: "Nombre", minSize: 200 },
     {
-      field: "tel_1",
-      headerName: "Tel 1",
-      width: 140,
-      editable: true,
-      cellClassName: (params) =>
-        !params.value || params.value.trim() === "" ? "cell-empty" : "",
-    },
-    { field: "tel_2", headerName: "Tel 2", width: 120 },
-    { field: "tel_3", headerName: "Tel 3", width: 120 },
-    { field: "tel_4", headerName: "Tel 4", width: 120 },
-    { field: "tel_5", headerName: "Tel 5", width: 120 },
-    {
-      field: "curp",
-      headerName: "CURP",
-      width: 180,
-      editable: true,
-      renderEditCell: (params: GridRenderEditCellParams) => {
-        // Solo permitir edicion si esta vacio
-        const originalRow = data.registros.find((r) => r.id === params.id);
-        if (originalRow?.curp && originalRow.curp.trim() !== "") {
-          return <Box sx={{ px: 1, color: "text.secondary" }}>{params.value}</Box>;
-        }
-        return undefined; // usar editor por defecto
+      accessorKey: "tel_1",
+      header: "Tel 1",
+      size: 140,
+      cell: ({ getValue }) => {
+        const val = getValue() as string | null;
+        return (
+          <span className={!val || val.trim() === "" ? "text-amber-500/70 italic" : "text-slate-200"}>
+            {val || "Sin tel"}
+          </span>
+        );
       },
     },
-    {
-      field: "rfc",
-      headerName: "RFC",
-      width: 160,
-      editable: true,
-      renderEditCell: (params: GridRenderEditCellParams) => {
-        const originalRow = data.registros.find((r) => r.id === params.id);
-        if (originalRow?.rfc && originalRow.rfc.trim() !== "") {
-          return <Box sx={{ px: 1, color: "text.secondary" }}>{params.value}</Box>;
-        }
-        return undefined;
-      },
-    },
-    { field: "num_empleado", headerName: "No. Empleado", width: 130, editable: true },
-    { field: "estado", headerName: "Estado", width: 140 },
-    { field: "municipio", headerName: "Municipio", width: 140 },
-    { field: "convenio", headerName: "Convenio", width: 200 },
-    { field: "oferta", headerName: "Oferta", width: 120 },
+    { accessorKey: "tel_2", header: "Tel 2", size: 120 },
+    { accessorKey: "tel_3", header: "Tel 3", size: 120 },
+    { accessorKey: "tel_4", header: "Tel 4", size: 120 },
+    { accessorKey: "tel_5", header: "Tel 5", size: 120 },
+    { accessorKey: "curp", header: "CURP", size: 180 },
+    { accessorKey: "rfc", header: "RFC", size: 160 },
+    { accessorKey: "num_empleado", header: "No. Empleado", size: 130 },
+    { accessorKey: "estado", header: "Estado", size: 140 },
+    { accessorKey: "municipio", header: "Municipio", size: 140 },
+    { accessorKey: "convenio", header: "Convenio", size: 200 },
+    { accessorKey: "oferta", header: "Oferta", size: 120 },
   ];
 
   return (
-    <Box>
+    <div>
       <Button
-        startIcon={<ArrowBackIcon />}
+        variant="ghost"
+        size="sm"
+        icon={<ArrowLeft className="w-4 h-4" />}
         onClick={() => router.push("/promotor/asignaciones")}
-        sx={{ mb: 2 }}
+        className="mb-4"
       >
         Volver a Asignaciones
       </Button>
 
-      <Card sx={{ mb: 3 }}>
-        <CardContent>
-          <Box
-            sx={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              flexWrap: "wrap",
-              gap: 2,
-            }}
-          >
-            <Box>
-              <Typography variant="h5">
-                Lote #{data.id}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Fecha: {new Date(data.fecha_asignacion).toLocaleDateString("es-MX")}
-                {" | "}
-                {data.cantidad_registros} registros
-              </Typography>
-            </Box>
-            <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-              <Chip
-                label={data.estado}
-                color={
-                  data.estado === "activa"
-                    ? "primary"
-                    : data.estado === "completada"
-                    ? "success"
-                    : "error"
-                }
-                variant="outlined"
-              />
-              <Tooltip
-                title={
-                  data.puede_descargar
-                    ? "Descargar Excel con nombres y telefonos"
-                    : `Faltan ${data.cantidad_registros - data.registros_con_tel1} telefonos por completar`
-                }
+      <Card className="mb-6">
+        <div className="flex justify-between items-center flex-wrap gap-4">
+          <div>
+            <h1 className="text-xl font-semibold text-slate-100">
+              Lote #{data.id}
+            </h1>
+            <p className="text-sm text-slate-500">
+              Fecha: {new Date(data.fecha_asignacion).toLocaleDateString("es-MX")}
+              {" | "}
+              {data.cantidad_registros} registros
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <Badge
+              color={
+                data.estado === "activa"
+                  ? "blue"
+                  : data.estado === "completada"
+                    ? "green"
+                    : "red"
+              }
+            >
+              {data.estado}
+            </Badge>
+            <Tooltip
+              content={
+                data.puede_descargar
+                  ? "Descargar Excel con nombres y telefonos"
+                  : `Faltan ${data.cantidad_registros - data.registros_con_tel1} telefonos por completar`
+              }
+            >
+              <Button
+                variant="primary"
+                icon={<Download className="w-4 h-4" />}
+                disabled={!data.puede_descargar}
+                onClick={handleDownload}
+                className={data.puede_descargar ? "!bg-green-600 hover:!bg-green-500 !shadow-green-600/20" : ""}
               >
-                <span>
-                  <Button
-                    variant="contained"
-                    color="success"
-                    startIcon={<DownloadIcon />}
-                    disabled={!data.puede_descargar}
-                    onClick={handleDownload}
-                  >
-                    Descargar Excel
-                  </Button>
-                </span>
-              </Tooltip>
-            </Box>
-          </Box>
+                Descargar Excel
+              </Button>
+            </Tooltip>
+          </div>
+        </div>
 
-          <Box sx={{ mt: 2 }}>
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.5 }}>
-              <Typography variant="body2" color="text.secondary">
-                Progreso de telefonos:
-              </Typography>
-              <Typography variant="body2" fontWeight={600}>
-                {data.registros_con_tel1} / {data.cantidad_registros}
-              </Typography>
-            </Box>
-            <LinearProgress
-              variant="determinate"
-              value={pct}
-              sx={{ height: 10, borderRadius: 5 }}
-              color={pct === 100 ? "success" : "primary"}
-            />
-          </Box>
-        </CardContent>
+        <div className="mt-4">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-sm text-slate-500">
+              Progreso de telefonos:
+            </span>
+            <span className="text-sm font-semibold text-slate-200">
+              {data.registros_con_tel1} / {data.cantidad_registros}
+            </span>
+          </div>
+          <LinearProgress
+            value={pct}
+            color={pct === 100 ? "green" : "blue"}
+          />
+        </div>
       </Card>
 
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-        Haz doble clic en las celdas de Tel 1, CURP (si vacio), RFC (si vacio) o No. Empleado para editar
-      </Typography>
+      <p className="text-sm text-slate-500 mb-3">
+        Esta tabla es de solo lectura. Para editar telefonos, usa la vista de oportunidades.
+      </p>
 
-      <Box
-        sx={{
-          bgcolor: "white",
-          borderRadius: 2,
-          "& .cell-empty": {
-            bgcolor: "#fff3e0",
-          },
-        }}
-      >
-        <DataGrid
-          rows={data.registros}
-          columns={columns}
-          processRowUpdate={handleProcessRowUpdate}
-          onProcessRowUpdateError={(error) => {
-            setSnackbar({
-              open: true,
-              message: "Error al guardar: " + error.message,
-              severity: "error",
-            });
-          }}
-          pageSizeOptions={[25, 50, 100]}
-          initialState={{
-            pagination: { paginationModel: { pageSize: 50 } },
-          }}
-          disableRowSelectionOnClick
-          autoHeight
-          sx={{
-            border: "none",
-            "& .MuiDataGrid-columnHeaders": { bgcolor: "#f5f5f5" },
-            "& .MuiDataGrid-cell--editable": {
-              cursor: "pointer",
-              "&:hover": { bgcolor: "#e3f2fd" },
-            },
-          }}
-        />
-      </Box>
-
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={2000}
-        onClose={() => setSnackbar({ ...snackbar, open: false })}
-        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-      >
-        <Alert severity={snackbar.severity} variant="filled">
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
-    </Box>
+      <DataTable
+        data={data.registros}
+        columns={columns}
+        pageSize={50}
+        pageSizeOptions={[25, 50, 100]}
+      />
+    </div>
   );
 }

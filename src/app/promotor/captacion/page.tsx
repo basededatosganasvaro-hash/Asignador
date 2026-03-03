@@ -1,17 +1,20 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  Box, Typography, Paper, Button, TextField, MenuItem, Select,
-  InputLabel, FormControl, Alert, CircularProgress, Chip, Divider,
-} from "@mui/material";
-import PersonAddIcon from "@mui/icons-material/PersonAdd";
+import { UserPlus } from "lucide-react";
+import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
+import { Alert } from "@/components/ui/Alert";
+import { Spinner } from "@/components/ui/Spinner";
+import { Badge } from "@/components/ui/Badge";
+import { Divider } from "@/components/ui/Divider";
+import { Button } from "@/components/ui/Button";
 
 const ORIGENES = [
   { value: "CAMBACEO", label: "Cambaceo" },
   { value: "REFERIDO", label: "Referido" },
   { value: "REDES_SOCIALES", label: "Redes sociales" },
-  { value: "MMP_PROSPECCION", label: "MMP Prospección" },
+  { value: "MMP_PROSPECCION", label: "MMP Prospeccion" },
   { value: "CCC", label: "CCC" },
   { value: "EXCEL", label: "Excel" },
   { value: "OTRO", label: "Otro" },
@@ -21,8 +24,8 @@ const CAMPO_LABELS: Record<string, string> = {
   nss: "NSS",
   curp: "CURP",
   rfc: "RFC",
-  num_empleado: "Número de empleado",
-  tel_2: "Teléfono 2",
+  num_empleado: "Numero de empleado",
+  tel_2: "Telefono 2",
   estado: "Estado",
   municipio: "Municipio",
   direccion_email: "Email",
@@ -118,7 +121,7 @@ export default function CaptacionPage() {
       const { id } = await res.json();
       router.push(`/promotor/oportunidades/${id}`);
     } catch {
-      setError("Error de conexión");
+      setError("Error de conexion");
     } finally {
       setSaving(false);
     }
@@ -129,101 +132,81 @@ export default function CaptacionPage() {
   const camposExtra = reglas.filter((r) => !camposBase.includes(r.campo));
 
   return (
-    <Box maxWidth={600} mx="auto">
-      <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 3 }}>
-        <PersonAddIcon color="primary" sx={{ fontSize: 32 }} />
-        <Typography variant="h5" fontWeight={700}>Captar cliente</Typography>
-      </Box>
+    <div className="max-w-[600px] mx-auto">
+      <div className="flex items-center gap-3 mb-6">
+        <UserPlus className="w-7 h-7 text-amber-400" />
+        <h1 className="text-xl font-bold text-slate-100">Captar cliente</h1>
+      </div>
 
-      <Paper sx={{ p: 3 }}>
+      <div className="bg-surface rounded-xl border border-slate-800/60 p-6">
         <form onSubmit={handleSubmit}>
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
+          <div className="flex flex-col gap-5">
 
             {/* Origen y convenio */}
-            <FormControl fullWidth size="small" required>
-              <InputLabel>Origen de captación</InputLabel>
-              <Select
-                value={form.origen_captacion}
-                label="Origen de captación"
-                onChange={(e) => handleField("origen_captacion", e.target.value)}
-              >
-                {ORIGENES.map((o) => (
-                  <MenuItem key={o.value} value={o.value}>{o.label}</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+            <Select
+              label="Origen de captacion *"
+              value={form.origen_captacion}
+              onChange={(e) => handleField("origen_captacion", e.target.value)}
+              options={ORIGENES}
+              placeholder="Seleccionar origen"
+            />
 
-            <FormControl fullWidth size="small" required>
-              <InputLabel>Convenio</InputLabel>
-              <Select
-                value={form.convenio}
-                label="Convenio"
-                onChange={(e) => handleConvenioChange(e.target.value)}
-              >
-                {convenios.map((c) => (
-                  <MenuItem key={c.id} value={c.nombre}>{c.nombre}</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+            <Select
+              label="Convenio *"
+              value={form.convenio}
+              onChange={(e) => handleConvenioChange(e.target.value)}
+              options={convenios.map((c) => ({ value: c.nombre, label: c.nombre }))}
+              placeholder="Seleccionar convenio"
+            />
 
             <Divider />
 
             {/* Datos base del prospecto */}
-            <Typography variant="subtitle2" color="text.secondary">Datos del prospecto</Typography>
+            <p className="text-sm font-medium text-slate-500">Datos del prospecto</p>
 
-            <TextField
+            <Input
               label="Nombres *"
-              size="small"
-              fullWidth
               value={form.nombres}
               onChange={(e) => handleField("nombres", e.target.value)}
               required
             />
 
-            <Box sx={{ display: "flex", gap: 2 }}>
-              <TextField
+            <div className="flex gap-3">
+              <Input
                 label="Apellido paterno"
-                size="small"
-                fullWidth
                 value={form.a_paterno}
                 onChange={(e) => handleField("a_paterno", e.target.value)}
               />
-              <TextField
+              <Input
                 label="Apellido materno"
-                size="small"
-                fullWidth
                 value={form.a_materno}
                 onChange={(e) => handleField("a_materno", e.target.value)}
               />
-            </Box>
+            </div>
 
-            <TextField
-              label="Teléfono *"
-              size="small"
-              fullWidth
+            <Input
+              label="Telefono *"
               value={form.tel_1}
               onChange={(e) => handleField("tel_1", e.target.value)}
               required
             />
 
             {/* Campos extra por convenio */}
-            {loadingReglas && <CircularProgress size={20} />}
+            {loadingReglas && <Spinner size="sm" />}
 
             {camposExtra.length > 0 && (
               <>
                 <Divider />
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                  <Typography variant="subtitle2" color="text.secondary">
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-medium text-slate-500">
                     Campos del convenio
-                  </Typography>
-                  <Chip label={form.convenio} size="small" variant="outlined" />
-                </Box>
+                  </p>
+                  <Badge color="slate">{form.convenio}</Badge>
+                </div>
                 {camposExtra.map((regla) => (
-                  <TextField
+                  <Input
                     key={regla.campo}
                     label={`${CAMPO_LABELS[regla.campo] ?? regla.campo}${regla.obligatorio ? " *" : ""}`}
-                    size="small"
-                    fullWidth
                     required={regla.obligatorio}
                     value={form[regla.campo] ?? ""}
                     onChange={(e) => handleField(regla.campo, e.target.value)}
@@ -232,20 +215,22 @@ export default function CaptacionPage() {
               </>
             )}
 
-            {error && <Alert severity="error">{error}</Alert>}
+            {error && <Alert variant="error">{error}</Alert>}
 
             <Button
               type="submit"
-              variant="contained"
-              size="large"
+              variant="primary"
+              size="lg"
+              fullWidth
               disabled={saving}
-              startIcon={saving ? <CircularProgress size={18} /> : <PersonAddIcon />}
+              loading={saving}
+              icon={!saving ? <UserPlus className="w-5 h-5" /> : undefined}
             >
               {saving ? "Guardando..." : "Captar cliente"}
             </Button>
-          </Box>
+          </div>
         </form>
-      </Paper>
-    </Box>
+      </div>
+    </div>
   );
 }

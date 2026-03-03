@@ -1,6 +1,5 @@
 "use client";
 import { useState } from "react";
-import { Box, Toolbar } from "@mui/material";
 import Sidebar, { DRAWER_COLLAPSED } from "./Sidebar";
 import Header from "./Header";
 
@@ -9,21 +8,14 @@ export default function LayoutShell({ rol, children }: { rol: string; children: 
   const toggle = () => setOpen((p) => !p);
 
   return (
-    <Box sx={{ display: "flex" }}>
+    <div className="flex min-h-screen bg-base">
       <Sidebar rol={rol} open={open} onToggle={toggle} />
-      <Header onToggle={toggle} />
-      <Box
-        component="main"
-        sx={{
-          flexGrow: 1,
-          p: 2,
-          bgcolor: "background.default",
-          minHeight: "100vh",
-        }}
-      >
-        <Toolbar />
-        {children}
-      </Box>
-    </Box>
+      <div className="flex-1 flex flex-col" style={{ marginLeft: DRAWER_COLLAPSED }}>
+        <Header />
+        <main className="flex-1 p-6">
+          {children}
+        </main>
+      </div>
+    </div>
   );
 }

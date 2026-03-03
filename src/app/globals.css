@@ -1,11 +1,47 @@
-* {
-  box-sizing: border-box;
-  padding: 0;
-  margin: 0;
-}
+@import "./tailwind.css";
 
 body {
-  font-family: "Inter", "Roboto", "Helvetica", "Arial", sans-serif;
+  font-family: var(--font-body);
+  background: #0B0F1A;
+  background-image: radial-gradient(
+    ellipse at 50% 0%,
+    rgba(245, 158, 11, 0.03) 0%,
+    transparent 60%
+  );
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  color: #cbd5e1;
+}
+
+/* Scrollbars */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(100, 116, 139, 0.3); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(100, 116, 139, 0.5); }
+
+/* Text selection */
+::selection { background: rgba(245, 158, 11, 0.25); color: #f1f5f9; }
+
+/* Card glow effect */
+.card-glow {
+  position: relative;
+  transition: box-shadow 0.3s ease;
+}
+.card-glow:hover {
+  box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.1), 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+/* Thin scrollbar for tables */
+.scrollbar-thin::-webkit-scrollbar { height: 8px; }
+.scrollbar-thin::-webkit-scrollbar-track { background: #1e293b; border-radius: 4px; }
+.scrollbar-thin::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+.scrollbar-thin::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+/* Sidebar slide-in animation */
+@keyframes slideInLeft {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+.animate-slide-in-left {
+  animation: slideInLeft 0.3s ease-out;
 }

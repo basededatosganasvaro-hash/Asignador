@@ -1,16 +1,19 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
-import {
-  Box, Typography, Tabs, Tab, Chip, Alert, Snackbar, IconButton,
-  Button, Drawer, Stack, Card, CardContent, TextField, FormControl,
-  InputLabel, Select, MenuItem, CircularProgress, Dialog, DialogTitle,
-  DialogContent, DialogActions, DialogContentText,
-} from "@mui/material";
-import { DataGrid, GridColDef } from "@mui/x-data-grid";
-import VisibilityIcon from "@mui/icons-material/Visibility";
-import SwapHorizIcon from "@mui/icons-material/SwapHoriz";
-import PersonOffIcon from "@mui/icons-material/PersonOff";
-import AccessTimeIcon from "@mui/icons-material/AccessTime";
+import { DataTable } from "@/components/ui/DataTable";
+import { Button } from "@/components/ui/Button";
+import { Badge } from "@/components/ui/Badge";
+import { Dialog, DialogHeader, DialogBody, DialogFooter } from "@/components/ui/Dialog";
+import { Drawer } from "@/components/ui/Drawer";
+import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
+import { Tabs } from "@/components/ui/Tabs";
+import { Card } from "@/components/ui/Card";
+import { Alert } from "@/components/ui/Alert";
+import { Spinner } from "@/components/ui/Spinner";
+import { useToast } from "@/components/ui/Toast";
+import { ColumnDef } from "@tanstack/react-table";
+import { Eye, ArrowLeftRight, UserX, Clock } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -53,6 +56,25 @@ interface Promotor {
 
 interface OportunidadEquipo extends OportunidadBandeja {}
 
+// ─── Etapa color mapping ─────────────────────────────────────────────────────
+
+const etapaColorMap: Record<string, "amber" | "green" | "red" | "blue" | "purple" | "yellow" | "teal" | "orange" | "slate" | "emerald"> = {
+  "#ff9800": "orange",
+  "#f44336": "red",
+  "#4caf50": "green",
+  "#2196f3": "blue",
+  "#9c27b0": "purple",
+  "#ffeb3b": "yellow",
+  "#009688": "teal",
+  "#ff5722": "orange",
+  "#607080": "slate",
+  "#4caf4f": "emerald",
+};
+
+function getEtapaBadgeColor(hex: string): "amber" | "green" | "red" | "blue" | "purple" | "yellow" | "teal" | "orange" | "slate" | "emerald" {
+  return etapaColorMap[hex?.toLowerCase()] ?? "slate";
+}
+
 // ─── Timer label ──────────────────────────────────────────────────────────────
 
 function timerLabel(timer_vence: string | null) {
@@ -67,34 +89,34 @@ function timerLabel(timer_vence: string | null) {
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function BandejaPage() {
-  const [tab, setTab] = useState(0);
-  const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" as "success" | "error" });
-  const showSnack = (message: string, severity: "success" | "error" = "success") =>
-    setSnackbar({ open: true, message, severity });
+  const [tab, setTab] = useState("salida");
+  const { toast } = useToast();
 
   return (
-    <Box>
-      <Typography variant="h4" sx={{ mb: 3 }}>Bandeja del Supervisor</Typography>
-      <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 3, borderBottom: 1, borderColor: "divider" }}>
-        <Tab label="En Salida" />
-        <Tab label="Mi Equipo" />
-        <Tab label="Promotores" />
-      </Tabs>
+    <div>
+      <h1 className="font-display text-xl font-bold text-slate-100 mb-6">Bandeja del Supervisor</h1>
 
-      {tab === 0 && <BandejaTab showSnack={showSnack} />}
-      {tab === 1 && <EquipoTab showSnack={showSnack} />}
-      {tab === 2 && <PromotoresTab showSnack={showSnack} />}
+      <Tabs
+        tabs={[
+          { id: "salida", label: "En Salida" },
+          { id: "equipo", label: "Mi Equipo" },
+          { id: "promotores", label: "Promotores" },
+        ]}
+        activeTab={tab}
+        onChange={setTab}
+        className="mb-6"
+      />
 
-      <Snackbar open={snackbar.open} autoHideDuration={3000} onClose={() => setSnackbar({ ...snackbar, open: false })}>
-        <Alert severity={snackbar.severity} variant="filled">{snackbar.message}</Alert>
-      </Snackbar>
-    </Box>
+      {tab === "salida" && <BandejaTab toast={toast} />}
+      {tab === "equipo" && <EquipoTab toast={toast} />}
+      {tab === "promotores" && <PromotoresTab toast={toast} />}
+    </div>
   );
 }
 
 // ─── Tab 1: Bandeja SALIDA ────────────────────────────────────────────────────
 
-function BandejaTab({ showSnack }: { showSnack: (m: string, s?: "success" | "error") => void }) {
+function BandejaTab({ toast }: { toast: (m: string, t?: "success" | "error" | "info" | "warning") => void }) {
   const [rows, setRows] = useState<OportunidadBandeja[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<OportunidadDetalle | null>(null);
@@ -109,10 +131,10 @@ function BandejaTab({ showSnack }: { showSnack: (m: string, s?: "success" | "err
       if (!res.ok) throw new Error("Error al cargar bandeja");
       setRows(await res.json());
     } catch (err) {
-      showSnack(err instanceof Error ? err.message : "Error de conexión", "error");
+      toast(err instanceof Error ? err.message : "Error de conexion", "error");
     }
     setLoading(false);
-  }, [showSnack]);
+  }, [toast]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -126,13 +148,13 @@ function BandejaTab({ showSnack }: { showSnack: (m: string, s?: "success" | "err
         setDrawerOpen(true);
       }
     } catch {
-      showSnack("Error al cargar oportunidad", "error");
+      toast("Error al cargar oportunidad", "error");
     }
   };
 
   const handleTransicion = async (transicionId: number, requiereNota: boolean) => {
     if (requiereNota && !nota.trim()) {
-      showSnack("Esta transición requiere una nota", "error");
+      toast("Esta transicion requiere una nota", "error");
       return;
     }
     setSaving(true);
@@ -144,83 +166,176 @@ function BandejaTab({ showSnack }: { showSnack: (m: string, s?: "success" | "err
     setSaving(false);
     if (res.ok) {
       setDrawerOpen(false);
-      showSnack("Acción ejecutada");
+      toast("Accion ejecutada", "success");
       fetchData();
     } else {
       const err = await res.json();
-      showSnack(err.error || "Error", "error");
+      toast(err.error || "Error", "error");
     }
   };
 
-  const columns: GridColDef[] = [
-    { field: "nombres", headerName: "Cliente", flex: 1.2 },
-    { field: "convenio", headerName: "Convenio", flex: 1 },
+  const columns: ColumnDef<OportunidadBandeja>[] = [
     {
-      field: "etapa", headerName: "Etapa", width: 150,
-      renderCell: (p) => p.row.etapa
-        ? <Chip label={p.row.etapa.nombre} size="small" sx={{ bgcolor: p.row.etapa.color, color: "white" }} />
-        : "—",
+      accessorKey: "nombres",
+      header: "Cliente",
+      size: 200,
+      cell: ({ row }) => <span className="text-sm text-slate-200">{row.original.nombres}</span>,
     },
-    { field: "promotor", headerName: "Promotor", width: 150, valueGetter: (_v: unknown, row: OportunidadBandeja) => row.promotor?.nombre ?? "—" },
-    { field: "timer_vence", headerName: "Timer", width: 110, renderCell: (p) => <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, color: "text.secondary" }}><AccessTimeIcon sx={{ fontSize: 14 }} /><Typography variant="body2">{timerLabel(p.row.timer_vence)}</Typography></Box> },
     {
-      field: "actions", headerName: "Acciones", width: 90, sortable: false,
-      renderCell: (p) => <IconButton size="small" onClick={() => handleOpenDrawer(p.row.id)} title="Ver y actuar"><VisibilityIcon fontSize="small" /></IconButton>,
+      accessorKey: "convenio",
+      header: "Convenio",
+      size: 160,
+      cell: ({ row }) => <span className="text-sm text-slate-300">{row.original.convenio}</span>,
+    },
+    {
+      accessorKey: "etapa",
+      header: "Etapa",
+      size: 150,
+      cell: ({ row }) =>
+        row.original.etapa ? (
+          <Badge color={getEtapaBadgeColor(row.original.etapa.color)}>{row.original.etapa.nombre}</Badge>
+        ) : (
+          <span className="text-sm text-slate-500">&mdash;</span>
+        ),
+    },
+    {
+      accessorKey: "promotor",
+      header: "Promotor",
+      size: 150,
+      cell: ({ row }) => (
+        <span className="text-sm text-slate-300">{row.original.promotor?.nombre ?? "\u2014"}</span>
+      ),
+    },
+    {
+      accessorKey: "timer_vence",
+      header: "Timer",
+      size: 110,
+      cell: ({ row }) => {
+        const label = timerLabel(row.original.timer_vence);
+        const isExpired = label === "Vencido";
+        return (
+          <div className="flex items-center gap-1.5">
+            <Clock className={`w-3.5 h-3.5 ${isExpired ? "text-red-400" : "text-slate-500"}`} />
+            <span className={`text-sm ${isExpired ? "text-red-400 font-medium" : "text-slate-400"}`}>
+              {label}
+            </span>
+          </div>
+        );
+      },
+    },
+    {
+      id: "actions",
+      header: "Acciones",
+      size: 90,
+      enableSorting: false,
+      cell: ({ row }) => (
+        <Button
+          variant="ghost"
+          size="sm"
+          icon={<Eye className="w-4 h-4" />}
+          onClick={() => handleOpenDrawer(row.original.id)}
+          title="Ver y actuar"
+        />
+      ),
     },
   ];
 
   return (
     <>
-      {rows.length === 0 && !loading && <Alert severity="info">No hay oportunidades en etapas de salida.</Alert>}
-      <Box sx={{ bgcolor: "white", borderRadius: 2 }}>
-        <DataGrid rows={rows} columns={columns} loading={loading} pageSizeOptions={[25]} initialState={{ pagination: { paginationModel: { pageSize: 25 } } }} disableRowSelectionOnClick autoHeight sx={{ border: "none", "& .MuiDataGrid-columnHeaders": { bgcolor: "#f5f5f5" } }} />
-      </Box>
+      {rows.length === 0 && !loading && (
+        <Alert variant="info" className="mb-4">No hay oportunidades en etapas de salida.</Alert>
+      )}
 
-      <Drawer anchor="right" open={drawerOpen} onClose={() => setDrawerOpen(false)} PaperProps={{ sx: { width: 420, p: 3 } }}>
+      <DataTable
+        data={rows}
+        columns={columns}
+        loading={loading}
+        pageSize={25}
+        pageSizeOptions={[25]}
+        emptyMessage="No hay oportunidades en etapas de salida"
+      />
+
+      <Drawer open={drawerOpen} onClose={() => setDrawerOpen(false)} title={selected ? `Oportunidad #${selected.id}` : ""} width="w-[420px]">
         {selected && (
-          <Stack spacing={2}>
-            <Typography variant="h6">Oportunidad #{selected.id}</Typography>
-            {selected.etapa && <Chip label={selected.etapa.nombre} sx={{ bgcolor: selected.etapa.color, color: "white", fontWeight: 700, alignSelf: "flex-start" }} />}
-            <Card variant="outlined">
-              <CardContent>
-                <Typography variant="subtitle2" color="text.secondary">Datos del cliente</Typography>
-                <Typography>{(selected.cliente as { nombres?: string }).nombres ?? "—"}</Typography>
-                <Typography variant="body2" color="text.secondary">{(selected.cliente as { convenio?: string }).convenio ?? "—"}</Typography>
-              </CardContent>
+          <div className="flex flex-col gap-4">
+            {selected.etapa && (
+              <Badge color={getEtapaBadgeColor(selected.etapa.color)} className="self-start">
+                {selected.etapa.nombre}
+              </Badge>
+            )}
+
+            <Card>
+              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Datos del cliente</span>
+              <p className="text-sm text-slate-200 mt-1">
+                {(selected.cliente as { nombres?: string }).nombres ?? "\u2014"}
+              </p>
+              <span className="text-sm text-slate-400">
+                {(selected.cliente as { convenio?: string }).convenio ?? "\u2014"}
+              </span>
             </Card>
 
-            <FormControl fullWidth size="small">
-              <InputLabel>Canal</InputLabel>
-              <Select value={canal} label="Canal" onChange={(e) => setCanal(e.target.value)}>
-                <MenuItem value="">Sin canal</MenuItem>
-                <MenuItem value="LLAMADA">📞 Llamada</MenuItem>
-                <MenuItem value="WHATSAPP">💬 WhatsApp</MenuItem>
-                <MenuItem value="SMS">📱 SMS</MenuItem>
-              </Select>
-            </FormControl>
+            <Select
+              label="Canal"
+              value={canal}
+              onChange={(e) => setCanal(e.target.value)}
+              options={[
+                { value: "", label: "Sin canal" },
+                { value: "LLAMADA", label: "Llamada" },
+                { value: "WHATSAPP", label: "WhatsApp" },
+                { value: "SMS", label: "SMS" },
+              ]}
+            />
 
-            <TextField label="Nota" multiline rows={3} value={nota} onChange={(e) => setNota(e.target.value)} size="small" />
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-1">Nota</label>
+              <textarea
+                value={nota}
+                onChange={(e) => setNota(e.target.value)}
+                rows={3}
+                className="w-full px-3 py-2 bg-slate-800/50 border border-slate-700 text-slate-200 placeholder-slate-600 rounded-lg text-sm focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500/60 outline-none transition-all resize-none"
+                placeholder="Escribe una nota..."
+              />
+            </div>
 
-            <Typography variant="subtitle2">Acciones disponibles</Typography>
-            {selected.transiciones.length === 0 && <Alert severity="info">Sin acciones disponibles.</Alert>}
-            <Stack spacing={1}>
-              {selected.transiciones.map((t) => (
-                <Button
-                  key={t.id}
-                  variant="outlined"
-                  fullWidth
-                  disabled={saving}
-                  onClick={() => handleTransicion(t.id, t.requiere_nota)}
-                  color={t.devuelve_al_pool ? "error" : t.etapa_destino?.tipo === "AVANCE" ? "success" : "primary"}
-                  sx={{ justifyContent: "flex-start", textTransform: "none" }}
-                >
-                  {t.nombre_accion}
-                  {t.etapa_destino && <Chip label={t.etapa_destino.nombre} size="small" sx={{ ml: "auto", bgcolor: t.etapa_destino.color, color: "white" }} />}
-                  {t.devuelve_al_pool && <Chip label="Pool" size="small" sx={{ ml: "auto" }} />}
-                </Button>
-              ))}
-            </Stack>
-          </Stack>
+            <h2 className="text-sm font-semibold text-slate-300">Acciones disponibles</h2>
+
+            {selected.transiciones.length === 0 && (
+              <Alert variant="info">Sin acciones disponibles.</Alert>
+            )}
+
+            <div className="flex flex-col gap-2">
+              {selected.transiciones.map((t) => {
+                const variant = t.devuelve_al_pool ? "danger" : "outline";
+                const outlineColor = !t.devuelve_al_pool
+                  ? t.etapa_destino?.tipo === "AVANCE"
+                    ? "green"
+                    : undefined
+                  : undefined;
+
+                return (
+                  <Button
+                    key={t.id}
+                    variant={variant}
+                    fullWidth
+                    disabled={saving}
+                    onClick={() => handleTransicion(t.id, t.requiere_nota)}
+                    outlineColor={outlineColor}
+                    className="justify-between"
+                  >
+                    <span>{t.nombre_accion}</span>
+                    {t.etapa_destino && (
+                      <Badge color={getEtapaBadgeColor(t.etapa_destino.color)}>
+                        {t.etapa_destino.nombre}
+                      </Badge>
+                    )}
+                    {t.devuelve_al_pool && (
+                      <Badge color="slate">Pool</Badge>
+                    )}
+                  </Button>
+                );
+              })}
+            </div>
+          </div>
         )}
       </Drawer>
     </>
@@ -229,7 +344,7 @@ function BandejaTab({ showSnack }: { showSnack: (m: string, s?: "success" | "err
 
 // ─── Tab 2: Mi Equipo (todas las oportunidades) ───────────────────────────────
 
-function EquipoTab({ showSnack }: { showSnack: (m: string, s?: "success" | "error") => void }) {
+function EquipoTab({ toast }: { toast: (m: string, t?: "success" | "error" | "info" | "warning") => void }) {
   const [rows, setRows] = useState<OportunidadEquipo[]>([]);
   const [promotores, setPromotores] = useState<Promotor[]>([]);
   const [loading, setLoading] = useState(true);
@@ -245,10 +360,10 @@ function EquipoTab({ showSnack }: { showSnack: (m: string, s?: "success" | "erro
       setRows(await opRes.json());
       setPromotores(await prRes.json());
     } catch (err) {
-      showSnack(err instanceof Error ? err.message : "Error de conexión", "error");
+      toast(err instanceof Error ? err.message : "Error de conexion", "error");
     }
     setLoading(false);
-  }, [showSnack]);
+  }, [toast]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -262,56 +377,109 @@ function EquipoTab({ showSnack }: { showSnack: (m: string, s?: "success" | "erro
     if (res.ok) {
       setReasignarOp(null);
       setNuevoPromotor("");
-      showSnack("Oportunidad reasignada");
+      toast("Oportunidad reasignada", "success");
       fetchData();
     } else {
       const err = await res.json();
-      showSnack(err.error || "Error", "error");
+      toast(err.error || "Error", "error");
     }
   };
 
-  const columns: GridColDef[] = [
-    { field: "nombres", headerName: "Cliente", flex: 1.2 },
-    { field: "convenio", headerName: "Convenio", flex: 1 },
+  const columns: ColumnDef<OportunidadEquipo>[] = [
     {
-      field: "etapa", headerName: "Etapa", width: 140,
-      renderCell: (p) => p.row.etapa
-        ? <Chip label={p.row.etapa.nombre} size="small" sx={{ bgcolor: p.row.etapa.color, color: "white" }} />
-        : "—",
+      accessorKey: "nombres",
+      header: "Cliente",
+      size: 200,
+      cell: ({ row }) => <span className="text-sm text-slate-200">{row.original.nombres}</span>,
     },
-    { field: "promotor", headerName: "Promotor", width: 140, valueGetter: (_v: unknown, row: OportunidadEquipo) => row.promotor?.nombre ?? "—" },
-    { field: "timer_vence", headerName: "Timer", width: 110, renderCell: (p) => <Typography variant="body2" color="text.secondary">{timerLabel(p.row.timer_vence)}</Typography> },
     {
-      field: "actions", headerName: "Acciones", width: 100, sortable: false,
-      renderCell: (p) => <IconButton size="small" onClick={() => { setReasignarOp(p.row); setNuevoPromotor(""); }} title="Reasignar"><SwapHorizIcon fontSize="small" /></IconButton>,
+      accessorKey: "convenio",
+      header: "Convenio",
+      size: 160,
+      cell: ({ row }) => <span className="text-sm text-slate-300">{row.original.convenio}</span>,
+    },
+    {
+      accessorKey: "etapa",
+      header: "Etapa",
+      size: 140,
+      cell: ({ row }) =>
+        row.original.etapa ? (
+          <Badge color={getEtapaBadgeColor(row.original.etapa.color)}>{row.original.etapa.nombre}</Badge>
+        ) : (
+          <span className="text-sm text-slate-500">&mdash;</span>
+        ),
+    },
+    {
+      accessorKey: "promotor",
+      header: "Promotor",
+      size: 140,
+      cell: ({ row }) => (
+        <span className="text-sm text-slate-300">{row.original.promotor?.nombre ?? "\u2014"}</span>
+      ),
+    },
+    {
+      accessorKey: "timer_vence",
+      header: "Timer",
+      size: 110,
+      cell: ({ row }) => {
+        const label = timerLabel(row.original.timer_vence);
+        const isExpired = label === "Vencido";
+        return (
+          <span className={`text-sm ${isExpired ? "text-red-400 font-medium" : "text-slate-400"}`}>
+            {label}
+          </span>
+        );
+      },
+    },
+    {
+      id: "actions",
+      header: "Acciones",
+      size: 100,
+      enableSorting: false,
+      cell: ({ row }) => (
+        <Button
+          variant="ghost"
+          size="sm"
+          icon={<ArrowLeftRight className="w-4 h-4" />}
+          onClick={() => { setReasignarOp(row.original); setNuevoPromotor(""); }}
+          title="Reasignar"
+        />
+      ),
     },
   ];
 
   return (
     <>
-      <Box sx={{ bgcolor: "white", borderRadius: 2 }}>
-        <DataGrid rows={rows} columns={columns} loading={loading} pageSizeOptions={[25, 50]} initialState={{ pagination: { paginationModel: { pageSize: 25 } } }} disableRowSelectionOnClick autoHeight sx={{ border: "none", "& .MuiDataGrid-columnHeaders": { bgcolor: "#f5f5f5" } }} />
-      </Box>
+      <DataTable
+        data={rows}
+        columns={columns}
+        loading={loading}
+        pageSize={25}
+        pageSizeOptions={[25, 50]}
+        emptyMessage="No hay oportunidades asignadas"
+      />
 
-      <Dialog open={!!reasignarOp} onClose={() => setReasignarOp(null)} maxWidth="xs" fullWidth>
-        <DialogTitle>Reasignar Oportunidad</DialogTitle>
-        <DialogContent>
-          <DialogContentText sx={{ mb: 2 }}>
-            Cliente: <strong>{reasignarOp?.nombres}</strong>
-          </DialogContentText>
-          <FormControl fullWidth>
-            <InputLabel>Nuevo promotor</InputLabel>
-            <Select value={nuevoPromotor} label="Nuevo promotor" onChange={(e) => setNuevoPromotor(e.target.value)}>
-              {promotores.filter((p) => p.id !== reasignarOp?.promotor?.id).map((p) => (
-                <MenuItem key={p.id} value={String(p.id)}>{p.nombre} ({p.total_activas} activas)</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setReasignarOp(null)} color="error" variant="outlined">Cancelar</Button>
-          <Button variant="contained" onClick={handleReasignar} disabled={!nuevoPromotor}>Reasignar</Button>
-        </DialogActions>
+      <Dialog open={!!reasignarOp} onClose={() => setReasignarOp(null)} maxWidth="sm">
+        <DialogHeader onClose={() => setReasignarOp(null)}>Reasignar Oportunidad</DialogHeader>
+        <DialogBody>
+          <p className="text-sm text-slate-400 mb-4">
+            Cliente: <strong className="text-slate-200">{reasignarOp?.nombres}</strong>
+          </p>
+          <Select
+            label="Nuevo promotor"
+            value={nuevoPromotor}
+            onChange={(e) => setNuevoPromotor(e.target.value)}
+            placeholder="Seleccionar promotor..."
+            options={promotores
+              .filter((p) => p.id !== reasignarOp?.promotor?.id)
+              .map((p) => ({ value: String(p.id), label: `${p.nombre} (${p.total_activas} activas)` }))
+            }
+          />
+        </DialogBody>
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => setReasignarOp(null)}>Cancelar</Button>
+          <Button variant="primary" onClick={handleReasignar} disabled={!nuevoPromotor}>Reasignar</Button>
+        </DialogFooter>
       </Dialog>
     </>
   );
@@ -319,7 +487,7 @@ function EquipoTab({ showSnack }: { showSnack: (m: string, s?: "success" | "erro
 
 // ─── Tab 3: Promotores ────────────────────────────────────────────────────────
 
-function PromotoresTab({ showSnack }: { showSnack: (m: string, s?: "success" | "error") => void }) {
+function PromotoresTab({ toast }: { toast: (m: string, t?: "success" | "error" | "info" | "warning") => void }) {
   const [promotores, setPromotores] = useState<Promotor[]>([]);
   const [loading, setLoading] = useState(true);
   const [bajaPromotor, setBajaPromotor] = useState<Promotor | null>(null);
@@ -332,10 +500,10 @@ function PromotoresTab({ showSnack }: { showSnack: (m: string, s?: "success" | "
       if (!res.ok) throw new Error("Error al cargar promotores");
       setPromotores(await res.json());
     } catch (err) {
-      showSnack(err instanceof Error ? err.message : "Error de conexión", "error");
+      toast(err instanceof Error ? err.message : "Error de conexion", "error");
     }
     setLoading(false);
-  }, [showSnack]);
+  }, [toast]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -351,24 +519,70 @@ function PromotoresTab({ showSnack }: { showSnack: (m: string, s?: "success" | "
     if (res.ok) {
       const data = await res.json();
       setBajaPromotor(null);
-      showSnack(`Promotor dado de baja. ${data.transferidas} oportunidades transferidas.`);
+      toast(`Promotor dado de baja. ${data.transferidas} oportunidades transferidas.`, "success");
       fetchData();
     } else {
       const err = await res.json();
-      showSnack(err.error || "Error", "error");
+      toast(err.error || "Error", "error");
     }
   };
 
-  const columns: GridColDef[] = [
-    { field: "nombre", headerName: "Nombre", flex: 1 },
-    { field: "username", headerName: "Usuario", width: 150 },
-    { field: "total_activas", headerName: "Activas", width: 90, align: "center", headerAlign: "center" },
-    { field: "en_salida", headerName: "En Salida", width: 100, align: "center", headerAlign: "center", renderCell: (p) => p.value > 0 ? <Chip label={p.value} size="small" color="warning" /> : p.value },
-    { field: "en_avance", headerName: "En Avance", width: 100, align: "center", headerAlign: "center" },
+  const columns: ColumnDef<Promotor>[] = [
     {
-      field: "actions", headerName: "Acciones", width: 130, sortable: false,
-      renderCell: (p) => (
-        <Button size="small" color="error" startIcon={<PersonOffIcon />} onClick={() => { setBajaPromotor(p.row); setReceptorId(""); }}>
+      accessorKey: "nombre",
+      header: "Nombre",
+      size: 200,
+      cell: ({ row }) => <span className="text-sm text-slate-200">{row.original.nombre}</span>,
+    },
+    {
+      accessorKey: "username",
+      header: "Usuario",
+      size: 150,
+      cell: ({ row }) => (
+        <span className="text-sm text-slate-400 font-mono">
+          {(row.original as Promotor & { username?: string }).username ?? "\u2014"}
+        </span>
+      ),
+    },
+    {
+      accessorKey: "total_activas",
+      header: "Activas",
+      size: 90,
+      cell: ({ row }) => (
+        <span className="text-sm text-slate-300 text-center block">{row.original.total_activas}</span>
+      ),
+    },
+    {
+      accessorKey: "en_salida",
+      header: "En Salida",
+      size: 100,
+      cell: ({ row }) =>
+        row.original.en_salida > 0 ? (
+          <Badge color="amber">{row.original.en_salida}</Badge>
+        ) : (
+          <span className="text-sm text-slate-500 text-center block">{row.original.en_salida}</span>
+        ),
+    },
+    {
+      accessorKey: "en_avance",
+      header: "En Avance",
+      size: 100,
+      cell: ({ row }) => (
+        <span className="text-sm text-slate-300 text-center block">{row.original.en_avance}</span>
+      ),
+    },
+    {
+      id: "actions",
+      header: "Acciones",
+      size: 140,
+      enableSorting: false,
+      cell: ({ row }) => (
+        <Button
+          variant="danger"
+          size="sm"
+          icon={<UserX className="w-4 h-4" />}
+          onClick={() => { setBajaPromotor(row.original); setReceptorId(""); }}
+        >
           Dar de baja
         </Button>
       ),
@@ -377,32 +591,41 @@ function PromotoresTab({ showSnack }: { showSnack: (m: string, s?: "success" | "
 
   return (
     <>
-      <Box sx={{ bgcolor: "white", borderRadius: 2 }}>
-        <DataGrid rows={promotores} columns={columns} loading={loading} pageSizeOptions={[10, 25]} initialState={{ pagination: { paginationModel: { pageSize: 10 } } }} disableRowSelectionOnClick autoHeight sx={{ border: "none", "& .MuiDataGrid-columnHeaders": { bgcolor: "#f5f5f5" } }} />
-      </Box>
+      <DataTable
+        data={promotores}
+        columns={columns}
+        loading={loading}
+        pageSize={10}
+        pageSizeOptions={[10, 25]}
+        emptyMessage="No hay promotores en el equipo"
+      />
 
-      <Dialog open={!!bajaPromotor} onClose={() => setBajaPromotor(null)} maxWidth="xs" fullWidth>
-        <DialogTitle>Dar de Baja: {bajaPromotor?.nombre}</DialogTitle>
-        <DialogContent>
-          <DialogContentText sx={{ mb: 2 }}>
-            Este promotor tiene <strong>{bajaPromotor?.total_activas}</strong> oportunidades activas. Se transferirán al promotor seleccionado (o a ti si no seleccionas ninguno).
-          </DialogContentText>
-          <FormControl fullWidth>
-            <InputLabel>Transferir oportunidades a (opcional)</InputLabel>
-            <Select value={receptorId} label="Transferir oportunidades a (opcional)" onChange={(e) => setReceptorId(e.target.value)}>
-              <MenuItem value="">A mí mismo</MenuItem>
-              {promotores.filter((p) => p.id !== bajaPromotor?.id).map((p) => (
-                <MenuItem key={p.id} value={String(p.id)}>{p.nombre}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setBajaPromotor(null)} color="error" variant="outlined">Cancelar</Button>
-          <Button variant="contained" color="error" onClick={handleBaja} disabled={saving}>
-            {saving ? <CircularProgress size={20} /> : "Confirmar baja"}
+      <Dialog open={!!bajaPromotor} onClose={() => setBajaPromotor(null)} maxWidth="sm">
+        <DialogHeader onClose={() => setBajaPromotor(null)}>
+          Dar de Baja: {bajaPromotor?.nombre}
+        </DialogHeader>
+        <DialogBody>
+          <p className="text-sm text-slate-400 mb-4">
+            Este promotor tiene <strong className="text-slate-200">{bajaPromotor?.total_activas}</strong> oportunidades activas.
+            Se transferiran al promotor seleccionado (o a ti si no seleccionas ninguno).
+          </p>
+          <Select
+            label="Transferir oportunidades a (opcional)"
+            value={receptorId}
+            onChange={(e) => setReceptorId(e.target.value)}
+            placeholder="A mi mismo"
+            options={promotores
+              .filter((p) => p.id !== bajaPromotor?.id)
+              .map((p) => ({ value: String(p.id), label: p.nombre }))
+            }
+          />
+        </DialogBody>
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => setBajaPromotor(null)}>Cancelar</Button>
+          <Button variant="danger" onClick={handleBaja} loading={saving}>
+            Confirmar baja
           </Button>
-        </DialogActions>
+        </DialogFooter>
       </Dialog>
     </>
   );

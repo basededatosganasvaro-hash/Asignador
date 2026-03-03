@@ -1,7 +1,8 @@
 "use client";
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Box, Paper, Typography, CircularProgress, Snackbar, Alert } from "@mui/material";
-import SmartToyIcon from "@mui/icons-material/SmartToy";
+import { Bot } from "lucide-react";
+import { Spinner } from "@/components/ui/Spinner";
+import { useToast } from "@/components/ui/Toast";
 import ConversationList from "./ConversationList";
 import ChatMessage from "./ChatMessage";
 import ChatInput from "./ChatInput";
@@ -28,7 +29,7 @@ export default function ChatPanel() {
   const [messages, setMessages] = useState<Mensaje[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [convLoading, setConvLoading] = useState(true);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const { toast } = useToast();
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -46,13 +47,13 @@ export default function ChatPanel() {
         const data = await res.json();
         setConversaciones(data.conversaciones);
       } else {
-        setErrorMsg("Error al cargar conversaciones");
+        toast("Error al cargar conversaciones", "error");
       }
     } catch {
-      setErrorMsg("Error al cargar conversaciones");
+      toast("Error al cargar conversaciones", "error");
     }
     setConvLoading(false);
-  }, []);
+  }, [toast]);
 
   useEffect(() => { fetchConversaciones(); }, [fetchConversaciones]);
 
@@ -64,10 +65,10 @@ export default function ChatPanel() {
         const data = await res.json();
         setMessages(data.mensajes || []);
       } else {
-        setErrorMsg("Error al cargar mensajes");
+        toast("Error al cargar mensajes", "error");
       }
     } catch {
-      setErrorMsg("Error al cargar mensajes");
+      toast("Error al cargar mensajes", "error");
     }
   };
 
@@ -91,7 +92,7 @@ export default function ChatPanel() {
       }
       fetchConversaciones();
     } catch {
-      setErrorMsg("Error al eliminar conversación");
+      toast("Error al eliminar conversacion", "error");
     }
   };
 
@@ -116,7 +117,7 @@ export default function ChatPanel() {
       const data = await res.json();
 
       if (!res.ok) {
-        setErrorMsg(data.error || "Error al enviar mensaje");
+        toast(data.error || "Error al enviar mensaje", "error");
         setIsLoading(false);
         return;
       }
@@ -129,21 +130,15 @@ export default function ChatPanel() {
       setMessages((prev) => [...prev, data.mensaje]);
       fetchConversaciones();
     } catch {
-      setErrorMsg("Error de conexión con el servidor");
+      toast("Error de conexion con el servidor", "error");
     }
     setIsLoading(false);
   };
 
   return (
-    <Box sx={{ display: "flex", height: "calc(100vh - 100px)", gap: 2 }}>
+    <div className="flex h-[calc(100vh-100px)] gap-3">
       {/* Panel izquierdo: lista de conversaciones */}
-      <Paper
-        variant="outlined"
-        sx={{
-          width: 280, flexShrink: 0, overflow: "hidden",
-          display: { xs: "none", md: "flex" }, flexDirection: "column",
-        }}
-      >
+      <div className="hidden md:flex w-[280px] shrink-0 overflow-hidden flex-col bg-surface rounded-xl border border-slate-800/60">
         <ConversationList
           conversaciones={conversaciones}
           activeId={activeConvId}
@@ -152,62 +147,50 @@ export default function ChatPanel() {
           onNew={handleNewConv}
           onDelete={handleDeleteConv}
         />
-      </Paper>
+      </div>
 
       {/* Panel derecho: chat */}
-      <Paper variant="outlined" sx={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+      <div className="flex-1 flex flex-col overflow-hidden bg-surface rounded-xl border border-slate-800/60">
         {/* Mensajes */}
-        <Box sx={{ flex: 1, overflow: "auto", p: 2 }}>
+        <div className="flex-1 overflow-auto p-4">
           {messages.length === 0 && !isLoading ? (
-            <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", opacity: 0.5 }}>
-              <SmartToyIcon sx={{ fontSize: 64, mb: 2, color: "primary.main" }} />
-              <Typography variant="h6" color="text.secondary">
+            <div className="flex flex-col items-center justify-center h-full opacity-50">
+              <Bot className="w-16 h-16 mb-4 text-amber-500" />
+              <h3 className="text-lg font-semibold text-slate-400">
                 Asistente IA
-              </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 1, textAlign: "center", maxWidth: 400 }}>
-                Pregunta sobre datos de ventas, clientes, promotores, o cualquier información del sistema.
-              </Typography>
-            </Box>
+              </h3>
+              <p className="text-sm text-slate-500 mt-2 text-center max-w-[400px]">
+                Pregunta sobre datos de ventas, clientes, promotores, o cualquier informacion del sistema.
+              </p>
+            </div>
           ) : (
             <>
               {messages.map((msg) => (
-                <Box key={msg.id}>
+                <div key={msg.id}>
                   <ChatMessage rol={msg.rol} contenido={msg.contenido} created_at={msg.created_at} />
-                  {/* Renderizar gráfica si existe en metadata */}
+                  {/* Renderizar grafica si existe en metadata */}
                   {msg.rol === "assistant" && msg.metadata_json &&
                     (msg.metadata_json as Record<string, unknown>).chart ? (
                     <ChartRenderer config={(msg.metadata_json as Record<string, unknown>).chart as Parameters<typeof ChartRenderer>[0]["config"]} />
                   ) : null}
-                </Box>
+                </div>
               ))}
               {isLoading && (
-                <Box sx={{ display: "flex", gap: 1, alignItems: "center", ml: 5, mb: 2 }}>
-                  <CircularProgress size={18} />
-                  <Typography variant="body2" color="text.secondary">
+                <div className="flex gap-2 items-center ml-10 mb-4">
+                  <Spinner size="sm" />
+                  <span className="text-sm text-slate-500">
                     Pensando...
-                  </Typography>
-                </Box>
+                  </span>
+                </div>
               )}
               <div ref={messagesEndRef} />
             </>
           )}
-        </Box>
+        </div>
 
         {/* Input */}
         <ChatInput onSend={handleSend} disabled={isLoading} />
-      </Paper>
-
-      {/* Snackbar de errores */}
-      <Snackbar
-        open={!!errorMsg}
-        autoHideDuration={5000}
-        onClose={() => setErrorMsg(null)}
-        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
-      >
-        <Alert onClose={() => setErrorMsg(null)} severity="error" variant="filled" sx={{ width: "100%" }}>
-          {errorMsg}
-        </Alert>
-      </Snackbar>
-    </Box>
+      </div>
+    </div>
   );
 }

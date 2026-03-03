@@ -1,20 +1,21 @@
 "use client";
 import { useEffect, useState } from "react";
-import {
-  Dialog, DialogTitle, DialogContent, DialogActions,
-  Box, Typography, Button, TextField, MenuItem, Select,
-  InputLabel, FormControl, Alert, CircularProgress, Chip,
-  Divider, Tabs, Tab,
-} from "@mui/material";
-import PersonAddIcon from "@mui/icons-material/PersonAdd";
-import UploadFileIcon from "@mui/icons-material/UploadFile";
+import { Dialog, DialogHeader, DialogBody, DialogFooter } from "@/components/ui/Dialog";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
+import { Alert } from "@/components/ui/Alert";
+import { Badge } from "@/components/ui/Badge";
+import { Spinner } from "@/components/ui/Spinner";
+import { Tabs } from "@/components/ui/Tabs";
+import { UserPlus, FileUp } from "lucide-react";
 import ImportCaptacionDialog from "@/components/ImportCaptacionDialog";
 
 const ORIGENES = [
   { value: "CAMBACEO", label: "Cambaceo" },
   { value: "REFERIDO", label: "Referido" },
   { value: "REDES_SOCIALES", label: "Redes sociales" },
-  { value: "MMP_PROSPECCION", label: "MMP Prospección" },
+  { value: "MMP_PROSPECCION", label: "MMP Prospeccion" },
   { value: "CCC", label: "CCC" },
   { value: "EXCEL", label: "Excel" },
   { value: "OTRO", label: "Otro" },
@@ -24,8 +25,8 @@ const CAMPO_LABELS: Record<string, string> = {
   nss: "NSS",
   curp: "CURP",
   rfc: "RFC",
-  num_empleado: "Número de empleado",
-  tel_2: "Teléfono 2",
+  num_empleado: "Numero de empleado",
+  tel_2: "Telefono 2",
   estado: "Estado",
   municipio: "Municipio",
   direccion_email: "Email",
@@ -42,8 +43,13 @@ interface Props {
   onSuccess: (opId: number) => void;
 }
 
+const TAB_ITEMS = [
+  { id: "individual", label: "Individual", icon: <UserPlus className="w-4 h-4" /> },
+  { id: "masiva", label: "Carga Masiva", icon: <FileUp className="w-4 h-4" /> },
+];
+
 export default function CaptacionModal({ open, onClose, onSuccess }: Props) {
-  const [tab, setTab] = useState(0);
+  const [tab, setTab] = useState("individual");
   const [convenios, setConvenios] = useState<Convenio[]>([]);
   const [reglas, setReglas] = useState<Regla[]>([]);
   const [form, setForm] = useState<Record<string, string>>({
@@ -78,7 +84,7 @@ export default function CaptacionModal({ open, onClose, onSuccess }: Props) {
     });
     setReglas([]);
     setError("");
-    setTab(0);
+    setTab("individual");
   };
 
   const handleClose = () => {
@@ -137,7 +143,7 @@ export default function CaptacionModal({ open, onClose, onSuccess }: Props) {
       resetForm();
       onSuccess(id);
     } catch {
-      setError("Error de conexión");
+      setError("Error de conexion");
     } finally {
       setSaving(false);
     }
@@ -147,125 +153,88 @@ export default function CaptacionModal({ open, onClose, onSuccess }: Props) {
   const camposExtra = reglas.filter((r) => !camposBase.includes(r.campo));
 
   return (
-    <Dialog
-      open={open}
-      onClose={handleClose}
-      maxWidth="sm"
-      fullWidth
-      PaperProps={{ sx: { borderRadius: 3 } }}
-    >
-      <DialogTitle sx={{ pb: 0 }}>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          <PersonAddIcon color="primary" />
-          <Typography variant="h6" fontWeight={700}>Captar Cliente</Typography>
-        </Box>
-      </DialogTitle>
+    <Dialog open={open} onClose={handleClose} maxWidth="lg">
+      <DialogHeader onClose={handleClose}>
+        <div className="flex items-center gap-2">
+          <UserPlus className="w-5 h-5 text-amber-400" />
+          <span>Captar Cliente</span>
+        </div>
+      </DialogHeader>
 
-      <Box sx={{ px: 3, pt: 1 }}>
+      <div className="px-6 pt-2">
         <Tabs
-          value={tab}
-          onChange={(_, v) => setTab(v)}
-          sx={{
-            "& .MuiTab-root": { textTransform: "none", fontWeight: 600, fontSize: 13 },
-          }}
-        >
-          <Tab
-            icon={<PersonAddIcon sx={{ fontSize: 18 }} />}
-            iconPosition="start"
-            label="Individual"
-          />
-          <Tab
-            icon={<UploadFileIcon sx={{ fontSize: 18 }} />}
-            iconPosition="start"
-            label="Carga Masiva"
-          />
-        </Tabs>
-      </Box>
+          tabs={TAB_ITEMS}
+          activeTab={tab}
+          onChange={setTab}
+        />
+      </div>
 
-      {tab === 0 ? (
+      {tab === "individual" ? (
         <form onSubmit={handleSubmit}>
-          <DialogContent sx={{ pt: 2 }}>
-            <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-              <FormControl fullWidth size="small" required>
-                <InputLabel>Origen de captaci&oacute;n</InputLabel>
-                <Select
-                  value={form.origen_captacion}
-                  label="Origen de captación"
-                  onChange={(e) => handleField("origen_captacion", e.target.value)}
-                >
-                  {ORIGENES.map((o) => (
-                    <MenuItem key={o.value} value={o.value}>{o.label}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+          <DialogBody>
+            <div className="flex flex-col gap-4">
+              <Select
+                label="Origen de captacion *"
+                value={form.origen_captacion}
+                onChange={(e) => handleField("origen_captacion", e.target.value)}
+                options={ORIGENES}
+                placeholder="Seleccionar origen"
+                required
+              />
 
-              <FormControl fullWidth size="small" required>
-                <InputLabel>Convenio</InputLabel>
-                <Select
-                  value={form.convenio}
-                  label="Convenio"
-                  onChange={(e) => handleConvenioChange(e.target.value)}
-                >
-                  {convenios.map((c) => (
-                    <MenuItem key={c.id} value={c.nombre}>{c.nombre}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+              <Select
+                label="Convenio *"
+                value={form.convenio}
+                onChange={(e) => handleConvenioChange(e.target.value)}
+                options={convenios.map((c) => ({ value: c.nombre, label: c.nombre }))}
+                placeholder="Seleccionar convenio"
+                required
+              />
 
-              <Divider />
+              <div className="h-px bg-slate-800/40 my-1" />
 
-              <TextField
+              <Input
                 label="Nombres *"
-                size="small"
-                fullWidth
                 value={form.nombres}
                 onChange={(e) => handleField("nombres", e.target.value)}
                 required
               />
 
-              <Box sx={{ display: "flex", gap: 2 }}>
-                <TextField
+              <div className="flex gap-3">
+                <Input
                   label="Apellido paterno"
-                  size="small"
-                  fullWidth
                   value={form.a_paterno}
                   onChange={(e) => handleField("a_paterno", e.target.value)}
                 />
-                <TextField
+                <Input
                   label="Apellido materno"
-                  size="small"
-                  fullWidth
                   value={form.a_materno}
                   onChange={(e) => handleField("a_materno", e.target.value)}
                 />
-              </Box>
+              </div>
 
-              <TextField
-                label="Teléfono *"
-                size="small"
-                fullWidth
+              <Input
+                label="Telefono *"
                 value={form.tel_1}
                 onChange={(e) => handleField("tel_1", e.target.value)}
                 required
               />
 
-              {loadingReglas && <CircularProgress size={20} />}
+              {loadingReglas && <Spinner size="sm" />}
 
               {camposExtra.length > 0 && (
                 <>
-                  <Divider />
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                    <Typography variant="subtitle2" color="text.secondary">
+                  <div className="h-px bg-slate-800/40 my-1" />
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-slate-400">
                       Campos del convenio
-                    </Typography>
-                    <Chip label={form.convenio} size="small" variant="outlined" />
-                  </Box>
+                    </span>
+                    <Badge color="amber">{form.convenio}</Badge>
+                  </div>
                   {camposExtra.map((regla) => (
-                    <TextField
+                    <Input
                       key={regla.campo}
                       label={`${CAMPO_LABELS[regla.campo] ?? regla.campo}${regla.obligatorio ? " *" : ""}`}
-                      size="small"
-                      fullWidth
                       required={regla.obligatorio}
                       value={form[regla.campo] ?? ""}
                       onChange={(e) => handleField(regla.campo, e.target.value)}
@@ -274,25 +243,25 @@ export default function CaptacionModal({ open, onClose, onSuccess }: Props) {
                 </>
               )}
 
-              {error && <Alert severity="error">{error}</Alert>}
-            </Box>
-          </DialogContent>
-          <DialogActions sx={{ px: 3, pb: 2 }}>
-            <Button onClick={handleClose} color="error" variant="outlined">
+              {error && <Alert variant="error">{error}</Alert>}
+            </div>
+          </DialogBody>
+          <DialogFooter>
+            <Button variant="danger" onClick={handleClose}>
               Cancelar
             </Button>
             <Button
               type="submit"
-              variant="contained"
-              disabled={saving}
-              startIcon={saving ? <CircularProgress size={18} /> : <PersonAddIcon />}
+              variant="primary"
+              loading={saving}
+              icon={!saving ? <UserPlus className="w-4 h-4" /> : undefined}
             >
               {saving ? "Guardando..." : "Captar"}
             </Button>
-          </DialogActions>
+          </DialogFooter>
         </form>
       ) : (
-        <DialogContent sx={{ pt: 2 }}>
+        <DialogBody>
           <ImportCaptacionDialog
             open={true}
             onClose={handleClose}
@@ -302,7 +271,7 @@ export default function CaptacionModal({ open, onClose, onSuccess }: Props) {
             }}
             embedded
           />
-        </DialogContent>
+        </DialogBody>
       )}
     </Dialog>
   );

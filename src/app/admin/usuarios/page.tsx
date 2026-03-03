@@ -1,33 +1,15 @@
 "use client";
 import { useEffect, useState, useCallback, useMemo } from "react";
-import {
-  Box,
-  Typography,
-  Button,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  Select,
-  MenuItem,
-  FormControl,
-  InputLabel,
-  Chip,
-  Alert,
-  Snackbar,
-  IconButton,
-  InputAdornment,
-  Tooltip,
-} from "@mui/material";
-import { DataGrid, GridColDef } from "@mui/x-data-grid";
-import AddIcon from "@mui/icons-material/Add";
-import EditIcon from "@mui/icons-material/Edit";
-import BlockIcon from "@mui/icons-material/Block";
-import CheckCircleIcon from "@mui/icons-material/CheckCircle";
-import SearchIcon from "@mui/icons-material/Search";
-import ContentCopyIcon from "@mui/icons-material/ContentCopy";
-import DownloadIcon from "@mui/icons-material/Download";
+import { DataTable } from "@/components/ui/DataTable";
+import { Button } from "@/components/ui/Button";
+import { Badge } from "@/components/ui/Badge";
+import { Dialog, DialogHeader, DialogBody, DialogFooter } from "@/components/ui/Dialog";
+import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
+import { Tooltip } from "@/components/ui/Tooltip";
+import { useToast } from "@/components/ui/Toast";
+import { ColumnDef } from "@tanstack/react-table";
+import { Plus, Pencil, Ban, CheckCircle, Search, Copy, Download } from "lucide-react";
 
 interface Usuario {
   id: number;
@@ -56,18 +38,20 @@ const ROL_LABELS: Record<string, string> = {
   promotor: "Promotor",
   gestor_operaciones: "Gestor Op.",
   comercial: "Comercial",
-  direccion: "Dirección",
+  direccion: "Direccion",
 };
 
-const ROL_COLORS: Record<string, "error" | "warning" | "info" | "secondary" | "primary"> = {
-  admin: "error",
-  gerente_regional: "warning",
-  gerente_sucursal: "info",
-  supervisor: "secondary",
-  promotor: "primary",
-  gestor_operaciones: "info",
-  comercial: "secondary",
-  direccion: "warning",
+type BadgeColor = "red" | "orange" | "blue" | "purple" | "amber" | "teal" | "slate";
+
+const ROL_COLORS: Record<string, BadgeColor> = {
+  admin: "red",
+  gerente_regional: "orange",
+  gerente_sucursal: "blue",
+  supervisor: "purple",
+  promotor: "amber",
+  gestor_operaciones: "teal",
+  comercial: "slate",
+  direccion: "orange",
 };
 
 export default function UsuariosPage() {
@@ -75,7 +59,7 @@ export default function UsuariosPage() {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<Usuario | null>(null);
-  const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" as "success" | "error" });
+  const { toast } = useToast();
 
   const [regiones, setRegiones] = useState<OrgItem[]>([]);
   const [sucursales, setSucursales] = useState<OrgItem[]>([]);
@@ -112,10 +96,10 @@ export default function UsuariosPage() {
       const data = await res.json();
       setUsuarios(data);
     } catch (err) {
-      setSnackbar({ open: true, message: err instanceof Error ? err.message : "Error de conexión", severity: "error" });
+      toast(err instanceof Error ? err.message : "Error de conexion", "error");
     }
     setLoading(false);
-  }, []);
+  }, [toast]);
 
   useEffect(() => {
     fetchUsers();
@@ -132,7 +116,7 @@ export default function UsuariosPage() {
       setSucursales(s);
       setEquipos(e);
     } catch (err) {
-      setSnackbar({ open: true, message: err instanceof Error ? err.message : "Error de conexión", severity: "error" });
+      toast(err instanceof Error ? err.message : "Error de conexion", "error");
     }
   };
 
@@ -182,11 +166,11 @@ export default function UsuariosPage() {
 
     if (res.ok) {
       setDialogOpen(false);
-      setSnackbar({ open: true, message: editingUser ? "Usuario actualizado" : "Usuario creado", severity: "success" });
+      toast(editingUser ? "Usuario actualizado" : "Usuario creado", "success");
       fetchUsers();
     } else {
       const data = await res.json();
-      setSnackbar({ open: true, message: data.error || "Error al guardar", severity: "error" });
+      toast(data.error || "Error al guardar", "error");
     }
   };
 
@@ -197,233 +181,240 @@ export default function UsuariosPage() {
       body: JSON.stringify({ activo: !user.activo }),
     });
     if (res.ok) {
-      setSnackbar({ open: true, message: user.activo ? "Usuario desactivado" : "Usuario activado", severity: "success" });
+      toast(user.activo ? "Usuario desactivado" : "Usuario activado", "success");
       fetchUsers();
     }
   };
 
   const handleCopyUsername = (username: string) => {
     navigator.clipboard.writeText(username);
-    setSnackbar({ open: true, message: `Username "${username}" copiado`, severity: "success" });
+    toast(`Username "${username}" copiado`, "success");
   };
 
-  const columns: GridColDef[] = [
-    { field: "nombre", headerName: "Nombre", flex: 1 },
+  const columns: ColumnDef<Usuario, unknown>[] = [
     {
-      field: "username",
-      headerName: "Usuario",
-      width: 170,
-      renderCell: (params) => {
-        const username = params.value as string;
-        if (!username) return "—";
+      accessorKey: "nombre",
+      header: "Nombre",
+      size: 200,
+    },
+    {
+      accessorKey: "username",
+      header: "Usuario",
+      size: 170,
+      cell: ({ row }) => {
+        const username = row.original.username;
+        if (!username) return <span className="text-slate-500">&mdash;</span>;
         return (
-          <Tooltip title="Click para copiar" arrow>
-            <Chip
-              label={username}
-              icon={<ContentCopyIcon sx={{ fontSize: 14 }} />}
-              variant="outlined"
-              size="small"
+          <Tooltip content="Click para copiar">
+            <button
               onClick={() => handleCopyUsername(username)}
-              sx={{
-                fontFamily: "monospace",
-                cursor: "pointer",
-                "& .MuiChip-icon": { ml: 0.5 },
-              }}
-            />
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono
+                bg-slate-800/50 text-slate-300 ring-1 ring-slate-700
+                hover:bg-slate-700/60 hover:text-slate-200 transition-colors cursor-pointer"
+            >
+              <Copy className="w-3 h-3" />
+              {username}
+            </button>
           </Tooltip>
         );
       },
     },
     {
-      field: "rol",
-      headerName: "Rol",
-      width: 140,
-      renderCell: (params) => (
-        <Chip
-          label={ROL_LABELS[params.value] ?? params.value}
-          color={ROL_COLORS[params.value] ?? "default"}
-          size="small"
-          variant="outlined"
-        />
+      accessorKey: "rol",
+      header: "Rol",
+      size: 140,
+      cell: ({ row }) => (
+        <Badge color={ROL_COLORS[row.original.rol] ?? "slate"}>
+          {ROL_LABELS[row.original.rol] ?? row.original.rol}
+        </Badge>
       ),
     },
     {
-      field: "telegram_id",
-      headerName: "Telegram ID",
-      width: 140,
-      valueGetter: (_value: unknown, row: Usuario) => row.telegram_id ?? "—",
-    },
-    {
-      field: "sucursal",
-      headerName: "Sucursal",
-      width: 140,
-      valueGetter: (_value: unknown, row: Usuario) => row.sucursal?.nombre ?? "—",
-    },
-    {
-      field: "equipo",
-      headerName: "Equipo",
-      width: 120,
-      valueGetter: (_value: unknown, row: Usuario) => row.equipo?.nombre ?? "—",
-    },
-    {
-      field: "lotes",
-      headerName: "Lotes",
-      width: 80,
-      align: "center",
-      headerAlign: "center",
-      valueGetter: (_value: unknown, row: Usuario) => row._count?.lotes ?? 0,
-    },
-    {
-      field: "activo",
-      headerName: "Estado",
-      width: 100,
-      renderCell: (params) => (
-        <Chip label={params.value ? "Activo" : "Inactivo"} color={params.value ? "success" : "default"} size="small" />
+      accessorKey: "telegram_id",
+      header: "Telegram ID",
+      size: 140,
+      cell: ({ row }) => (
+        <span className="text-sm text-slate-400">
+          {row.original.telegram_id ?? "\u2014"}
+        </span>
       ),
     },
     {
-      field: "actions",
-      headerName: "Acciones",
-      width: 120,
-      sortable: false,
-      renderCell: (params) => (
-        <Box>
-          <IconButton size="small" onClick={() => handleOpenEdit(params.row)} title="Editar">
-            <EditIcon fontSize="small" />
-          </IconButton>
-          <IconButton
-            size="small"
-            onClick={() => handleToggleActive(params.row)}
-            title={params.row.activo ? "Desactivar" : "Activar"}
-            color={params.row.activo ? "error" : "success"}
+      id: "sucursal",
+      header: "Sucursal",
+      size: 140,
+      accessorFn: (row) => row.sucursal?.nombre ?? "\u2014",
+    },
+    {
+      id: "equipo",
+      header: "Equipo",
+      size: 120,
+      accessorFn: (row) => row.equipo?.nombre ?? "\u2014",
+    },
+    {
+      id: "lotes",
+      header: "Lotes",
+      size: 80,
+      accessorFn: (row) => row._count?.lotes ?? 0,
+      cell: ({ getValue }) => (
+        <span className="text-center block">{getValue() as number}</span>
+      ),
+    },
+    {
+      accessorKey: "activo",
+      header: "Estado",
+      size: 100,
+      cell: ({ row }) => (
+        <Badge color={row.original.activo ? "green" : "slate"}>
+          {row.original.activo ? "Activo" : "Inactivo"}
+        </Badge>
+      ),
+    },
+    {
+      id: "actions",
+      header: "Acciones",
+      size: 120,
+      enableSorting: false,
+      cell: ({ row }) => (
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => handleOpenEdit(row.original)}
+            title="Editar"
+            className="p-1.5 text-slate-400 hover:text-amber-400 hover:bg-slate-800/60 rounded-lg transition-colors"
           >
-            {params.row.activo ? <BlockIcon fontSize="small" /> : <CheckCircleIcon fontSize="small" />}
-          </IconButton>
-        </Box>
+            <Pencil className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => handleToggleActive(row.original)}
+            title={row.original.activo ? "Desactivar" : "Activar"}
+            className={`p-1.5 rounded-lg transition-colors ${
+              row.original.activo
+                ? "text-slate-400 hover:text-red-400 hover:bg-red-500/10"
+                : "text-slate-400 hover:text-green-400 hover:bg-green-500/10"
+            }`}
+          >
+            {row.original.activo ? <Ban className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
+          </button>
+        </div>
       ),
     },
   ];
 
   return (
-    <Box>
-      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3 }}>
-        <Typography variant="h4">Gestion de Usuarios</Typography>
-        <Box sx={{ display: "flex", gap: 1 }}>
+    <div>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="font-display text-xl font-bold text-slate-100">Gestion de Usuarios</h1>
+        <div className="flex gap-2">
           <Button
-            variant="outlined"
-            startIcon={<DownloadIcon />}
+            variant="secondary"
+            icon={<Download className="w-4 h-4" />}
             onClick={() => window.open("/api/admin/usuarios/exportar", "_blank")}
           >
             Descargar
           </Button>
-          <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpenCreate}>
+          <Button
+            variant="primary"
+            icon={<Plus className="w-4 h-4" />}
+            onClick={handleOpenCreate}
+          >
             Nuevo Usuario
           </Button>
-        </Box>
-      </Box>
+        </div>
+      </div>
 
-      <TextField
-        placeholder="Buscar por nombre, usuario o equipo..."
-        size="small"
-        value={busqueda}
-        onChange={(e) => setBusqueda(e.target.value)}
-        sx={{ mb: 2, width: 400 }}
-        slotProps={{
-          input: {
-            startAdornment: (
-              <InputAdornment position="start">
-                <SearchIcon />
-              </InputAdornment>
-            ),
-          },
-        }}
+      <div className="mb-4 max-w-md">
+        <Input
+          placeholder="Buscar por nombre, usuario o equipo..."
+          value={busqueda}
+          onChange={(e) => setBusqueda(e.target.value)}
+          icon={<Search className="w-4 h-4" />}
+        />
+      </div>
+
+      <DataTable
+        data={usuariosFiltrados}
+        columns={columns}
+        loading={loading}
+        pageSize={10}
+        pageSizeOptions={[10, 25]}
       />
 
-      <Box sx={{ bgcolor: "white", borderRadius: 2 }}>
-        <DataGrid
-          rows={usuariosFiltrados}
-          columns={columns}
-          loading={loading}
-          pageSizeOptions={[10, 25]}
-          initialState={{ pagination: { paginationModel: { pageSize: 10 } } }}
-          disableRowSelectionOnClick
-          autoHeight
-          sx={{ border: "none", "& .MuiDataGrid-columnHeaders": { bgcolor: "#f5f5f5" } }}
-        />
-      </Box>
-
-      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>{editingUser ? "Editar Usuario" : "Nuevo Usuario"}</DialogTitle>
-        <DialogContent>
-          <TextField
-            fullWidth label="Nombre" value={formData.nombre}
+      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="md">
+        <DialogHeader onClose={() => setDialogOpen(false)}>
+          {editingUser ? "Editar Usuario" : "Nuevo Usuario"}
+        </DialogHeader>
+        <DialogBody className="space-y-4">
+          <Input
+            label="Nombre"
+            value={formData.nombre}
             onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-            margin="normal" required
+            required
           />
-          <TextField
-            fullWidth label="Nombre de usuario" value={formData.username}
+          <Input
+            label="Nombre de usuario"
+            value={formData.username}
             onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-            margin="normal" required
-            helperText="Mínimo 4 caracteres. Solo letras, números, puntos y guiones."
-            inputProps={{ minLength: 4, maxLength: 50 }}
+            required
+            helperText="Minimo 4 caracteres. Solo letras, numeros, puntos y guiones."
+            minLength={4}
+            maxLength={50}
           />
-          <TextField
-            fullWidth
-            label={editingUser ? "Nueva contraseña (dejar vacío para no cambiar)" : "Contraseña"}
-            type="password" value={formData.password}
+          <Input
+            label={editingUser ? "Nueva contrasena (dejar vacio para no cambiar)" : "Contrasena"}
+            type="password"
+            value={formData.password}
             onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-            margin="normal" required={!editingUser}
+            required={!editingUser}
           />
-          <FormControl fullWidth margin="normal">
-            <InputLabel>Rol</InputLabel>
-            <Select value={formData.rol} label="Rol" onChange={(e) => setFormData({ ...formData, rol: e.target.value })}>
-              <MenuItem value="promotor">Promotor</MenuItem>
-              <MenuItem value="supervisor">Supervisor</MenuItem>
-              <MenuItem value="gerente_sucursal">Gerente de Sucursal</MenuItem>
-              <MenuItem value="gerente_regional">Gerente Regional</MenuItem>
-              <MenuItem value="admin">Admin</MenuItem>
-              <MenuItem value="gestor_operaciones">Gestor de Operaciones</MenuItem>
-              <MenuItem value="comercial">Comercial</MenuItem>
-              <MenuItem value="direccion">Dirección</MenuItem>
-            </Select>
-          </FormControl>
-          <TextField
-            fullWidth label="Telegram ID (opcional)" value={formData.telegram_id}
+          <Select
+            label="Rol"
+            value={formData.rol}
+            onChange={(e) => setFormData({ ...formData, rol: e.target.value })}
+            options={[
+              { value: "promotor", label: "Promotor" },
+              { value: "supervisor", label: "Supervisor" },
+              { value: "gerente_sucursal", label: "Gerente de Sucursal" },
+              { value: "gerente_regional", label: "Gerente Regional" },
+              { value: "admin", label: "Admin" },
+              { value: "gestor_operaciones", label: "Gestor de Operaciones" },
+              { value: "comercial", label: "Comercial" },
+              { value: "direccion", label: "Direccion" },
+            ]}
+          />
+          <Input
+            label="Telegram ID (opcional)"
+            value={formData.telegram_id}
             onChange={(e) => setFormData({ ...formData, telegram_id: e.target.value })}
-            margin="normal" type="number"
+            type="number"
             helperText="ID de Telegram del usuario (para vincular capacidades)"
           />
-          <FormControl fullWidth margin="normal">
-            <InputLabel>Región (opcional)</InputLabel>
-            <Select value={formData.region_id} label="Región (opcional)" onChange={(e) => setFormData({ ...formData, region_id: e.target.value })}>
-              <MenuItem value="">Sin región</MenuItem>
-              {regiones.map((r) => <MenuItem key={r.id} value={String(r.id)}>{r.nombre}</MenuItem>)}
-            </Select>
-          </FormControl>
-          <FormControl fullWidth margin="normal">
-            <InputLabel>Sucursal (opcional)</InputLabel>
-            <Select value={formData.sucursal_id} label="Sucursal (opcional)" onChange={(e) => setFormData({ ...formData, sucursal_id: e.target.value })}>
-              <MenuItem value="">Sin sucursal</MenuItem>
-              {sucursales.map((s) => <MenuItem key={s.id} value={String(s.id)}>{s.nombre}</MenuItem>)}
-            </Select>
-          </FormControl>
-          <FormControl fullWidth margin="normal">
-            <InputLabel>Equipo (opcional)</InputLabel>
-            <Select value={formData.equipo_id} label="Equipo (opcional)" onChange={(e) => setFormData({ ...formData, equipo_id: e.target.value })}>
-              <MenuItem value="">Sin equipo</MenuItem>
-              {equipos.map((e) => <MenuItem key={e.id} value={String(e.id)}>{e.nombre}</MenuItem>)}
-            </Select>
-          </FormControl>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setDialogOpen(false)} color="error" variant="outlined">Cancelar</Button>
-          <Button variant="contained" onClick={handleSave}>{editingUser ? "Actualizar" : "Crear"}</Button>
-        </DialogActions>
+          <Select
+            label="Region (opcional)"
+            value={formData.region_id}
+            onChange={(e) => setFormData({ ...formData, region_id: e.target.value })}
+            options={regiones.map((r) => ({ value: String(r.id), label: r.nombre }))}
+            placeholder="Sin region"
+          />
+          <Select
+            label="Sucursal (opcional)"
+            value={formData.sucursal_id}
+            onChange={(e) => setFormData({ ...formData, sucursal_id: e.target.value })}
+            options={sucursales.map((s) => ({ value: String(s.id), label: s.nombre }))}
+            placeholder="Sin sucursal"
+          />
+          <Select
+            label="Equipo (opcional)"
+            value={formData.equipo_id}
+            onChange={(e) => setFormData({ ...formData, equipo_id: e.target.value })}
+            options={equipos.map((e) => ({ value: String(e.id), label: e.nombre }))}
+            placeholder="Sin equipo"
+          />
+        </DialogBody>
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => setDialogOpen(false)}>Cancelar</Button>
+          <Button variant="primary" onClick={handleSave}>{editingUser ? "Actualizar" : "Crear"}</Button>
+        </DialogFooter>
       </Dialog>
-
-      <Snackbar open={snackbar.open} autoHideDuration={3000} onClose={() => setSnackbar({ ...snackbar, open: false })}>
-        <Alert severity={snackbar.severity} variant="filled">{snackbar.message}</Alert>
-      </Snackbar>
-    </Box>
+    </div>
   );
 }

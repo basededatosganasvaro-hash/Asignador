@@ -1,17 +1,14 @@
 "use client";
 import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import {
-  Box, Typography, Chip, Button, CircularProgress, LinearProgress,
-  Card, CardContent, Tooltip, IconButton, Paper,
-} from "@mui/material";
-import { DataGrid, GridColDef } from "@mui/x-data-grid";
-import VisibilityIcon from "@mui/icons-material/Visibility";
-import DownloadIcon from "@mui/icons-material/Download";
-import FolderIcon from "@mui/icons-material/Folder";
-import PeopleIcon from "@mui/icons-material/People";
-import PhoneIcon from "@mui/icons-material/Phone";
-import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import { ColumnDef } from "@tanstack/react-table";
+import { Eye, Download, Folder, Users, Phone, CheckCircle } from "lucide-react";
+import { Badge } from "@/components/ui/Badge";
+import { Tooltip } from "@/components/ui/Tooltip";
+import { Spinner } from "@/components/ui/Spinner";
+import { LinearProgress } from "@/components/ui/LinearProgress";
+import { DataTable } from "@/components/ui/DataTable";
+import StatCard from "@/components/ui/StatCard";
 
 interface Asignacion {
   id: number;
@@ -21,27 +18,6 @@ interface Asignacion {
   oportunidades_activas: number;
   registros_con_tel1: number;
   puede_descargar: boolean;
-}
-
-function StatCard({ title, value, icon, color }: { title: string; value: number; icon: React.ReactNode; color: string }) {
-  return (
-    <Paper
-      elevation={0}
-      sx={{
-        flex: 1, minWidth: 140, p: 2, borderRadius: 2.5,
-        border: "1px solid", borderColor: "divider",
-        display: "flex", alignItems: "center", gap: 2,
-      }}
-    >
-      <Box sx={{ width: 44, height: 44, borderRadius: 2, bgcolor: `${color}15`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <Box sx={{ color }}>{icon}</Box>
-      </Box>
-      <Box>
-        <Typography variant="h5" fontWeight={800} sx={{ lineHeight: 1.1 }}>{value}</Typography>
-        <Typography variant="caption" color="text.secondary" fontWeight={600}>{title}</Typography>
-      </Box>
-    </Paper>
-  );
 }
 
 export default function AsignacionesPage() {
@@ -68,138 +44,129 @@ export default function AsignacionesPage() {
     return { totalRegistros, conTelefono, completados };
   }, [asignaciones]);
 
-  const columns: GridColDef[] = [
+  const columns: ColumnDef<Asignacion, unknown>[] = [
     {
-      field: "id", headerName: "Lote", width: 80, align: "center", headerAlign: "center",
-      renderCell: (p) => (
-        <Chip label={`#${p.value}`} size="small" variant="outlined" sx={{ fontWeight: 700 }} />
+      accessorKey: "id",
+      header: "Lote",
+      size: 80,
+      cell: ({ getValue }) => (
+        <Badge color="slate">#{String(getValue())}</Badge>
       ),
     },
     {
-      field: "fecha", headerName: "Fecha", width: 130,
-      valueFormatter: (value: string) => new Date(value).toLocaleDateString("es-MX"),
+      accessorKey: "fecha",
+      header: "Fecha",
+      size: 130,
+      cell: ({ getValue }) => new Date(getValue() as string).toLocaleDateString("es-MX"),
     },
     {
-      field: "cantidad", headerName: "Registros", width: 110, align: "center", headerAlign: "center",
-      renderCell: (p) => (
-        <Typography variant="body2" fontWeight={600}>{p.value}</Typography>
+      accessorKey: "cantidad",
+      header: "Registros",
+      size: 110,
+      cell: ({ getValue }) => (
+        <span className="font-semibold text-slate-200">{String(getValue())}</span>
       ),
     },
     {
-      field: "progreso", headerName: "Progreso Tel.", width: 200,
-      renderCell: (params) => {
-        const row = params.row as Asignacion;
-        const pct = row.cantidad > 0 ? (row.registros_con_tel1 / row.cantidad) * 100 : 0;
+      id: "progreso",
+      header: "Progreso Tel.",
+      size: 200,
+      cell: ({ row }) => {
+        const r = row.original;
+        const pct = r.cantidad > 0 ? (r.registros_con_tel1 / r.cantidad) * 100 : 0;
         return (
-          <Box sx={{ width: "100%", display: "flex", alignItems: "center", gap: 1 }}>
+          <div className="flex items-center gap-2 w-full">
             <LinearProgress
-              variant="determinate"
               value={pct}
-              sx={{ flexGrow: 1, height: 8, borderRadius: 4 }}
-              color={pct === 100 ? "success" : "primary"}
+              color={pct === 100 ? "green" : "blue"}
+              className="flex-1"
             />
-            <Typography variant="caption" fontWeight={600} sx={{ minWidth: 50, textAlign: "right" }}>
-              {row.registros_con_tel1}/{row.cantidad}
-            </Typography>
-          </Box>
+            <span className="text-xs font-semibold text-slate-400 min-w-[50px] text-right">
+              {r.registros_con_tel1}/{r.cantidad}
+            </span>
+          </div>
         );
       },
     },
     {
-      field: "oportunidades_activas", headerName: "Activas", width: 100, align: "center", headerAlign: "center",
-      renderCell: (p) => {
-        const row = p.row as Asignacion;
+      accessorKey: "oportunidades_activas",
+      header: "Activas",
+      size: 100,
+      cell: ({ getValue }) => {
+        const val = getValue() as number;
         return (
-          <Chip
-            label={p.value}
-            size="small"
-            color={p.value === 0 ? "default" : "primary"}
-            variant={p.value === 0 ? "outlined" : "filled"}
-            sx={{ fontWeight: 600 }}
-          />
+          <Badge color={val === 0 ? "slate" : "blue"}>
+            {val}
+          </Badge>
         );
       },
     },
     {
-      field: "actions", headerName: "", width: 120, sortable: false, align: "right", headerAlign: "right",
-      renderCell: (params) => {
-        const row = params.row as Asignacion;
+      id: "actions",
+      header: "",
+      size: 120,
+      enableSorting: false,
+      cell: ({ row }) => {
+        const r = row.original;
         return (
-          <Box sx={{ display: "flex", gap: 0.5 }}>
-            <Tooltip title="Ver detalle">
-              <IconButton size="small" color="primary" onClick={() => router.push(`/promotor/asignaciones/${row.id}`)}>
-                <VisibilityIcon fontSize="small" />
-              </IconButton>
+          <div className="flex gap-1 justify-end">
+            <Tooltip content="Ver detalle">
+              <button
+                className="p-1.5 text-blue-400 hover:bg-blue-500/10 rounded-lg transition-colors"
+                onClick={() => router.push(`/promotor/asignaciones/${r.id}`)}
+              >
+                <Eye className="w-4 h-4" />
+              </button>
             </Tooltip>
-            <Tooltip title={row.puede_descargar ? "Descargar Excel" : "Completa todos los teléfonos para descargar"}>
-              <span>
-                <IconButton
-                  size="small"
-                  color="success"
-                  disabled={!row.puede_descargar}
-                  onClick={() => handleDownload(row.id)}
-                >
-                  <DownloadIcon fontSize="small" />
-                </IconButton>
-              </span>
+            <Tooltip content={r.puede_descargar ? "Descargar Excel" : "Completa todos los telefonos para descargar"}>
+              <button
+                className={`p-1.5 rounded-lg transition-colors ${
+                  r.puede_descargar
+                    ? "text-green-400 hover:bg-green-500/10"
+                    : "text-slate-600 cursor-not-allowed"
+                }`}
+                disabled={!r.puede_descargar}
+                onClick={() => handleDownload(r.id)}
+              >
+                <Download className="w-4 h-4" />
+              </button>
             </Tooltip>
-          </Box>
+          </div>
         );
       },
     },
   ];
 
   if (loading) return (
-    <Box sx={{ display: "flex", justifyContent: "center", mt: 8 }}><CircularProgress /></Box>
+    <div className="flex justify-center mt-16"><Spinner /></div>
   );
 
   return (
-    <Box>
+    <div>
       {/* Header */}
-      <Box sx={{ mb: 3 }}>
-        <Typography variant="h4" fontWeight={700}>Mis Asignaciones</Typography>
-        <Typography variant="body2" color="text.secondary">
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-slate-100">Mis Asignaciones</h1>
+        <p className="text-sm text-slate-500">
           {asignaciones.length} lote{asignaciones.length !== 1 ? "s" : ""} asignado{asignaciones.length !== 1 ? "s" : ""}
-        </Typography>
-      </Box>
+        </p>
+      </div>
 
       {/* Stat Cards */}
-      <Box sx={{ display: "flex", gap: 2, mb: 3, flexWrap: "wrap" }}>
-        <StatCard title="Total Lotes" value={asignaciones.length} icon={<FolderIcon />} color="#1565c0" />
-        <StatCard title="Total Registros" value={stats.totalRegistros} icon={<PeopleIcon />} color="#2196f3" />
-        <StatCard title="Con Teléfono" value={stats.conTelefono} icon={<PhoneIcon />} color="#4caf50" />
-        <StatCard title="Listos para Excel" value={stats.completados} icon={<CheckCircleIcon />} color="#66bb6a" />
-      </Box>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+        <StatCard title="Total Lotes" value={asignaciones.length} icon={<Folder className="w-5 h-5" />} color="blue" />
+        <StatCard title="Total Registros" value={stats.totalRegistros} icon={<Users className="w-5 h-5" />} color="blue" />
+        <StatCard title="Con Telefono" value={stats.conTelefono} icon={<Phone className="w-5 h-5" />} color="green" />
+        <StatCard title="Listos para Excel" value={stats.completados} icon={<CheckCircle className="w-5 h-5" />} color="green" />
+      </div>
 
-      {/* DataGrid */}
-      <Card elevation={0} sx={{ border: "1px solid", borderColor: "divider", borderRadius: 3, overflow: "hidden" }}>
-        {asignaciones.length === 0 ? (
-          <Box sx={{ textAlign: "center", py: 8, color: "text.secondary" }}>
-            <Typography>Aún no tienes asignaciones. Solicita una desde el Dashboard.</Typography>
-          </Box>
-        ) : (
-          <DataGrid
-            rows={asignaciones}
-            columns={columns}
-            pageSizeOptions={[10, 25, 50]}
-            initialState={{ pagination: { paginationModel: { pageSize: 10 } } }}
-            disableRowSelectionOnClick
-            autoHeight
-            rowHeight={52}
-            sx={{
-              border: "none",
-              "& .MuiDataGrid-columnHeader": {
-                bgcolor: "background.paper", fontSize: 11, fontWeight: 700,
-                color: "text.secondary", textTransform: "uppercase", letterSpacing: "0.05em",
-              },
-              "& .MuiDataGrid-row:hover": { bgcolor: "action.hover" },
-              "& .MuiDataGrid-cell": { borderColor: "grey.100", display: "flex", alignItems: "center" },
-              "& .MuiDataGrid-footerContainer": { borderColor: "grey.100" },
-              "& .MuiDataGrid-columnSeparator": { color: "grey.200" },
-            }}
-          />
-        )}
-      </Card>
-    </Box>
+      {/* DataTable */}
+      <DataTable
+        data={asignaciones}
+        columns={columns}
+        pageSize={10}
+        pageSizeOptions={[10, 25, 50]}
+        emptyMessage="Aun no tienes asignaciones. Solicita una desde el Dashboard."
+      />
+    </div>
   );
 }

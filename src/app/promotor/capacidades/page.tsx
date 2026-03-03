@@ -1,12 +1,14 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
-import {
-  Box, Typography, Chip, CircularProgress, Alert, Paper,
-  Dialog, DialogTitle, DialogContent, DialogActions, Button,
-  Snackbar,
-} from "@mui/material";
-import { DataGrid, GridColDef } from "@mui/x-data-grid";
-import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import { ColumnDef } from "@tanstack/react-table";
+import { CheckCircle } from "lucide-react";
+import { Badge } from "@/components/ui/Badge";
+import { Alert } from "@/components/ui/Alert";
+import { Spinner } from "@/components/ui/Spinner";
+import { DataTable } from "@/components/ui/DataTable";
+import { Dialog, DialogHeader, DialogBody, DialogFooter } from "@/components/ui/Dialog";
+import { Button } from "@/components/ui/Button";
+import { useToast } from "@/components/ui/Toast";
 
 interface Solicitud {
   id: number;
@@ -28,7 +30,7 @@ export default function CapacidadesPage() {
   const [loading, setLoading] = useState(true);
   const [mensaje, setMensaje] = useState<string | null>(null);
   const [selectedRow, setSelectedRow] = useState<Solicitud | null>(null);
-  const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "error" as "error" | "success" });
+  const { toast } = useToast();
 
   const fetchData = useCallback(async () => {
     try {
@@ -41,191 +43,157 @@ export default function CapacidadesPage() {
       setMensaje(data.mensaje || null);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Error al cargar solicitudes";
-      setSnackbar({ open: true, message: msg, severity: "error" });
+      toast(msg, "error");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [toast]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  const columns: GridColDef[] = [
+  const columns: ColumnDef<Solicitud, unknown>[] = [
     {
-      field: "fecha_solicitud",
-      headerName: "Fecha",
-      width: 140,
-      valueFormatter: (value: string | null) => {
+      accessorKey: "fecha_solicitud",
+      header: "Fecha",
+      size: 140,
+      cell: ({ getValue }) => {
+        const value = getValue() as string | null;
         if (!value) return "—";
         return new Date(value).toLocaleDateString("es-MX", {
           day: "2-digit", month: "short", year: "numeric",
         });
       },
     },
-    { field: "convenio", headerName: "Convenio", width: 120 },
+    { accessorKey: "convenio", header: "Convenio", size: 120 },
     {
-      field: "nombre_cliente",
-      headerName: "Cliente",
-      width: 180,
-      renderCell: (p) => (
-        <Typography variant="body2" noWrap fontWeight={500}>
-          {p.value || "—"}
-        </Typography>
+      accessorKey: "nombre_cliente",
+      header: "Cliente",
+      size: 180,
+      cell: ({ getValue }) => (
+        <span className="font-medium text-slate-200 truncate">
+          {(getValue() as string) || "—"}
+        </span>
       ),
     },
-    { field: "nss", headerName: "NSS", width: 130 },
-    { field: "curp", headerName: "CURP", width: 180 },
+    { accessorKey: "nss", header: "NSS", size: 130 },
+    { accessorKey: "curp", header: "CURP", size: 180 },
     {
-      field: "imss_capacidad_actual",
-      headerName: "Capacidad",
-      width: 130,
-      renderCell: (p) => (
-        <Typography variant="body2" fontWeight={600} color="success.main">
-          {p.value != null
-            ? Number(p.value).toLocaleString("es-MX", { style: "currency", currency: "MXN" })
+      accessorKey: "imss_capacidad_actual",
+      header: "Capacidad",
+      size: 130,
+      cell: ({ getValue }) => (
+        <span className="font-semibold text-green-400">
+          {getValue() != null
+            ? Number(getValue()).toLocaleString("es-MX", { style: "currency", currency: "MXN" })
             : "—"}
-        </Typography>
+        </span>
       ),
     },
     {
-      field: "imss_num_creditos",
-      headerName: "Créditos",
-      width: 100,
-      align: "center",
-      headerAlign: "center",
+      accessorKey: "imss_num_creditos",
+      header: "Creditos",
+      size: 100,
     },
-    { field: "imss_telefonos", headerName: "Teléfonos", width: 140 },
+    { accessorKey: "imss_telefonos", header: "Telefonos", size: 140 },
     {
-      field: "estado",
-      headerName: "Estado",
-      width: 120,
-      renderCell: (p) => (
-        <Chip
-          icon={<CheckCircleIcon sx={{ fontSize: 14 }} />}
-          label={p.value || "Respondida"}
-          size="small"
-          color="success"
-          variant="outlined"
-          sx={{ fontWeight: 600 }}
-        />
+      id: "estado",
+      header: "Estado",
+      size: 120,
+      cell: () => (
+        <Badge color="green">
+          <CheckCircle className="w-3 h-3" />
+          Respondida
+        </Badge>
       ),
     },
     {
-      field: "respuesta",
-      headerName: "Respuesta",
-      flex: 1,
-      minWidth: 200,
-      renderCell: (p) => (
-        <Typography variant="body2" noWrap color="text.secondary" sx={{ fontSize: 12 }}>
-          {p.value ? ((p.value as string).length > 80 ? (p.value as string).substring(0, 80) + "…" : p.value) : "—"}
-        </Typography>
-      ),
+      accessorKey: "respuesta",
+      header: "Respuesta",
+      minSize: 200,
+      cell: ({ getValue }) => {
+        const val = getValue() as string | null;
+        return (
+          <span className="text-xs text-slate-500 truncate">
+            {val ? (val.length > 80 ? val.substring(0, 80) + "..." : val) : "—"}
+          </span>
+        );
+      },
     },
   ];
 
   if (loading) {
     return (
-      <Box sx={{ display: "flex", justifyContent: "center", mt: 8 }}>
-        <CircularProgress />
-      </Box>
+      <div className="flex justify-center mt-16">
+        <Spinner />
+      </div>
     );
   }
 
   return (
-    <Box>
+    <div>
       {/* Header */}
-      <Box sx={{ mb: 2 }}>
-        <Typography variant="h5" fontWeight={600}>Capacidades Solicitadas</Typography>
-        <Typography variant="body2" color="text.secondary">
+      <div className="mb-4">
+        <h1 className="text-xl font-semibold text-slate-100">Capacidades Solicitadas</h1>
+        <p className="text-sm text-slate-500">
           Historial de solicitudes de capacidad IMSS respondidas
-        </Typography>
-      </Box>
+        </p>
+      </div>
 
       {mensaje && (
-        <Alert severity="info" sx={{ mb: 2 }}>{mensaje}</Alert>
+        <Alert variant="info" className="mb-4">{mensaje}</Alert>
       )}
 
       {/* Card resumen */}
-      <Box sx={{ display: "flex", gap: 1.5, mb: 3 }}>
-        <Paper
-          elevation={0}
-          sx={{
-            px: 3, py: 2, borderRadius: 2.5, textAlign: "center",
-            bgcolor: "#4caf50", color: "white", minWidth: 160,
-            border: "2px solid #4caf50",
-          }}
-        >
-          <Typography variant="caption" fontWeight={600} sx={{ color: "rgba(255,255,255,0.85)" }}>
+      <div className="flex gap-3 mb-6">
+        <div className="px-6 py-4 rounded-xl text-center bg-green-500 text-white min-w-[160px] border-2 border-green-500">
+          <p className="text-xs font-semibold text-white/85">
             Total Respondidas
-          </Typography>
-          <Typography variant="h3" fontWeight={800} sx={{ lineHeight: 1.2 }}>
+          </p>
+          <p className="text-4xl font-extrabold leading-tight">
             {solicitudes.length}
-          </Typography>
-        </Paper>
-      </Box>
+          </p>
+        </div>
+      </div>
 
-      {/* DataGrid */}
-      <Paper elevation={0} sx={{ border: "1px solid", borderColor: "divider", borderRadius: 3, overflow: "hidden" }}>
-        {solicitudes.length === 0 ? (
-          <Box sx={{ textAlign: "center", py: 8, color: "text.secondary" }}>
-            <Typography>Sin solicitudes respondidas</Typography>
-          </Box>
-        ) : (
-          <DataGrid
-            rows={solicitudes}
-            columns={columns}
-            pageSizeOptions={[25, 50, 100]}
-            initialState={{ pagination: { paginationModel: { pageSize: 25 } } }}
-            disableRowSelectionOnClick
-            autoHeight
-            rowHeight={52}
-            onRowClick={(params) => setSelectedRow(params.row as Solicitud)}
-            sx={{
-              border: "none",
-              "& .MuiDataGrid-columnHeader": {
-                bgcolor: "background.paper", fontSize: 11, fontWeight: 700,
-                color: "text.secondary", textTransform: "uppercase", letterSpacing: "0.05em",
-              },
-              "& .MuiDataGrid-row": { cursor: "pointer" },
-              "& .MuiDataGrid-row:hover": { bgcolor: "action.hover" },
-              "& .MuiDataGrid-cell": { borderColor: "grey.100", display: "flex", alignItems: "center" },
-              "& .MuiDataGrid-footerContainer": { borderColor: "grey.100" },
-            }}
-          />
-        )}
-      </Paper>
+      {/* DataTable */}
+      <DataTable
+        data={solicitudes}
+        columns={columns}
+        pageSize={25}
+        pageSizeOptions={[25, 50, 100]}
+        emptyMessage="Sin solicitudes respondidas"
+        onRowClick={(row) => setSelectedRow(row)}
+      />
 
       {/* Dialog: Respuesta completa */}
       <Dialog
         open={!!selectedRow}
         onClose={() => setSelectedRow(null)}
-        maxWidth="md"
-        fullWidth
-        PaperProps={{ sx: { borderRadius: 3 } }}
+        maxWidth="lg"
       >
         {selectedRow && (
           <>
-            <DialogTitle sx={{ pb: 1 }}>
-              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                <Typography variant="h6" fontWeight={700} sx={{ flex: 1 }}>
+            <DialogHeader onClose={() => setSelectedRow(null)}>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="flex-1">
                   {selectedRow.nombre_cliente || "Solicitud"} — {selectedRow.convenio}
-                </Typography>
-                <Chip
-                  icon={<CheckCircleIcon sx={{ fontSize: 14 }} />}
-                  label="Respondida"
-                  size="small"
-                  color="success"
-                />
-              </Box>
-              <Typography variant="body2" color="text.secondary">
+                </span>
+                <Badge color="green">
+                  <CheckCircle className="w-3 h-3" />
+                  Respondida
+                </Badge>
+              </div>
+            </DialogHeader>
+            <DialogBody>
+              <p className="text-sm text-slate-500 mb-4">
                 {selectedRow.fecha_solicitud
                   ? new Date(selectedRow.fecha_solicitud).toLocaleDateString("es-MX", {
                       day: "2-digit", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit",
                     })
                   : ""}
-              </Typography>
-            </DialogTitle>
-            <DialogContent dividers>
-              <Box sx={{ display: "flex", gap: 3, flexWrap: "wrap", mb: 2 }}>
+              </p>
+
+              <div className="flex gap-6 flex-wrap mb-4">
                 {selectedRow.nss && <InfoChip label="NSS" value={selectedRow.nss} />}
                 {selectedRow.curp && <InfoChip label="CURP" value={selectedRow.curp} />}
                 {selectedRow.rfc && <InfoChip label="RFC" value={selectedRow.rfc} />}
@@ -239,47 +207,37 @@ export default function CapacidadesPage() {
                   />
                 )}
                 {selectedRow.imss_num_creditos != null && (
-                  <InfoChip label="Créditos" value={String(selectedRow.imss_num_creditos)} />
+                  <InfoChip label="Creditos" value={String(selectedRow.imss_num_creditos)} />
                 )}
                 {selectedRow.imss_telefonos && (
-                  <InfoChip label="Teléfonos" value={selectedRow.imss_telefonos} />
+                  <InfoChip label="Telefonos" value={selectedRow.imss_telefonos} />
                 )}
-              </Box>
-              <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1, textTransform: "uppercase", letterSpacing: 1, fontSize: 11 }}>
+              </div>
+
+              <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-2">
                 Respuesta completa
-              </Typography>
-              <Paper
-                variant="outlined"
-                sx={{
-                  p: 2, borderRadius: 2, bgcolor: "grey.50",
-                  whiteSpace: "pre-wrap", fontFamily: "monospace", fontSize: 13,
-                  maxHeight: 400, overflow: "auto",
-                }}
-              >
+              </p>
+              <div className="p-4 rounded-xl border border-slate-700 bg-slate-800/40 whitespace-pre-wrap font-mono text-[13px] text-slate-300 max-h-[400px] overflow-auto">
                 {selectedRow.respuesta || "Sin respuesta"}
-              </Paper>
-            </DialogContent>
-            <DialogActions sx={{ px: 3, pb: 2 }}>
-              <Button onClick={() => setSelectedRow(null)} variant="outlined">
+              </div>
+            </DialogBody>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setSelectedRow(null)}>
                 Cerrar
               </Button>
-            </DialogActions>
+            </DialogFooter>
           </>
         )}
       </Dialog>
-
-      <Snackbar open={snackbar.open} autoHideDuration={3000} onClose={() => setSnackbar((p) => ({ ...p, open: false }))}>
-        <Alert severity={snackbar.severity} variant="filled">{snackbar.message}</Alert>
-      </Snackbar>
-    </Box>
+    </div>
   );
 }
 
 function InfoChip({ label, value }: { label: string; value: string }) {
   return (
-    <Box>
-      <Typography variant="caption" color="text.secondary" sx={{ fontSize: 10 }}>{label}</Typography>
-      <Typography variant="body2" fontWeight={600}>{value}</Typography>
-    </Box>
+    <div>
+      <p className="text-[10px] text-slate-500">{label}</p>
+      <p className="text-sm font-semibold text-slate-200">{value}</p>
+    </div>
   );
 }

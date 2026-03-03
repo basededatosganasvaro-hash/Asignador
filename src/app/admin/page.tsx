@@ -1,12 +1,11 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Box, Typography, Grid, CircularProgress, Alert } from "@mui/material";
-import PeopleIcon from "@mui/icons-material/People";
-import AssignmentIcon from "@mui/icons-material/Assignment";
-import StorageIcon from "@mui/icons-material/Storage";
-import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import { Database, ClipboardList, CheckCircle, Users } from "lucide-react";
+import { ColumnDef } from "@tanstack/react-table";
 import StatCard from "@/components/ui/StatCard";
-import { DataGrid, GridColDef } from "@mui/x-data-grid";
+import { DataTable } from "@/components/ui/DataTable";
+import { Spinner } from "@/components/ui/Spinner";
+import { Alert } from "@/components/ui/Alert";
 
 interface DashboardData {
   totalClientes: number;
@@ -23,11 +22,26 @@ interface DashboardData {
   }[];
 }
 
-const columns: GridColDef[] = [
-  { field: "nombre", headerName: "Promotor", flex: 1 },
-  { field: "total_lotes", headerName: "Lotes", width: 100, align: "center", headerAlign: "center" },
-  { field: "total_asignados", headerName: "Asignados", width: 120, align: "center", headerAlign: "center" },
-  { field: "oportunidades_activas", headerName: "Activas", width: 110, align: "center", headerAlign: "center" },
+type PromotorRow = DashboardData["porPromotor"][number];
+
+const columns: ColumnDef<PromotorRow, unknown>[] = [
+  { accessorKey: "nombre", header: "Promotor" },
+  {
+    accessorKey: "total_lotes",
+    header: "Lotes",
+    cell: ({ getValue }) => <span className="text-center block">{getValue() as number}</span>,
+    meta: { align: "center" },
+  },
+  {
+    accessorKey: "total_asignados",
+    header: "Asignados",
+    cell: ({ getValue }) => <span className="text-center block">{getValue() as number}</span>,
+  },
+  {
+    accessorKey: "oportunidades_activas",
+    header: "Activas",
+    cell: ({ getValue }) => <span className="text-center block">{getValue() as number}</span>,
+  },
 ];
 
 export default function AdminDashboard() {
@@ -53,90 +67,69 @@ export default function AdminDashboard() {
 
   if (loading) {
     return (
-      <Box sx={{ display: "flex", justifyContent: "center", mt: 8 }}>
-        <CircularProgress />
-      </Box>
+      <div className="flex justify-center mt-20">
+        <Spinner />
+      </div>
     );
   }
 
   if (error) {
     return (
-      <Box sx={{ display: "flex", justifyContent: "center", mt: 8 }}>
-        <Alert severity="error" sx={{ maxWidth: 500 }}>{error}</Alert>
-      </Box>
+      <div className="flex justify-center mt-20">
+        <Alert variant="error" className="max-w-md">{error}</Alert>
+      </div>
     );
   }
 
   return (
-    <Box>
-      <Typography variant="h4" sx={{ mb: 3 }}>
+    <div>
+      <h1 className="font-display text-xl font-bold text-slate-100 mb-6">
         Dashboard
-      </Typography>
+      </h1>
 
-      <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <StatCard
-            title="Total Clientes"
-            value={data?.totalClientes.toLocaleString() ?? 0}
-            icon={<StorageIcon />}
-            color="#1565c0"
-          />
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <StatCard
-            title="Asignados"
-            value={data?.clientesAsignados.toLocaleString() ?? 0}
-            icon={<AssignmentIcon />}
-            color="#2e7d32"
-          />
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <StatCard
-            title="Disponibles"
-            value={data?.clientesDisponibles.toLocaleString() ?? 0}
-            icon={<CheckCircleIcon />}
-            color="#ed6c02"
-          />
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <StatCard
-            title="Promotores Activos"
-            value={data?.totalPromotores ?? 0}
-            icon={<PeopleIcon />}
-            color="#9c27b0"
-          />
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <StatCard
-            title="Lotes Hoy"
-            value={data?.lotesHoy ?? 0}
-            icon={<AssignmentIcon />}
-            color="#0288d1"
-          />
-        </Grid>
-      </Grid>
-
-      <Typography variant="h6" sx={{ mb: 2 }}>
-        Resumen por Promotor
-      </Typography>
-      <Box sx={{ bgcolor: "white", borderRadius: 2 }}>
-        <DataGrid
-          rows={data?.porPromotor ?? []}
-          columns={columns}
-          pageSizeOptions={[10, 25]}
-          initialState={{
-            pagination: { paginationModel: { pageSize: 10 } },
-          }}
-          disableRowSelectionOnClick
-          autoHeight
-          sx={{
-            border: "none",
-            "& .MuiDataGrid-columnHeaders": {
-              bgcolor: "#f5f5f5",
-            },
-          }}
+      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 mb-6">
+        <StatCard
+          title="Total Clientes"
+          value={data?.totalClientes.toLocaleString() ?? 0}
+          icon={<Database className="w-5 h-5" />}
+          color="blue"
         />
-      </Box>
-    </Box>
+        <StatCard
+          title="Asignados"
+          value={data?.clientesAsignados.toLocaleString() ?? 0}
+          icon={<ClipboardList className="w-5 h-5" />}
+          color="green"
+        />
+        <StatCard
+          title="Disponibles"
+          value={data?.clientesDisponibles.toLocaleString() ?? 0}
+          icon={<CheckCircle className="w-5 h-5" />}
+          color="orange"
+        />
+        <StatCard
+          title="Promotores Activos"
+          value={data?.totalPromotores ?? 0}
+          icon={<Users className="w-5 h-5" />}
+          color="purple"
+        />
+        <StatCard
+          title="Lotes Hoy"
+          value={data?.lotesHoy ?? 0}
+          icon={<ClipboardList className="w-5 h-5" />}
+          color="blue"
+        />
+      </div>
+
+      <h2 className="text-lg font-semibold text-slate-100 mb-3">
+        Resumen por Promotor
+      </h2>
+      <DataTable
+        data={data?.porPromotor ?? []}
+        columns={columns}
+        pageSize={10}
+        pageSizeOptions={[10, 25]}
+        getRowId={(row) => String(row.id)}
+      />
+    </div>
   );
 }

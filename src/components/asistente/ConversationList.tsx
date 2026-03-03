@@ -1,12 +1,9 @@
 "use client";
 import { useState } from "react";
-import {
-  Box, List, ListItemButton, ListItemText, Typography,
-  IconButton, Divider, CircularProgress,
-  Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Button,
-} from "@mui/material";
-import AddIcon from "@mui/icons-material/Add";
-import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
+import { Plus, Trash2 } from "lucide-react";
+import { Spinner } from "@/components/ui/Spinner";
+import { Button } from "@/components/ui/Button";
+import { Dialog, DialogHeader, DialogBody, DialogFooter } from "@/components/ui/Dialog";
 
 interface Conversacion {
   id: number;
@@ -37,75 +34,88 @@ export default function ConversationList({
   };
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
-      <Box sx={{ p: 1.5, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+    <div className="flex flex-col h-full">
+      <div className="px-3 py-3 flex items-center justify-between">
+        <span className="text-sm font-semibold text-slate-100">
           Conversaciones
-        </Typography>
-        <IconButton size="small" onClick={onNew} title="Nueva conversación" color="primary">
-          <AddIcon />
-        </IconButton>
-      </Box>
-      <Divider />
-      <Box sx={{ flex: 1, overflow: "auto" }}>
+        </span>
+        <button
+          onClick={onNew}
+          title="Nueva conversacion"
+          className="p-1.5 text-amber-500 hover:text-amber-400 hover:bg-slate-800/50 rounded-lg transition-colors"
+        >
+          <Plus className="w-5 h-5" />
+        </button>
+      </div>
+      <div className="h-px bg-slate-800/60" />
+      <div className="flex-1 overflow-auto">
         {loading ? (
-          <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
-            <CircularProgress size={24} />
-          </Box>
+          <div className="flex justify-center py-8">
+            <Spinner size="sm" />
+          </div>
         ) : conversaciones.length === 0 ? (
-          <Typography variant="body2" color="text.secondary" sx={{ p: 2, textAlign: "center" }}>
-            Sin conversaciones aún
-          </Typography>
+          <p className="text-sm text-slate-500 p-4 text-center">
+            Sin conversaciones aun
+          </p>
         ) : (
-          <List dense disablePadding>
+          <ul className="py-1">
             {conversaciones.map((conv) => (
-              <ListItemButton
-                key={conv.id}
-                selected={conv.id === activeId}
-                onClick={() => onSelect(conv.id)}
-                sx={{
-                  px: 1.5,
-                  py: 1,
-                  "&.Mui-selected": { bgcolor: "action.selected" },
-                }}
-              >
-                <ListItemText
-                  primary={conv.titulo || "Sin título"}
-                  secondary={`${conv._count.mensajes} msgs`}
-                  primaryTypographyProps={{ noWrap: true, fontSize: "0.85rem" }}
-                  secondaryTypographyProps={{ fontSize: "0.7rem" }}
-                />
-                <IconButton
-                  size="small"
-                  onClick={(e) => { e.stopPropagation(); setDeleteTarget(conv.id); }}
-                  sx={{ opacity: 0.5, "&:hover": { opacity: 1 } }}
+              <li key={conv.id}>
+                <button
+                  onClick={() => onSelect(conv.id)}
+                  className={`
+                    w-full flex items-center gap-2 px-3 py-2.5 text-left
+                    transition-colors group
+                    ${conv.id === activeId
+                      ? "bg-amber-500/10 text-amber-400"
+                      : "text-slate-400 hover:bg-surface-hover hover:text-slate-200"
+                    }
+                  `.trim()}
                 >
-                  <DeleteOutlineIcon fontSize="small" />
-                </IconButton>
-              </ListItemButton>
+                  <div className="flex-1 min-w-0">
+                    <span className="block text-sm truncate">
+                      {conv.titulo || "Sin titulo"}
+                    </span>
+                    <span className="block text-[11px] text-slate-600">
+                      {conv._count.mensajes} msgs
+                    </span>
+                  </div>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setDeleteTarget(conv.id); }}
+                    className="p-1 opacity-0 group-hover:opacity-60 hover:!opacity-100 text-slate-400 hover:text-red-400 rounded transition-all"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </button>
+              </li>
             ))}
-          </List>
+          </ul>
         )}
-      </Box>
+      </div>
 
-      {/* Dialog de confirmación para eliminar */}
+      {/* Dialog de confirmacion para eliminar */}
       <Dialog
         open={deleteTarget !== null}
         onClose={() => setDeleteTarget(null)}
+        maxWidth="sm"
       >
-        <DialogTitle>Eliminar conversación</DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            Esta acción eliminará la conversación y todo su historial de mensajes. Esta acción no se puede deshacer.
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDeleteTarget(null)}>Cancelar</Button>
-          <Button onClick={handleConfirmDelete} color="error" variant="contained">
+        <DialogHeader onClose={() => setDeleteTarget(null)}>
+          Eliminar conversacion
+        </DialogHeader>
+        <DialogBody>
+          <p className="text-sm text-slate-400">
+            Esta accion eliminara la conversacion y todo su historial de mensajes. Esta accion no se puede deshacer.
+          </p>
+        </DialogBody>
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => setDeleteTarget(null)}>
+            Cancelar
+          </Button>
+          <Button variant="danger" onClick={handleConfirmDelete}>
             Eliminar
           </Button>
-        </DialogActions>
+        </DialogFooter>
       </Dialog>
-    </Box>
+    </div>
   );
 }

@@ -1,9 +1,9 @@
-import { Box, CircularProgress } from "@mui/material";
+import { Spinner } from "@/components/ui";
 
 export default function OperacionesLoading() {
   return (
-    <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", mt: 8 }}>
-      <CircularProgress />
-    </Box>
+    <div className="flex justify-center items-center mt-20">
+      <Spinner />
+    </div>
   );
 }

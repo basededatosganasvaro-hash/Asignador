@@ -1,7 +1,5 @@
 "use client";
-import { Box, Typography, Paper } from "@mui/material";
-import SmartToyIcon from "@mui/icons-material/SmartToy";
-import PersonIcon from "@mui/icons-material/Person";
+import { Bot, User } from "lucide-react";
 
 interface ChatMessageProps {
   rol: "user" | "assistant";
@@ -13,68 +11,47 @@ export default function ChatMessage({ rol, contenido, created_at }: ChatMessageP
   const isUser = rol === "user";
 
   return (
-    <Box
-      sx={{
-        display: "flex",
-        justifyContent: isUser ? "flex-end" : "flex-start",
-        mb: 2,
-        gap: 1,
-        alignItems: "flex-start",
-      }}
+    <div
+      className={`flex items-start gap-2 mb-4 ${isUser ? "justify-end" : "justify-start"}`}
     >
       {!isUser && (
-        <Box
-          sx={{
-            width: 32, height: 32, borderRadius: "50%",
-            bgcolor: "primary.main", display: "flex",
-            alignItems: "center", justifyContent: "center", flexShrink: 0, mt: 0.5,
-          }}
-        >
-          <SmartToyIcon sx={{ color: "white", fontSize: 18 }} />
-        </Box>
+        <div className="w-8 h-8 rounded-full bg-amber-500 flex items-center justify-center shrink-0 mt-1">
+          <Bot className="w-[18px] h-[18px] text-slate-950" />
+        </div>
       )}
-      <Paper
-        elevation={0}
-        sx={{
-          maxWidth: "75%",
-          p: 1.5,
-          bgcolor: isUser ? "primary.main" : "grey.100",
-          color: isUser ? "white" : "text.primary",
-          borderRadius: 2,
-          borderTopRightRadius: isUser ? 4 : undefined,
-          borderTopLeftRadius: !isUser ? 4 : undefined,
-        }}
+      <div
+        className={`
+          max-w-[75%] px-3 py-2.5 rounded-lg
+          ${isUser
+            ? "bg-amber-500 text-slate-950 rounded-tr-sm"
+            : "bg-slate-800/60 text-slate-200 border border-slate-700/50 rounded-tl-sm"
+          }
+        `.trim()}
       >
-        <Typography
-          variant="body2"
-          sx={{
-            whiteSpace: "pre-wrap",
-            wordBreak: "break-word",
-            "& code": {
-              bgcolor: isUser ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.06)",
-              px: 0.5, borderRadius: 0.5, fontFamily: "monospace", fontSize: "0.8rem",
-            },
-          }}
+        <p
+          className={`
+            text-sm whitespace-pre-wrap break-words
+            [&_code]:px-1 [&_code]:rounded [&_code]:font-mono [&_code]:text-xs
+            ${isUser ? "[&_code]:bg-white/15" : "[&_code]:bg-slate-700/60"}
+          `.trim()}
         >
           {contenido}
-        </Typography>
+        </p>
         {created_at && (
-          <Typography variant="caption" sx={{ opacity: 0.6, display: "block", mt: 0.5, textAlign: "right" }}>
+          <span
+            className={`block text-xs mt-1 text-right ${
+              isUser ? "text-slate-950/50" : "text-slate-500"
+            }`}
+          >
             {new Date(created_at).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })}
-          </Typography>
+          </span>
         )}
-      </Paper>
+      </div>
       {isUser && (
-        <Box
-          sx={{
-            width: 32, height: 32, borderRadius: "50%",
-            bgcolor: "grey.400", display: "flex",
-            alignItems: "center", justifyContent: "center", flexShrink: 0, mt: 0.5,
-          }}
-        >
-          <PersonIcon sx={{ color: "white", fontSize: 18 }} />
-        </Box>
+        <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center shrink-0 mt-1">
+          <User className="w-[18px] h-[18px] text-slate-300" />
+        </div>
       )}
-    </Box>
+    </div>
   );
 }

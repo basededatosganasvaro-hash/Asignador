@@ -1,19 +1,24 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
+import { Button } from "@/components/ui/Button";
+import { Badge } from "@/components/ui/Badge";
+import { Select } from "@/components/ui/Select";
+import { Input } from "@/components/ui/Input";
+import { Spinner } from "@/components/ui/Spinner";
+import { Tooltip } from "@/components/ui/Tooltip";
+import StatCard from "@/components/ui/StatCard";
 import {
-  Box, Typography, Card, CardContent, Grid, CircularProgress,
-  Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  Paper, Chip, Button, MenuItem, Select, FormControl, InputLabel,
-  TextField, Pagination, Tooltip, Divider,
-} from "@mui/material";
-import SendIcon from "@mui/icons-material/Send";
-import DoneAllIcon from "@mui/icons-material/DoneAll";
-import VisibilityIcon from "@mui/icons-material/Visibility";
-import ErrorIcon from "@mui/icons-material/Error";
-import PhoneAndroidIcon from "@mui/icons-material/PhoneAndroid";
-import CampaignIcon from "@mui/icons-material/Campaign";
-import FilterListIcon from "@mui/icons-material/FilterList";
-import SearchIcon from "@mui/icons-material/Search";
+  Send,
+  CheckCheck,
+  Eye,
+  AlertCircle,
+  Smartphone,
+  Megaphone,
+  Filter,
+  Search,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 
 interface Stats {
   mensajes: { hoy: number; semana: number; mes: number };
@@ -56,24 +61,26 @@ interface MensajesData {
   equipos: Equipo[];
 }
 
-const ESTADO_COLORS: Record<string, string> = {
-  PENDIENTE: "#9e9e9e",
-  ENVIANDO: "#ff9800",
-  ENVIADO: "#2196f3",
-  ENTREGADO: "#4caf50",
-  LEIDO: "#00bcd4",
-  FALLIDO: "#f44336",
+type BadgeColor = "amber" | "green" | "red" | "blue" | "purple" | "teal" | "orange" | "slate";
+
+const ESTADO_BADGE: Record<string, BadgeColor> = {
+  PENDIENTE: "slate",
+  ENVIANDO: "orange",
+  ENVIADO: "blue",
+  ENTREGADO: "green",
+  LEIDO: "teal",
+  FALLIDO: "red",
 };
 
 const ESTADOS = ["PENDIENTE", "ENVIANDO", "ENVIADO", "ENTREGADO", "LEIDO", "FALLIDO"];
 
 function fmtDate(d: string | null) {
-  if (!d) return "—";
+  if (!d) return "\u2014";
   return new Date(d).toLocaleString("es-MX", { dateStyle: "short", timeStyle: "short" });
 }
 
 export default function WhatsAppAdminPage() {
-  // ─── Analytics ───
+  // --- Analytics ---
   const [stats, setStats] = useState<Stats | null>(null);
   const [loadingStats, setLoadingStats] = useState(true);
 
@@ -91,7 +98,7 @@ export default function WhatsAppAdminPage() {
     return () => clearInterval(interval);
   }, [fetchStats]);
 
-  // ─── Mensajes detalle ───
+  // --- Mensajes detalle ---
   const [mensajesData, setMensajesData] = useState<MensajesData | null>(null);
   const [loadingMensajes, setLoadingMensajes] = useState(false);
   const [filtroPromotor, setFiltroPromotor] = useState("");
@@ -128,27 +135,27 @@ export default function WhatsAppAdminPage() {
     fetchMensajes(1);
   };
 
-  const handlePageChange = (_: unknown, newPage: number) => {
+  const handlePageChange = (newPage: number) => {
     setPage(newPage);
     fetchMensajes(newPage);
   };
 
   if (loadingStats) return (
-    <Box sx={{ display: "flex", justifyContent: "center", mt: 8 }}><CircularProgress /></Box>
+    <div className="flex justify-center mt-20"><Spinner size="lg" /></div>
   );
 
   if (!stats) return (
-    <Box sx={{ textAlign: "center", mt: 8 }}>
-      <Typography color="text.secondary">Error al cargar estadísticas</Typography>
-    </Box>
+    <div className="text-center mt-20">
+      <span className="text-sm text-slate-400">Error al cargar estadisticas</span>
+    </div>
   );
 
-  const statCards = [
-    { label: "Enviados Hoy", value: stats.mensajes.hoy, icon: <SendIcon />, color: "#2196f3" },
-    { label: "Enviados Semana", value: stats.mensajes.semana, icon: <DoneAllIcon />, color: "#4caf50" },
-    { label: "Enviados Mes", value: stats.mensajes.mes, icon: <CampaignIcon />, color: "#ff9800" },
-    { label: "Sesiones Activas", value: stats.sesionesActivas, icon: <PhoneAndroidIcon />, color: "#25D366" },
-    { label: "Campañas Activas", value: stats.campanasActivas, icon: <CampaignIcon />, color: "#9c27b0" },
+  const statCards: { label: string; value: number; icon: React.ReactNode; color: "blue" | "green" | "orange" | "emerald" | "purple" }[] = [
+    { label: "Enviados Hoy", value: stats.mensajes.hoy, icon: <Send className="w-5 h-5" />, color: "blue" },
+    { label: "Enviados Semana", value: stats.mensajes.semana, icon: <CheckCheck className="w-5 h-5" />, color: "green" },
+    { label: "Enviados Mes", value: stats.mensajes.mes, icon: <Megaphone className="w-5 h-5" />, color: "orange" },
+    { label: "Sesiones Activas", value: stats.sesionesActivas, icon: <Smartphone className="w-5 h-5" />, color: "green" },
+    { label: "Campanas Activas", value: stats.campanasActivas, icon: <Megaphone className="w-5 h-5" />, color: "purple" },
   ];
 
   const promotores = mensajesData?.promotores || [];
@@ -156,275 +163,294 @@ export default function WhatsAppAdminPage() {
   const totalPages = mensajesData ? Math.ceil(mensajesData.total / LIMIT) : 0;
 
   return (
-    <Box>
-      <Typography variant="h5" fontWeight={600} sx={{ mb: 0.5 }}>WhatsApp - Analítica</Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        Monitoreo de envíos masivos de WhatsApp
-      </Typography>
+    <div>
+      <h1 className="font-display text-xl font-bold text-slate-100 mb-1">
+        WhatsApp - Analitica
+      </h1>
+      <span className="text-sm text-slate-400 block mb-5">
+        Monitoreo de envios masivos de WhatsApp
+      </span>
 
       {/* KPI Cards */}
-      <Grid container spacing={2} sx={{ mb: 3 }}>
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-5">
         {statCards.map((card) => (
-          <Grid size={{ xs: 6, md: 2.4 }} key={card.label}>
-            <Card elevation={0} sx={{ border: "1px solid", borderColor: "divider", borderRadius: 3 }}>
-              <CardContent sx={{ textAlign: "center", py: 2, "&:last-child": { pb: 2 } }}>
-                <Box sx={{ color: card.color, mb: 0.5 }}>{card.icon}</Box>
-                <Typography variant="h4" fontWeight={800} sx={{ color: card.color }}>
-                  {card.value}
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  {card.label}
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
+          <StatCard
+            key={card.label}
+            title={card.label}
+            value={card.value}
+            icon={card.icon}
+            color={card.color as "blue" | "green" | "orange" | "purple" | "amber"}
+          />
         ))}
-      </Grid>
+      </div>
 
-      <Grid container spacing={3} sx={{ mb: 3 }}>
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-5 mb-5">
         {/* Por Estado */}
-        <Grid size={{ xs: 12, md: 4 }}>
-          <Card elevation={0} sx={{ border: "1px solid", borderColor: "divider", borderRadius: 3 }}>
-            <CardContent>
-              <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 2 }}>
-                Mensajes por Estado (Mes)
-              </Typography>
-              {stats.porEstado.length === 0 ? (
-                <Typography variant="body2" color="text.secondary">Sin datos</Typography>
-              ) : (
-                stats.porEstado.map((e) => (
-                  <Box key={e.estado} sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1 }}>
-                    <Chip
-                      label={e.estado}
-                      size="small"
-                      sx={{ bgcolor: ESTADO_COLORS[e.estado] || "grey.500", color: "white", fontWeight: 700, fontSize: 11 }}
-                    />
-                    <Typography variant="body2" fontWeight={700}>{e.count}</Typography>
-                  </Box>
-                ))
-              )}
-            </CardContent>
-          </Card>
-        </Grid>
+        <div className="md:col-span-4 bg-surface rounded-xl border border-slate-800/60 p-5">
+          <h2 className="text-sm font-semibold text-slate-100 mb-4">
+            Mensajes por Estado (Mes)
+          </h2>
+          {stats.porEstado.length === 0 ? (
+            <span className="text-sm text-slate-400">Sin datos</span>
+          ) : (
+            <div className="space-y-2">
+              {stats.porEstado.map((e) => (
+                <div key={e.estado} className="flex justify-between items-center">
+                  <Badge color={ESTADO_BADGE[e.estado] || "slate"}>
+                    {e.estado}
+                  </Badge>
+                  <span className="text-sm font-bold text-slate-200">{e.count}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
         {/* Por Promotor */}
-        <Grid size={{ xs: 12, md: 8 }}>
-          <Card elevation={0} sx={{ border: "1px solid", borderColor: "divider", borderRadius: 3 }}>
-            <CardContent>
-              <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 2 }}>Top Promotores</Typography>
-              <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2 }}>
-                <Table size="small">
-                  <TableHead>
-                    <TableRow sx={{ bgcolor: "grey.50" }}>
-                      <TableCell sx={{ fontWeight: 700, fontSize: 11 }}>Promotor</TableCell>
-                      <TableCell align="center" sx={{ fontWeight: 700, fontSize: 11 }}><SendIcon sx={{ fontSize: 12, mr: 0.5 }} />Enviados</TableCell>
-                      <TableCell align="center" sx={{ fontWeight: 700, fontSize: 11 }}><DoneAllIcon sx={{ fontSize: 12, mr: 0.5 }} />Entregados</TableCell>
-                      <TableCell align="center" sx={{ fontWeight: 700, fontSize: 11 }}><VisibilityIcon sx={{ fontSize: 12, mr: 0.5 }} />Leídos</TableCell>
-                      <TableCell align="center" sx={{ fontWeight: 700, fontSize: 11 }}><ErrorIcon sx={{ fontSize: 12, mr: 0.5 }} />Fallidos</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {stats.porPromotor.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={5} align="center">
-                          <Typography variant="body2" color="text.secondary">Sin datos</Typography>
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      stats.porPromotor.map((p) => (
-                        <TableRow key={p.usuario_id}>
-                          <TableCell sx={{ fontSize: 13 }}>{p.nombre}</TableCell>
-                          <TableCell align="center" sx={{ fontWeight: 600, color: "#2196f3" }}>{p.enviados}</TableCell>
-                          <TableCell align="center" sx={{ fontWeight: 600, color: "#4caf50" }}>{p.entregados}</TableCell>
-                          <TableCell align="center" sx={{ fontWeight: 600, color: "#00bcd4" }}>{p.leidos}</TableCell>
-                          <TableCell align="center" sx={{ fontWeight: 600, color: "#f44336" }}>{p.fallidos}</TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
+        <div className="md:col-span-8 bg-surface rounded-xl border border-slate-800/60 p-5">
+          <h2 className="text-sm font-semibold text-slate-100 mb-4">Top Promotores</h2>
+          <div className="overflow-x-auto rounded-lg border border-slate-800/60">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-slate-800/40">
+                  <th className="text-left px-3 py-2 text-xs font-semibold text-slate-400">Promotor</th>
+                  <th className="text-center px-3 py-2 text-xs font-semibold text-slate-400">
+                    <span className="inline-flex items-center gap-1"><Send className="w-3 h-3" />Enviados</span>
+                  </th>
+                  <th className="text-center px-3 py-2 text-xs font-semibold text-slate-400">
+                    <span className="inline-flex items-center gap-1"><CheckCheck className="w-3 h-3" />Entregados</span>
+                  </th>
+                  <th className="text-center px-3 py-2 text-xs font-semibold text-slate-400">
+                    <span className="inline-flex items-center gap-1"><Eye className="w-3 h-3" />Leidos</span>
+                  </th>
+                  <th className="text-center px-3 py-2 text-xs font-semibold text-slate-400">
+                    <span className="inline-flex items-center gap-1"><AlertCircle className="w-3 h-3" />Fallidos</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800/40">
+                {stats.porPromotor.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="text-center py-4">
+                      <span className="text-sm text-slate-400">Sin datos</span>
+                    </td>
+                  </tr>
+                ) : (
+                  stats.porPromotor.map((p) => (
+                    <tr key={p.usuario_id} className="hover:bg-slate-800/30 transition-colors">
+                      <td className="px-3 py-2 text-sm text-slate-300">{p.nombre}</td>
+                      <td className="text-center px-3 py-2 font-semibold text-blue-400">{p.enviados}</td>
+                      <td className="text-center px-3 py-2 font-semibold text-green-400">{p.entregados}</td>
+                      <td className="text-center px-3 py-2 font-semibold text-teal-400">{p.leidos}</td>
+                      <td className="text-center px-3 py-2 font-semibold text-red-400">{p.fallidos}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
 
-      {/* ─── Detalle de Mensajes ─── */}
-      <Card elevation={0} sx={{ border: "1px solid", borderColor: "divider", borderRadius: 3 }}>
-        <CardContent>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
-            <FilterListIcon sx={{ color: "text.secondary" }} />
-            <Typography variant="subtitle2" fontWeight={700}>Detalle de Mensajes</Typography>
-            {mensajesData && (
-              <Typography variant="caption" color="text.secondary" sx={{ ml: "auto" }}>
-                {mensajesData.total} resultado{mensajesData.total !== 1 ? "s" : ""}
-              </Typography>
-            )}
-          </Box>
+      {/* --- Detalle de Mensajes --- */}
+      <div className="bg-surface rounded-xl border border-slate-800/60 p-5">
+        <div className="flex items-center gap-2 mb-4">
+          <Filter className="w-5 h-5 text-slate-400" />
+          <h2 className="text-sm font-semibold text-slate-100">Detalle de Mensajes</h2>
+          {mensajesData && (
+            <span className="text-xs text-slate-500 ml-auto">
+              {mensajesData.total} resultado{mensajesData.total !== 1 ? "s" : ""}
+            </span>
+          )}
+        </div>
 
-          {/* Filtros */}
-          <Box sx={{ display: "flex", gap: 1.5, flexWrap: "wrap", mb: 2 }}>
-            <FormControl size="small" sx={{ minWidth: 160 }}>
-              <InputLabel>Promotor</InputLabel>
-              <Select
-                value={filtroPromotor}
-                label="Promotor"
-                onChange={(e) => setFiltroPromotor(e.target.value)}
-              >
-                <MenuItem value="">Todos</MenuItem>
-                {promotores.map((p) => (
-                  <MenuItem key={p.id} value={String(p.id)}>{p.nombre}</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-
-            <FormControl size="small" sx={{ minWidth: 140 }}>
-              <InputLabel>Equipo</InputLabel>
-              <Select
-                value={filtroEquipo}
-                label="Equipo"
-                onChange={(e) => setFiltroEquipo(e.target.value)}
-              >
-                <MenuItem value="">Todos</MenuItem>
-                {equipos.map((e) => (
-                  <MenuItem key={e.id} value={String(e.id)}>{e.nombre}</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-
-            <FormControl size="small" sx={{ minWidth: 130 }}>
-              <InputLabel>Estado</InputLabel>
-              <Select
-                value={filtroEstado}
-                label="Estado"
-                onChange={(e) => setFiltroEstado(e.target.value)}
-              >
-                <MenuItem value="">Todos</MenuItem>
-                {ESTADOS.map((s) => (
-                  <MenuItem key={s} value={s}>
-                    <Chip label={s} size="small" sx={{ bgcolor: ESTADO_COLORS[s], color: "white", fontWeight: 700, fontSize: 11, height: 20 }} />
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-
-            <TextField
-              size="small" label="Desde" type="date"
-              value={filtroDesde} onChange={(e) => setFiltroDesde(e.target.value)}
-              InputLabelProps={{ shrink: true }} sx={{ width: 150 }}
+        {/* Filtros */}
+        <div className="flex gap-3 flex-wrap mb-4">
+          <div className="min-w-[160px]">
+            <Select
+              value={filtroPromotor}
+              onChange={(e) => setFiltroPromotor(e.target.value)}
+              options={promotores.map((p) => ({ value: String(p.id), label: p.nombre }))}
+              placeholder="Todos"
+              label="Promotor"
+              fullWidth={false}
             />
-            <TextField
-              size="small" label="Hasta" type="date"
-              value={filtroHasta} onChange={(e) => setFiltroHasta(e.target.value)}
-              InputLabelProps={{ shrink: true }} sx={{ width: 150 }}
-            />
+          </div>
 
+          <div className="min-w-[140px]">
+            <Select
+              value={filtroEquipo}
+              onChange={(e) => setFiltroEquipo(e.target.value)}
+              options={equipos.map((e) => ({ value: String(e.id), label: e.nombre }))}
+              placeholder="Todos"
+              label="Equipo"
+              fullWidth={false}
+            />
+          </div>
+
+          <div className="min-w-[130px]">
+            <Select
+              value={filtroEstado}
+              onChange={(e) => setFiltroEstado(e.target.value)}
+              options={ESTADOS.map((s) => ({ value: s, label: s }))}
+              placeholder="Todos"
+              label="Estado"
+              fullWidth={false}
+            />
+          </div>
+
+          <div className="w-[160px]">
+            <Input
+              label="Desde"
+              type="date"
+              value={filtroDesde}
+              onChange={(e) => setFiltroDesde(e.target.value)}
+              fullWidth={false}
+            />
+          </div>
+          <div className="w-[160px]">
+            <Input
+              label="Hasta"
+              type="date"
+              value={filtroHasta}
+              onChange={(e) => setFiltroHasta(e.target.value)}
+              fullWidth={false}
+            />
+          </div>
+
+          <div className="flex items-end">
             <Button
-              variant="contained" size="small"
-              startIcon={loadingMensajes ? <CircularProgress size={14} color="inherit" /> : <SearchIcon />}
+              variant="primary"
+              size="sm"
+              icon={<Search className="w-4 h-4" />}
+              loading={loadingMensajes}
               onClick={handleBuscar}
-              disabled={loadingMensajes}
-              sx={{ textTransform: "none", fontWeight: 600 }}
             >
               Buscar
             </Button>
-          </Box>
+          </div>
+        </div>
 
-          <Divider sx={{ mb: 2 }} />
+        <div className="h-px bg-slate-800/60 mb-4" />
 
-          {/* Tabla */}
-          {loadingMensajes ? (
-            <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}><CircularProgress /></Box>
-          ) : (
-            <>
-              <TableContainer sx={{ maxHeight: 480 }}>
-                <Table size="small" stickyHeader>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell sx={{ fontWeight: 700, fontSize: 11, bgcolor: "grey.50" }}>Cliente</TableCell>
-                      <TableCell sx={{ fontWeight: 700, fontSize: 11, bgcolor: "grey.50" }}>Teléfono</TableCell>
-                      <TableCell sx={{ fontWeight: 700, fontSize: 11, bgcolor: "grey.50" }}>Promotor</TableCell>
-                      <TableCell sx={{ fontWeight: 700, fontSize: 11, bgcolor: "grey.50" }}>Equipo</TableCell>
-                      <TableCell sx={{ fontWeight: 700, fontSize: 11, bgcolor: "grey.50" }}>Campaña</TableCell>
-                      <TableCell sx={{ fontWeight: 700, fontSize: 11, bgcolor: "grey.50" }}>Estado</TableCell>
-                      <TableCell sx={{ fontWeight: 700, fontSize: 11, bgcolor: "grey.50" }}>Enviado</TableCell>
-                      <TableCell sx={{ fontWeight: 700, fontSize: 11, bgcolor: "grey.50" }}>Entregado</TableCell>
-                      <TableCell sx={{ fontWeight: 700, fontSize: 11, bgcolor: "grey.50" }}>Leído</TableCell>
-                      <TableCell sx={{ fontWeight: 700, fontSize: 11, bgcolor: "grey.50" }}>Error</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {!mensajesData || mensajesData.mensajes.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={10} align="center" sx={{ py: 4 }}>
-                          <Typography variant="body2" color="text.secondary">Sin mensajes</Typography>
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      mensajesData.mensajes.map((m) => (
-                        <TableRow key={m.id} hover>
-                          <TableCell sx={{ fontSize: 12, maxWidth: 160 }}>
-                            <Typography variant="body2" noWrap fontWeight={500}>
-                              {m.nombre_cliente || "—"}
-                            </Typography>
-                          </TableCell>
-                          <TableCell sx={{ fontSize: 12 }}>{m.numero_destino}</TableCell>
-                          <TableCell sx={{ fontSize: 12 }}>{m.promotor_nombre}</TableCell>
-                          <TableCell sx={{ fontSize: 12 }}>{m.equipo_nombre || "—"}</TableCell>
-                          <TableCell sx={{ fontSize: 12, maxWidth: 140 }}>
-                            <Tooltip title={m.campana_nombre}>
-                              <Typography variant="body2" noWrap sx={{ fontSize: 12 }}>
-                                {m.campana_nombre}
-                              </Typography>
+        {/* Tabla */}
+        {loadingMensajes ? (
+          <div className="flex justify-center py-8"><Spinner /></div>
+        ) : (
+          <>
+            <div className="overflow-x-auto max-h-[480px] overflow-y-auto rounded-lg border border-slate-800/60">
+              <table className="w-full text-sm">
+                <thead className="sticky top-0 z-10">
+                  <tr className="bg-slate-800/60">
+                    <th className="text-left px-3 py-2 text-xs font-semibold text-slate-400">Cliente</th>
+                    <th className="text-left px-3 py-2 text-xs font-semibold text-slate-400">Telefono</th>
+                    <th className="text-left px-3 py-2 text-xs font-semibold text-slate-400">Promotor</th>
+                    <th className="text-left px-3 py-2 text-xs font-semibold text-slate-400">Equipo</th>
+                    <th className="text-left px-3 py-2 text-xs font-semibold text-slate-400">Campana</th>
+                    <th className="text-left px-3 py-2 text-xs font-semibold text-slate-400">Estado</th>
+                    <th className="text-left px-3 py-2 text-xs font-semibold text-slate-400">Enviado</th>
+                    <th className="text-left px-3 py-2 text-xs font-semibold text-slate-400">Entregado</th>
+                    <th className="text-left px-3 py-2 text-xs font-semibold text-slate-400">Leido</th>
+                    <th className="text-left px-3 py-2 text-xs font-semibold text-slate-400">Error</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800/40">
+                  {!mensajesData || mensajesData.mensajes.length === 0 ? (
+                    <tr>
+                      <td colSpan={10} className="text-center py-8">
+                        <span className="text-sm text-slate-400">Sin mensajes</span>
+                      </td>
+                    </tr>
+                  ) : (
+                    mensajesData.mensajes.map((m) => (
+                      <tr key={m.id} className="hover:bg-slate-800/30 transition-colors">
+                        <td className="px-3 py-2 max-w-[160px]">
+                          <span className="text-sm font-medium text-slate-300 truncate block">
+                            {m.nombre_cliente || "\u2014"}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2 text-xs text-slate-300">{m.numero_destino}</td>
+                        <td className="px-3 py-2 text-xs text-slate-300">{m.promotor_nombre}</td>
+                        <td className="px-3 py-2 text-xs text-slate-300">{m.equipo_nombre || "\u2014"}</td>
+                        <td className="px-3 py-2 max-w-[140px]">
+                          <Tooltip content={m.campana_nombre}>
+                            <span className="text-xs text-slate-300 truncate block">
+                              {m.campana_nombre}
+                            </span>
+                          </Tooltip>
+                        </td>
+                        <td className="px-3 py-2">
+                          <Badge color={ESTADO_BADGE[m.estado] || "slate"}>
+                            {m.estado}
+                          </Badge>
+                        </td>
+                        <td className="px-3 py-2 text-xs text-slate-500">{fmtDate(m.enviado_at)}</td>
+                        <td className="px-3 py-2 text-xs text-slate-500">{fmtDate(m.entregado_at)}</td>
+                        <td className="px-3 py-2 text-xs text-slate-500">{fmtDate(m.leido_at)}</td>
+                        <td className="px-3 py-2 max-w-[140px]">
+                          {m.error_detalle ? (
+                            <Tooltip content={m.error_detalle}>
+                              <span className="text-xs text-red-400 truncate block">
+                                {m.error_detalle}
+                              </span>
                             </Tooltip>
-                          </TableCell>
-                          <TableCell>
-                            <Chip
-                              label={m.estado}
-                              size="small"
-                              sx={{
-                                bgcolor: ESTADO_COLORS[m.estado] || "grey.500",
-                                color: "white",
-                                fontWeight: 700,
-                                fontSize: 10,
-                                height: 20,
-                              }}
-                            />
-                          </TableCell>
-                          <TableCell sx={{ fontSize: 11, color: "text.secondary" }}>{fmtDate(m.enviado_at)}</TableCell>
-                          <TableCell sx={{ fontSize: 11, color: "text.secondary" }}>{fmtDate(m.entregado_at)}</TableCell>
-                          <TableCell sx={{ fontSize: 11, color: "text.secondary" }}>{fmtDate(m.leido_at)}</TableCell>
-                          <TableCell sx={{ fontSize: 11, maxWidth: 140 }}>
-                            {m.error_detalle ? (
-                              <Tooltip title={m.error_detalle}>
-                                <Typography variant="body2" noWrap sx={{ fontSize: 11, color: "error.main" }}>
-                                  {m.error_detalle}
-                                </Typography>
-                              </Tooltip>
-                            ) : "—"}
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </TableContainer>
+                          ) : "\u2014"}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
 
-              {totalPages > 1 && (
-                <Box sx={{ display: "flex", justifyContent: "center", mt: 2 }}>
-                  <Pagination
-                    count={totalPages}
-                    page={page}
-                    onChange={handlePageChange}
-                    size="small"
-                    color="primary"
-                  />
-                </Box>
-              )}
-            </>
-          )}
-        </CardContent>
-      </Card>
-    </Box>
+            {totalPages > 1 && (
+              <div className="flex justify-center items-center gap-2 mt-4">
+                <button
+                  onClick={() => handlePageChange(page - 1)}
+                  disabled={page <= 1}
+                  className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
+                  let pageNum: number;
+                  if (totalPages <= 7) {
+                    pageNum = i + 1;
+                  } else if (page <= 4) {
+                    pageNum = i + 1;
+                  } else if (page >= totalPages - 3) {
+                    pageNum = totalPages - 6 + i;
+                  } else {
+                    pageNum = page - 3 + i;
+                  }
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => handlePageChange(pageNum)}
+                      className={`
+                        w-8 h-8 rounded-lg text-xs font-medium transition-colors
+                        ${page === pageNum
+                          ? "bg-amber-500 text-slate-950"
+                          : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
+                        }
+                      `.trim()}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+                <button
+                  onClick={() => handlePageChange(page + 1)}
+                  disabled={page >= totalPages}
+                  className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
   );
 }

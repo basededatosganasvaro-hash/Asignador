@@ -1,21 +1,17 @@
 "use client";
 import { useEffect, useState } from "react";
-import {
-  Dialog, DialogTitle, DialogContent, DialogActions,
-  Button, Typography, Box, FormControl, InputLabel, Select,
-  MenuItem, CircularProgress, Alert, Divider,
-} from "@mui/material";
-import UploadFileIcon from "@mui/icons-material/UploadFile";
-import DownloadIcon from "@mui/icons-material/Download";
-import CheckCircleIcon from "@mui/icons-material/CheckCircle";
-import ErrorIcon from "@mui/icons-material/Error";
-import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
+import { Dialog, DialogHeader, DialogBody, DialogFooter } from "@/components/ui/Dialog";
+import { Button } from "@/components/ui/Button";
+import { Select } from "@/components/ui/Select";
+import { Alert } from "@/components/ui/Alert";
+import { Spinner } from "@/components/ui/Spinner";
+import { FileUp, Download, CheckCircle, AlertCircle, FileSpreadsheet } from "lucide-react";
 
 const ORIGENES = [
   { value: "CAMBACEO", label: "Cambaceo" },
   { value: "REFERIDO", label: "Referido" },
   { value: "REDES_SOCIALES", label: "Redes sociales" },
-  { value: "MMP_PROSPECCION", label: "MMP Prospección" },
+  { value: "MMP_PROSPECCION", label: "MMP Prospeccion" },
   { value: "CCC", label: "CCC" },
   { value: "EXCEL", label: "Excel" },
   { value: "OTRO", label: "Otro" },
@@ -98,91 +94,82 @@ export default function ImportCaptacionDialog({ open, onClose, onSuccess, embedd
         }
       }
     } catch {
-      setError("Error de conexión");
+      setError("Error de conexion");
     } finally {
       setUploading(false);
     }
   };
 
   const content = (
-    <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5, mt: embedded ? 0 : 1 }}>
+    <div className={`flex flex-col gap-5 ${embedded ? "" : "mt-2"}`}>
       {/* Paso 1: Descargar template */}
-      <Box
-        sx={{
-          p: 2,
-          border: "2px dashed",
-          borderColor: "primary.main",
-          borderRadius: 2,
-          bgcolor: "primary.50",
-          textAlign: "center",
-        }}
-      >
-        <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 0.5 }}>
+      <div className="p-4 border-2 border-dashed border-amber-500/40 rounded-xl bg-amber-500/5 text-center">
+        <h4 className="text-sm font-bold text-slate-200 mb-1">
           Paso 1: Descarga el template
-        </Typography>
-        <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1.5 }}>
-          Llena el archivo Excel con los datos de tus prospectos y luego s&uacute;belo aqu&iacute;
-        </Typography>
+        </h4>
+        <p className="text-xs text-slate-400 mb-3">
+          Llena el archivo Excel con los datos de tus prospectos y luego subelo aqui
+        </p>
         <Button
-          variant="contained"
-          startIcon={<DownloadIcon />}
+          variant="primary"
+          icon={<Download className="w-4 h-4" />}
           onClick={handleDownloadTemplate}
-          sx={{ textTransform: "none", fontWeight: 600 }}
         >
           Descargar Template Excel
         </Button>
-      </Box>
+      </div>
 
-      <Divider>
-        <Typography variant="caption" color="text.secondary" fontWeight={600}>
-          Paso 2: Configura la importaci&oacute;n
-        </Typography>
-      </Divider>
+      {/* Divider with label */}
+      <div className="relative">
+        <div className="h-px bg-slate-800/40" />
+        <span className="absolute left-1/2 -translate-x-1/2 -translate-y-1/2 bg-elevated px-3 text-xs text-slate-500 font-semibold">
+          Paso 2: Configura la importacion
+        </span>
+      </div>
 
-      <FormControl fullWidth size="small" required>
-        <InputLabel>Origen de captaci&oacute;n</InputLabel>
-        <Select value={origen} label="Origen de captación" onChange={(e) => setOrigen(e.target.value)}>
-          {ORIGENES.map((o) => (
-            <MenuItem key={o.value} value={o.value}>{o.label}</MenuItem>
-          ))}
-        </Select>
-      </FormControl>
+      <Select
+        label="Origen de captacion *"
+        value={origen}
+        onChange={(e) => setOrigen(e.target.value)}
+        options={ORIGENES}
+        placeholder="Seleccionar origen"
+        required
+      />
 
-      <FormControl fullWidth size="small" required>
-        <InputLabel>Convenio</InputLabel>
-        <Select value={convenio} label="Convenio" onChange={(e) => setConvenio(e.target.value)}>
-          {convenios.map((c) => (
-            <MenuItem key={c.id} value={c.nombre}>{c.nombre}</MenuItem>
-          ))}
-        </Select>
-      </FormControl>
+      <Select
+        label="Convenio *"
+        value={convenio}
+        onChange={(e) => setConvenio(e.target.value)}
+        options={convenios.map((c) => ({ value: c.nombre, label: c.nombre }))}
+        placeholder="Seleccionar convenio"
+        required
+      />
 
-      <Divider>
-        <Typography variant="caption" color="text.secondary" fontWeight={600}>
+      {/* Divider with label */}
+      <div className="relative">
+        <div className="h-px bg-slate-800/40" />
+        <span className="absolute left-1/2 -translate-x-1/2 -translate-y-1/2 bg-elevated px-3 text-xs text-slate-500 font-semibold">
           Paso 3: Sube tu archivo
-        </Typography>
-      </Divider>
+        </span>
+      </div>
 
-      {/* Zona de subida de archivo */}
-      <Box>
-        <Button
-          variant="outlined"
-          component="label"
-          startIcon={file ? <InsertDriveFileIcon /> : <UploadFileIcon />}
-          fullWidth
-          color={file ? "success" : "primary"}
-          sx={{
-            py: 2,
-            borderStyle: file ? "solid" : "dashed",
-            borderWidth: 2,
-            textTransform: "none",
-            fontWeight: file ? 600 : 400,
-          }}
+      {/* File upload zone */}
+      <div>
+        <label
+          className={`
+            flex items-center justify-center gap-2 w-full py-4 rounded-lg text-sm cursor-pointer
+            transition-colors border-2
+            ${file
+              ? "border-solid border-green-500/40 bg-green-500/5 text-green-400 font-semibold"
+              : "border-dashed border-slate-700 bg-slate-800/30 text-slate-400 hover:border-slate-600"
+            }
+          `}
         >
+          {file ? <FileSpreadsheet className="w-5 h-5" /> : <FileUp className="w-5 h-5" />}
           {file ? file.name : "Seleccionar archivo Excel (.xlsx)"}
           <input
             type="file"
-            hidden
+            className="hidden"
             accept=".xlsx,.xls"
             onChange={(e) => {
               setFile(e.target.files?.[0] || null);
@@ -190,91 +177,95 @@ export default function ImportCaptacionDialog({ open, onClose, onSuccess, embedd
               setError("");
             }}
           />
-        </Button>
-      </Box>
+        </label>
+      </div>
 
-      {error && <Alert severity="error">{error}</Alert>}
+      {error && <Alert variant="error">{error}</Alert>}
 
       {result && (
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+        <div className="flex flex-col gap-2">
           {result.created > 0 && (
-            <Alert severity="success" icon={<CheckCircleIcon />}>
+            <Alert variant="success" icon={<CheckCircle className="w-4 h-4" />}>
               {result.created} cliente{result.created !== 1 ? "s" : ""} importado{result.created !== 1 ? "s" : ""} exitosamente
             </Alert>
           )}
           {result.errors.length > 0 && (
-            <Alert severity="warning" icon={<ErrorIcon />}>
-              <Typography variant="body2" fontWeight={600} sx={{ mb: 0.5 }}>
+            <Alert variant="warning" icon={<AlertCircle className="w-4 h-4" />}>
+              <p className="text-sm font-semibold mb-1">
                 {result.errors.length} fila{result.errors.length !== 1 ? "s" : ""} con errores:
-              </Typography>
-              <Box sx={{ maxHeight: 120, overflow: "auto" }}>
+              </p>
+              <div className="max-h-[120px] overflow-auto">
                 {result.errors.slice(0, 10).map((e, i) => (
-                  <Typography key={i} variant="caption" display="block">
+                  <p key={i} className="text-xs">
                     Fila {e.row}: {e.message}
-                  </Typography>
+                  </p>
                 ))}
                 {result.errors.length > 10 && (
-                  <Typography variant="caption" color="text.secondary">
-                    ...y {result.errors.length - 10} m&aacute;s
-                  </Typography>
+                  <p className="text-xs text-slate-500">
+                    ...y {result.errors.length - 10} mas
+                  </p>
                 )}
-              </Box>
+              </div>
             </Alert>
           )}
-        </Box>
+        </div>
       )}
 
       {embedded && (
-        <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1 }}>
-          <Button onClick={handleClose} color="error" variant="outlined">
+        <div className="flex justify-end gap-2">
+          <Button variant="danger" onClick={handleClose}>
             Cancelar
           </Button>
           {!result?.created && (
             <Button
-              variant="contained"
+              variant="primary"
               onClick={handleUpload}
               disabled={uploading || !file || !origen || !convenio}
-              startIcon={uploading ? <CircularProgress size={18} /> : <UploadFileIcon />}
+              loading={uploading}
+              icon={!uploading ? <FileUp className="w-4 h-4" /> : undefined}
             >
               {uploading ? "Importando..." : "Importar"}
             </Button>
           )}
-        </Box>
+        </div>
       )}
-    </Box>
+    </div>
   );
 
   if (embedded) return content;
 
   return (
-    <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 3 } }}>
-      <DialogTitle>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          <UploadFileIcon color="primary" />
-          <Typography variant="h6" fontWeight={700}>Importar Clientes Capturados</Typography>
-        </Box>
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-          Sube un archivo Excel (.xlsx) con los datos de los prospectos
-        </Typography>
-      </DialogTitle>
+    <Dialog open={open} onClose={handleClose} maxWidth="lg">
+      <DialogHeader onClose={handleClose}>
+        <div className="flex items-center gap-2">
+          <FileUp className="w-5 h-5 text-amber-400" />
+          <div>
+            <span>Importar Clientes Capturados</span>
+            <p className="text-sm text-slate-400 font-normal mt-0.5">
+              Sube un archivo Excel (.xlsx) con los datos de los prospectos
+            </p>
+          </div>
+        </div>
+      </DialogHeader>
 
-      <DialogContent>{content}</DialogContent>
+      <DialogBody>{content}</DialogBody>
 
-      <DialogActions sx={{ px: 3, pb: 2 }}>
-        <Button onClick={handleClose} color="error" variant="outlined">
+      <DialogFooter>
+        <Button variant="danger" onClick={handleClose}>
           {result?.created ? "Cerrar" : "Cancelar"}
         </Button>
         {!result?.created && (
           <Button
-            variant="contained"
+            variant="primary"
             onClick={handleUpload}
             disabled={uploading || !file || !origen || !convenio}
-            startIcon={uploading ? <CircularProgress size={18} /> : <UploadFileIcon />}
+            loading={uploading}
+            icon={!uploading ? <FileUp className="w-4 h-4" /> : undefined}
           >
             {uploading ? "Importando..." : "Importar"}
           </Button>
         )}
-      </DialogActions>
+      </DialogFooter>
     </Dialog>
   );
 }

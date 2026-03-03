@@ -1,14 +1,13 @@
 "use client";
-import { Typography, Box } from "@mui/material";
 import ChatPanel from "@/components/asistente/ChatPanel";
 
 export default function AsistentePage() {
   return (
-    <Box>
-      <Typography variant="h5" sx={{ fontWeight: 700, mb: 2 }}>
+    <div>
+      <h2 className="font-display text-xl font-bold text-slate-100 mb-4">
         Asistente IA
-      </Typography>
+      </h2>
       <ChatPanel />
-    </Box>
+    </div>
   );
 }

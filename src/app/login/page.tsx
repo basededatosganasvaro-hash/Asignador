@@ -2,17 +2,10 @@
 import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import {
-  Box,
-  Card,
-  CardContent,
-  TextField,
-  Button,
-  Typography,
-  Alert,
-  CircularProgress,
-} from "@mui/material";
-import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
+import { Lock } from "lucide-react";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Alert } from "@/components/ui/Alert";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -43,83 +36,59 @@ export default function LoginPage() {
   };
 
   return (
-    <Box
-      sx={{
-        minHeight: "100vh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        bgcolor: "background.default",
-      }}
-    >
-      <Card sx={{ maxWidth: 400, width: "100%", mx: 2 }}>
-        <CardContent sx={{ p: 4 }}>
-          <Box sx={{ textAlign: "center", mb: 3 }}>
-            <Box
-              sx={{
-                width: 56,
-                height: 56,
-                borderRadius: "50%",
-                bgcolor: "primary.main",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                mx: "auto",
-                mb: 2,
-              }}
-            >
-              <LockOutlinedIcon sx={{ color: "white", fontSize: 28 }} />
-            </Box>
-            <Typography variant="h5" gutterBottom>
-              Sistema de Asignacion
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Ingresa tus credenciales para continuar
-            </Typography>
-          </Box>
+    <div className="min-h-screen flex items-center justify-center bg-base">
+      <div className="bg-surface rounded-xl border border-slate-800/60 max-w-[400px] w-full mx-4 p-8">
+        <div className="text-center mb-6">
+          <div className="w-14 h-14 rounded-full bg-amber-500/10 flex items-center justify-center mx-auto mb-4 ring-1 ring-amber-500/20">
+            <Lock className="w-7 h-7 text-amber-400" />
+          </div>
+          <h1 className="font-display text-xl font-bold text-slate-100">
+            Sistema de Asignacion
+          </h1>
+          <p className="text-sm text-slate-500 mt-1">
+            Ingresa tus credenciales para continuar
+          </p>
+        </div>
 
-          {error && (
-            <Alert severity="error" sx={{ mb: 2 }}>
-              {error}
-            </Alert>
-          )}
+        {error && (
+          <Alert variant="error" className="mb-4">
+            {error}
+          </Alert>
+        )}
 
-          <Box component="form" onSubmit={handleSubmit}>
-            <TextField
-              fullWidth
-              label="Usuario"
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              margin="normal"
-              required
-              autoFocus
-              autoComplete="username"
-              inputProps={{ minLength: 4, maxLength: 50 }}
-            />
-            <TextField
-              fullWidth
-              label="Contraseña"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              margin="normal"
-              required
-              autoComplete="current-password"
-            />
-            <Button
-              fullWidth
-              type="submit"
-              variant="contained"
-              size="large"
-              disabled={loading}
-              sx={{ mt: 3, mb: 1, py: 1.5 }}
-            >
-              {loading ? <CircularProgress size={24} /> : "Iniciar Sesion"}
-            </Button>
-          </Box>
-        </CardContent>
-      </Card>
-    </Box>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <Input
+            label="Usuario"
+            type="text"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            required
+            autoFocus
+            autoComplete="username"
+            minLength={4}
+            maxLength={50}
+            placeholder="Tu nombre de usuario"
+          />
+          <Input
+            label="Contraseña"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            autoComplete="current-password"
+            placeholder="Tu contraseña"
+          />
+          <Button
+            type="submit"
+            fullWidth
+            size="lg"
+            loading={loading}
+            className="mt-6"
+          >
+            Iniciar Sesion
+          </Button>
+        </form>
+      </div>
+    </div>
   );
 }

@@ -3,17 +3,10 @@
 import { useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import {
-  Box,
-  Card,
-  CardContent,
-  TextField,
-  Button,
-  Typography,
-  Alert,
-  CircularProgress,
-} from "@mui/material";
-import LockResetIcon from "@mui/icons-material/LockReset";
+import { KeyRound } from "lucide-react";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Alert } from "@/components/ui/Alert";
 
 export default function CambiarPasswordPage() {
   const { data: session, update } = useSession();
@@ -74,103 +67,75 @@ export default function CambiarPasswordPage() {
   };
 
   return (
-    <Box
-      sx={{
-        minHeight: "100vh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        bgcolor: "background.default",
-      }}
-    >
-      <Card sx={{ maxWidth: 420, width: "100%", mx: 2 }}>
-        <CardContent sx={{ p: 4 }}>
-          <Box sx={{ textAlign: "center", mb: 3 }}>
-            <Box
-              sx={{
-                width: 56,
-                height: 56,
-                borderRadius: "50%",
-                bgcolor: "warning.main",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                mx: "auto",
-                mb: 2,
-              }}
-            >
-              <LockResetIcon sx={{ color: "white", fontSize: 28 }} />
-            </Box>
-            <Typography variant="h5" gutterBottom>
-              Cambiar Contraseña
-            </Typography>
-            {esObligatorio && (
-              <Alert severity="warning" sx={{ mt: 1 }}>
-                Debes cambiar tu contraseña antes de continuar.
-              </Alert>
-            )}
-          </Box>
-
-          {error && (
-            <Alert severity="error" sx={{ mb: 2 }}>
-              {error}
+    <div className="min-h-screen flex items-center justify-center bg-base">
+      <div className="bg-surface rounded-xl border border-slate-800/60 max-w-[420px] w-full mx-4 p-8">
+        <div className="text-center mb-6">
+          <div className="w-14 h-14 rounded-full bg-amber-500/10 flex items-center justify-center mx-auto mb-4 ring-1 ring-amber-500/20">
+            <KeyRound className="w-7 h-7 text-amber-400" />
+          </div>
+          <h1 className="font-display text-xl font-bold text-slate-100">
+            Cambiar Contraseña
+          </h1>
+          {esObligatorio && (
+            <Alert variant="warning" className="mt-3">
+              Debes cambiar tu contraseña antes de continuar.
             </Alert>
           )}
+        </div>
 
-          {success && (
-            <Alert severity="success" sx={{ mb: 2 }}>
-              Contraseña actualizada. Redirigiendo...
-            </Alert>
+        {error && (
+          <Alert variant="error" className="mb-4">
+            {error}
+          </Alert>
+        )}
+
+        {success && (
+          <Alert variant="success" className="mb-4">
+            Contraseña actualizada. Redirigiendo...
+          </Alert>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {!esObligatorio && (
+            <Input
+              label="Contraseña actual"
+              type="password"
+              value={passwordActual}
+              onChange={(e) => setPasswordActual(e.target.value)}
+              required
+              autoComplete="current-password"
+            />
           )}
-
-          <Box component="form" onSubmit={handleSubmit}>
-            {!esObligatorio && (
-              <TextField
-                fullWidth
-                label="Contraseña actual"
-                type="password"
-                value={passwordActual}
-                onChange={(e) => setPasswordActual(e.target.value)}
-                margin="normal"
-                required
-                autoComplete="current-password"
-              />
-            )}
-            <TextField
-              fullWidth
-              label="Nueva contraseña"
-              type="password"
-              value={passwordNueva}
-              onChange={(e) => setPasswordNueva(e.target.value)}
-              margin="normal"
-              required
-              autoComplete="new-password"
-              inputProps={{ minLength: 6 }}
-              helperText="Mínimo 6 caracteres"
-            />
-            <TextField
-              fullWidth
-              label="Confirmar nueva contraseña"
-              type="password"
-              value={confirmar}
-              onChange={(e) => setConfirmar(e.target.value)}
-              margin="normal"
-              required
-              autoComplete="new-password"
-            />
-            <Button
-              fullWidth
-              type="submit"
-              variant="contained"
-              size="large"
-              disabled={loading || success}
-              sx={{ mt: 3, mb: 1, py: 1.5 }}
-            >
-              {loading ? <CircularProgress size={24} /> : "Cambiar Contraseña"}
-            </Button>
-          </Box>
-        </CardContent>
-      </Card>
-    </Box>
+          <Input
+            label="Nueva contraseña"
+            type="password"
+            value={passwordNueva}
+            onChange={(e) => setPasswordNueva(e.target.value)}
+            required
+            autoComplete="new-password"
+            minLength={6}
+            helperText="Mínimo 6 caracteres"
+          />
+          <Input
+            label="Confirmar nueva contraseña"
+            type="password"
+            value={confirmar}
+            onChange={(e) => setConfirmar(e.target.value)}
+            required
+            autoComplete="new-password"
+          />
+          <Button
+            type="submit"
+            fullWidth
+            size="lg"
+            loading={loading}
+            disabled={success}
+            className="mt-6"
+          >
+            Cambiar Contraseña
+          </Button>
+        </form>
+      </div>
+    </div>
   );
 }

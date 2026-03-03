@@ -1,14 +1,14 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
-import {
-  Box, Typography, Button, Dialog, DialogTitle, DialogContent, DialogActions,
-  TextField, Chip, Alert, Snackbar, IconButton, FormControl, InputLabel, Select, MenuItem,
-} from "@mui/material";
-import { DataGrid, GridColDef } from "@mui/x-data-grid";
-import AddIcon from "@mui/icons-material/Add";
-import EditIcon from "@mui/icons-material/Edit";
-import BlockIcon from "@mui/icons-material/Block";
-import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import { Plus, Pencil, Ban, CheckCircle } from "lucide-react";
+import { ColumnDef } from "@tanstack/react-table";
+import { DataTable } from "@/components/ui/DataTable";
+import { Button } from "@/components/ui/Button";
+import { Badge } from "@/components/ui/Badge";
+import { Dialog, DialogHeader, DialogBody, DialogFooter } from "@/components/ui/Dialog";
+import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
+import { useToast } from "@/components/ui/Toast";
 
 interface Sucursal {
   id: number;
@@ -28,7 +28,7 @@ export default function SucursalesPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Sucursal | null>(null);
   const [form, setForm] = useState({ nombre: "", zona_id: "", direccion: "" });
-  const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" as "success" | "error" });
+  const { toast } = useToast();
 
   const fetchData = useCallback(async () => {
     try {
@@ -39,10 +39,10 @@ export default function SucursalesPage() {
       setRows(s);
       setZonas(z);
     } catch (err) {
-      setSnackbar({ open: true, message: err instanceof Error ? err.message : "Error de conexión", severity: "error" });
+      toast(err instanceof Error ? err.message : "Error de conexión", "error");
     }
     setLoading(false);
-  }, []);
+  }, [toast]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -60,11 +60,11 @@ export default function SucursalesPage() {
     const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
     if (res.ok) {
       setDialogOpen(false);
-      setSnackbar({ open: true, message: editing ? "Sucursal actualizada" : "Sucursal creada", severity: "success" });
+      toast(editing ? "Sucursal actualizada" : "Sucursal creada", "success");
       fetchData();
     } else {
       const data = await res.json();
-      setSnackbar({ open: true, message: data.error || "Error al guardar", severity: "error" });
+      toast(data.error || "Error al guardar", "error");
     }
   };
 
@@ -72,59 +72,62 @@ export default function SucursalesPage() {
     const res = await fetch(`/api/admin/organizacion/sucursales/${row.id}`, {
       method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ activo: !row.activo }),
     });
-    if (res.ok) { setSnackbar({ open: true, message: row.activo ? "Desactivada" : "Activada", severity: "success" }); fetchData(); }
+    if (res.ok) { toast(row.activo ? "Desactivada" : "Activada", "success"); fetchData(); }
   };
 
-  const columns: GridColDef[] = [
-    { field: "nombre", headerName: "Nombre", flex: 1 },
-    { field: "zona", headerName: "Zona", width: 140, valueGetter: (_v: unknown, row: Sucursal) => row.zona?.nombre ?? "—" },
-    { field: "region", headerName: "Región", width: 140, valueGetter: (_v: unknown, row: Sucursal) => row.zona?.region?.nombre ?? "—" },
-    { field: "equipos", headerName: "Equipos", width: 90, align: "center", headerAlign: "center", valueGetter: (_v: unknown, row: Sucursal) => row._count?.equipos ?? 0 },
-    { field: "activo", headerName: "Estado", width: 100, renderCell: (p) => <Chip label={p.value ? "Activo" : "Inactivo"} color={p.value ? "success" : "default"} size="small" /> },
+  const columns: ColumnDef<Sucursal, unknown>[] = [
+    { accessorKey: "nombre", header: "Nombre", cell: ({ getValue }) => <span className="font-medium text-slate-100">{getValue() as string}</span> },
+    { id: "zona", header: "Zona", cell: ({ row }) => <span>{row.original.zona?.nombre ?? "—"}</span> },
+    { id: "region", header: "Región", cell: ({ row }) => <span>{row.original.zona?.region?.nombre ?? "—"}</span> },
+    { id: "equipos", header: "Equipos", cell: ({ row }) => <span className="text-center block">{row.original._count?.equipos ?? 0}</span> },
     {
-      field: "actions", headerName: "Acciones", width: 110, sortable: false,
-      renderCell: (p) => (
-        <Box>
-          <IconButton size="small" onClick={() => handleOpenEdit(p.row)} title="Editar"><EditIcon fontSize="small" /></IconButton>
-          <IconButton size="small" onClick={() => handleToggle(p.row)} color={p.row.activo ? "error" : "success"} title={p.row.activo ? "Desactivar" : "Activar"}>
-            {p.row.activo ? <BlockIcon fontSize="small" /> : <CheckCircleIcon fontSize="small" />}
-          </IconButton>
-        </Box>
+      accessorKey: "activo", header: "Estado",
+      cell: ({ getValue }) => <Badge color={getValue() ? "green" : "slate"}>{getValue() ? "Activo" : "Inactivo"}</Badge>,
+    },
+    {
+      id: "actions", header: "Acciones", enableSorting: false,
+      cell: ({ row }) => (
+        <div className="flex gap-1">
+          <button onClick={() => handleOpenEdit(row.original)} className="p-1.5 text-blue-400 hover:bg-blue-500/10 rounded-lg transition-colors" title="Editar">
+            <Pencil className="w-4 h-4" />
+          </button>
+          <button onClick={() => handleToggle(row.original)} className={`p-1.5 rounded-lg transition-colors ${row.original.activo ? "text-red-400 hover:bg-red-500/10" : "text-green-400 hover:bg-green-500/10"}`} title={row.original.activo ? "Desactivar" : "Activar"}>
+            {row.original.activo ? <Ban className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
+          </button>
+        </div>
       ),
     },
   ];
 
   return (
-    <Box>
-      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3 }}>
-        <Typography variant="h4">Sucursales</Typography>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpenCreate}>Nueva Sucursal</Button>
-      </Box>
-      <Box sx={{ bgcolor: "white", borderRadius: 2 }}>
-        <DataGrid rows={rows} columns={columns} loading={loading} pageSizeOptions={[10, 25]}
-          initialState={{ pagination: { paginationModel: { pageSize: 10 } } }}
-          disableRowSelectionOnClick autoHeight sx={{ border: "none", "& .MuiDataGrid-columnHeaders": { bgcolor: "#f5f5f5" } }} />
-      </Box>
-      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="xs" fullWidth>
-        <DialogTitle>{editing ? "Editar Sucursal" : "Nueva Sucursal"}</DialogTitle>
-        <DialogContent>
-          <TextField fullWidth label="Nombre" value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} margin="normal" required autoFocus />
-          <FormControl fullWidth margin="normal" required>
-            <InputLabel>Zona</InputLabel>
-            <Select value={form.zona_id} label="Zona" onChange={(e) => setForm({ ...form, zona_id: e.target.value })}>
-              {zonas.map((z) => <MenuItem key={z.id} value={String(z.id)}>{z.nombre} — {z.region.nombre}</MenuItem>)}
-            </Select>
-          </FormControl>
-          <TextField fullWidth label="Dirección (opcional)" value={form.direccion} onChange={(e) => setForm({ ...form, direccion: e.target.value })} margin="normal" />
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setDialogOpen(false)} color="error" variant="outlined">Cancelar</Button>
-          <Button variant="contained" onClick={handleSave} disabled={!form.nombre || !form.zona_id}>{editing ? "Actualizar" : "Crear"}</Button>
-        </DialogActions>
+    <div>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="font-display text-xl font-bold text-slate-100">Sucursales</h1>
+        <Button icon={<Plus className="w-4 h-4" />} onClick={handleOpenCreate}>Nueva Sucursal</Button>
+      </div>
+
+      <DataTable data={rows} columns={columns} loading={loading} pageSize={10} pageSizeOptions={[10, 25]} getRowId={(row) => String(row.id)} />
+
+      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm">
+        <DialogHeader onClose={() => setDialogOpen(false)}>
+          {editing ? "Editar Sucursal" : "Nueva Sucursal"}
+        </DialogHeader>
+        <DialogBody className="space-y-4">
+          <Input label="Nombre" value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} required autoFocus />
+          <Select
+            label="Zona"
+            value={form.zona_id}
+            onChange={(e) => setForm({ ...form, zona_id: e.target.value })}
+            options={zonas.map((z) => ({ value: String(z.id), label: `${z.nombre} — ${z.region.nombre}` }))}
+            placeholder="Seleccionar..."
+          />
+          <Input label="Dirección (opcional)" value={form.direccion} onChange={(e) => setForm({ ...form, direccion: e.target.value })} />
+        </DialogBody>
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => setDialogOpen(false)}>Cancelar</Button>
+          <Button onClick={handleSave} disabled={!form.nombre || !form.zona_id}>{editing ? "Actualizar" : "Crear"}</Button>
+        </DialogFooter>
       </Dialog>
-      <Snackbar open={snackbar.open} autoHideDuration={3000} onClose={() => setSnackbar({ ...snackbar, open: false })}>
-        <Alert severity={snackbar.severity} variant="filled">{snackbar.message}</Alert>
-      </Snackbar>
-    </Box>
+    </div>
   );
 }

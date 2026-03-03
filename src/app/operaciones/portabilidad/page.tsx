@@ -1,20 +1,16 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import {
-  Box, Typography, Button, TextField, Dialog, DialogTitle,
-  DialogContent, DialogActions, IconButton, Chip, Stack,
-  Alert, CircularProgress, Snackbar,
-} from "@mui/material";
-import { DataGrid, GridColDef } from "@mui/x-data-grid";
-import AddIcon from "@mui/icons-material/Add";
-import EditIcon from "@mui/icons-material/Edit";
-import DeleteIcon from "@mui/icons-material/Delete";
-import ImageIcon from "@mui/icons-material/Image";
-import CloseIcon from "@mui/icons-material/Close";
-import SearchIcon from "@mui/icons-material/Search";
-import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
-import ChevronRightIcon from "@mui/icons-material/ChevronRight";
+import { ColumnDef } from "@tanstack/react-table";
+import { Plus, Pencil, Trash2, Image, X, Search, ChevronLeft, ChevronRight } from "lucide-react";
+import { Badge } from "@/components/ui/Badge";
+import { Alert } from "@/components/ui/Alert";
+import { Spinner } from "@/components/ui/Spinner";
+import { Input } from "@/components/ui/Input";
+import { Button } from "@/components/ui/Button";
+import { DataTable } from "@/components/ui/DataTable";
+import { Dialog, DialogHeader, DialogBody, DialogFooter } from "@/components/ui/Dialog";
+import { useToast } from "@/components/ui/Toast";
 import { getSupabaseClient } from "@/lib/supabase";
 import type { RegistroPortabilidad } from "@/types/portabilidad";
 
@@ -31,7 +27,7 @@ function parseEvidencias(evidencia_url: string): string[] {
 export default function PortabilidadPage() {
   const [registros, setRegistros] = useState<RegistroPortabilidad[]>([]);
   const [loading, setLoading] = useState(true);
-  const [snack, setSnack] = useState({ open: false, message: "", severity: "success" as "success" | "error" });
+  const { toast } = useToast();
 
   // Filters
   const [filtroNombre, setFiltroNombre] = useState("");
@@ -138,7 +134,7 @@ export default function PortabilidadPage() {
         const { url } = await res.json();
         uploadedUrls.push(url);
       } else {
-        setSnack({ open: true, message: "Error al subir archivo", severity: "error" });
+        toast("Error al subir archivo", "error");
         setSaving(false);
         return;
       }
@@ -174,12 +170,12 @@ export default function PortabilidadPage() {
     }
 
     if (res.ok) {
-      setSnack({ open: true, message: editingId ? "Registro actualizado" : "Registro creado", severity: "success" });
+      toast(editingId ? "Registro actualizado" : "Registro creado", "success");
       setFormOpen(false);
       fetchRegistros();
     } else {
       const err = await res.json();
-      setSnack({ open: true, message: err.error || "Error al guardar", severity: "error" });
+      toast(err.error || "Error al guardar", "error");
     }
     setSaving(false);
   };
@@ -188,43 +184,44 @@ export default function PortabilidadPage() {
     if (!deleteId) return;
     const res = await fetch(`/api/operaciones/portabilidad/${deleteId}`, { method: "DELETE" });
     if (res.ok) {
-      setSnack({ open: true, message: "Registro eliminado", severity: "success" });
+      toast("Registro eliminado", "success");
       fetchRegistros();
     } else {
-      setSnack({ open: true, message: "Error al eliminar", severity: "error" });
+      toast("Error al eliminar", "error");
     }
     setDeleteId(null);
   };
 
-  const columns: GridColDef[] = [
-    { field: "nombre_cliente", headerName: "Nombre", flex: 1, minWidth: 180 },
-    { field: "rfc_cliente", headerName: "RFC", width: 150 },
-    { field: "folio_portabilidad", headerName: "Folio", width: 150 },
+  const columns: ColumnDef<RegistroPortabilidad, unknown>[] = [
+    { accessorKey: "nombre_cliente", header: "Nombre", minSize: 180 },
+    { accessorKey: "rfc_cliente", header: "RFC", size: 150 },
+    { accessorKey: "folio_portabilidad", header: "Folio", size: 150 },
     {
-      field: "evidencia_url",
-      headerName: "Evidencia",
-      width: 120,
-      renderCell: (params) => {
-        const urls = parseEvidencias(params.value);
-        if (urls.length === 0) return <Chip label="Sin archivos" size="small" variant="outlined" />;
+      accessorKey: "evidencia_url",
+      header: "Evidencia",
+      size: 120,
+      cell: ({ getValue }) => {
+        const urls = parseEvidencias(getValue() as string);
+        if (urls.length === 0) return <Badge color="slate">Sin archivos</Badge>;
         return (
-          <Chip
-            icon={<ImageIcon />}
-            label={`${urls.length} archivo${urls.length > 1 ? "s" : ""}`}
-            size="small"
-            color="primary"
-            variant="outlined"
-            onClick={() => { setEvidenciaIdx(0); setEvidenciaDialog(urls); }}
-            sx={{ cursor: "pointer" }}
-          />
+          <button
+            onClick={(e) => { e.stopPropagation(); setEvidenciaIdx(0); setEvidenciaDialog(urls); }}
+            className="cursor-pointer"
+          >
+            <Badge color="blue">
+              <Image className="w-3 h-3" />
+              {urls.length} archivo{urls.length > 1 ? "s" : ""}
+            </Badge>
+          </button>
         );
       },
     },
     {
-      field: "created_at",
-      headerName: "Fecha",
-      width: 160,
-      valueFormatter: (value: string) => {
+      accessorKey: "created_at",
+      header: "Fecha",
+      size: 160,
+      cell: ({ getValue }) => {
+        const value = getValue() as string;
         if (!value) return "";
         return new Date(value).toLocaleString("es-MX", {
           day: "2-digit", month: "2-digit", year: "numeric",
@@ -233,120 +230,128 @@ export default function PortabilidadPage() {
       },
     },
     {
-      field: "acciones",
-      headerName: "Acciones",
-      width: 120,
-      sortable: false,
-      filterable: false,
-      renderCell: (params) => (
-        <Stack direction="row" spacing={0.5}>
-          <IconButton size="small" onClick={() => openEdit(params.row)} color="primary">
-            <EditIcon fontSize="small" />
-          </IconButton>
-          <IconButton size="small" onClick={() => setDeleteId(params.row.id)} color="error">
-            <DeleteIcon fontSize="small" />
-          </IconButton>
-        </Stack>
+      id: "acciones",
+      header: "Acciones",
+      size: 120,
+      enableSorting: false,
+      cell: ({ row }) => (
+        <div className="flex gap-1">
+          <button
+            className="p-1.5 text-blue-400 hover:bg-blue-500/10 rounded-lg transition-colors"
+            onClick={(e) => { e.stopPropagation(); openEdit(row.original); }}
+          >
+            <Pencil className="w-4 h-4" />
+          </button>
+          <button
+            className="p-1.5 text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+            onClick={(e) => { e.stopPropagation(); setDeleteId(row.original.id); }}
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
       ),
     },
   ];
 
   return (
-    <Box>
-      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
-        <Typography variant="h5" fontWeight={700}>Portabilidad</Typography>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={openCreate}>
+    <div>
+      <div className="flex justify-between items-center mb-4">
+        <h1 className="text-xl font-bold text-slate-100">Portabilidad</h1>
+        <Button variant="primary" icon={<Plus className="w-4 h-4" />} onClick={openCreate}>
           Nuevo Registro
         </Button>
-      </Box>
+      </div>
 
       {/* Filters */}
-      <Stack direction="row" spacing={1.5} sx={{ mb: 2, flexWrap: "wrap", gap: 1 }}>
-        <TextField size="small" label="Nombre" value={filtroNombre} onChange={(e) => setFiltroNombre(e.target.value)} sx={{ width: 180 }} />
-        <TextField size="small" label="RFC" value={filtroRfc} onChange={(e) => setFiltroRfc(e.target.value)} sx={{ width: 150 }} />
-        <TextField size="small" label="Folio" value={filtroFolio} onChange={(e) => setFiltroFolio(e.target.value)} sx={{ width: 150 }} />
-        <TextField size="small" label="Desde" type="date" value={filtroDesde} onChange={(e) => setFiltroDesde(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} sx={{ width: 150 }} />
-        <TextField size="small" label="Hasta" type="date" value={filtroHasta} onChange={(e) => setFiltroHasta(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} sx={{ width: 150 }} />
-        <Button variant="outlined" startIcon={<SearchIcon />} onClick={fetchRegistros}>
+      <div className="flex flex-wrap gap-3 mb-4">
+        <div className="w-[180px]">
+          <Input placeholder="Nombre" value={filtroNombre} onChange={(e) => setFiltroNombre(e.target.value)} fullWidth />
+        </div>
+        <div className="w-[150px]">
+          <Input placeholder="RFC" value={filtroRfc} onChange={(e) => setFiltroRfc(e.target.value)} fullWidth />
+        </div>
+        <div className="w-[150px]">
+          <Input placeholder="Folio" value={filtroFolio} onChange={(e) => setFiltroFolio(e.target.value)} fullWidth />
+        </div>
+        <div className="w-[150px]">
+          <Input type="date" placeholder="Desde" value={filtroDesde} onChange={(e) => setFiltroDesde(e.target.value)} fullWidth />
+        </div>
+        <div className="w-[150px]">
+          <Input type="date" placeholder="Hasta" value={filtroHasta} onChange={(e) => setFiltroHasta(e.target.value)} fullWidth />
+        </div>
+        <Button variant="outline" icon={<Search className="w-4 h-4" />} onClick={fetchRegistros}>
           Buscar
         </Button>
-      </Stack>
+      </div>
 
       {/* Table */}
-      <DataGrid
-        rows={registros}
+      <DataTable
+        data={registros}
         columns={columns}
         loading={loading}
-        autoHeight
+        pageSize={25}
         pageSizeOptions={[10, 25, 50]}
-        initialState={{ pagination: { paginationModel: { pageSize: 25 } } }}
-        disableRowSelectionOnClick
-        sx={{
-          bgcolor: "background.paper",
-          "& .MuiDataGrid-cell": { py: 1 },
-        }}
       />
 
       {/* Create/Edit Dialog */}
-      <Dialog open={formOpen} onClose={() => setFormOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>{editingId ? "Editar Registro" : "Nuevo Registro"}</DialogTitle>
-        <DialogContent>
-          <Stack spacing={2} sx={{ mt: 1 }}>
-            <TextField
+      <Dialog open={formOpen} onClose={() => setFormOpen(false)} maxWidth="md">
+        <DialogHeader onClose={() => setFormOpen(false)}>
+          {editingId ? "Editar Registro" : "Nuevo Registro"}
+        </DialogHeader>
+        <DialogBody>
+          <div className="flex flex-col gap-4">
+            <Input
               label="ID Promotor (Telegram)"
               type="number"
               value={formData.promotor_id}
               onChange={(e) => setFormData({ ...formData, promotor_id: e.target.value })}
               required
-              fullWidth
             />
-            <TextField
+            <Input
               label="RFC Cliente"
               value={formData.rfc_cliente}
               onChange={(e) => setFormData({ ...formData, rfc_cliente: e.target.value.toUpperCase() })}
               required
-              fullWidth
-              inputProps={{ maxLength: 13 }}
+              maxLength={13}
             />
-            <TextField
+            <Input
               label="Nombre Cliente"
               value={formData.nombre_cliente}
               onChange={(e) => setFormData({ ...formData, nombre_cliente: e.target.value })}
               required
-              fullWidth
             />
-            <TextField
+            <Input
               label="Folio Portabilidad"
               value={formData.folio_portabilidad}
               onChange={(e) => setFormData({ ...formData, folio_portabilidad: e.target.value })}
               required
-              fullWidth
             />
 
             {/* Existing evidencias */}
             {formExistingUrls.length > 0 && (
-              <Box>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+              <div>
+                <p className="text-sm text-slate-500 mb-2">
                   Evidencias existentes:
-                </Typography>
-                <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                </p>
+                <div className="flex flex-wrap gap-2">
                   {formExistingUrls.map((url, i) => (
-                    <Chip
-                      key={i}
-                      label={`Archivo ${i + 1}`}
-                      onDelete={() => setFormExistingUrls(formExistingUrls.filter((_, idx) => idx !== i))}
-                      size="small"
-                      color="primary"
-                      variant="outlined"
-                    />
+                    <Badge key={i} color="blue">
+                      Archivo {i + 1}
+                      <button
+                        onClick={() => setFormExistingUrls(formExistingUrls.filter((_, idx) => idx !== i))}
+                        className="ml-1 hover:text-red-400 transition-colors"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </Badge>
                   ))}
-                </Stack>
-              </Box>
+                </div>
+              </div>
             )}
 
             {/* File upload */}
-            <Box>
-              <Button variant="outlined" component="label" size="small">
+            <div>
+              <label className="inline-flex items-center gap-2 px-3 py-1.5 text-xs border border-slate-700 text-slate-300 rounded-lg hover:bg-surface-hover transition-colors cursor-pointer">
                 Agregar Evidencias (JPG, PNG, MP4)
                 <input
                   type="file"
@@ -359,152 +364,128 @@ export default function PortabilidadPage() {
                     }
                   }}
                 />
-              </Button>
+              </label>
               {formFiles.length > 0 && (
-                <Stack direction="row" spacing={1} sx={{ mt: 1 }} flexWrap="wrap" useFlexGap>
+                <div className="flex flex-wrap gap-2 mt-2">
                   {formFiles.map((f, i) => (
-                    <Chip
-                      key={i}
-                      label={f.name}
-                      onDelete={() => setFormFiles(formFiles.filter((_, idx) => idx !== i))}
-                      size="small"
-                    />
+                    <Badge key={i} color="slate">
+                      {f.name}
+                      <button
+                        onClick={() => setFormFiles(formFiles.filter((_, idx) => idx !== i))}
+                        className="ml-1 hover:text-red-400 transition-colors"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </Badge>
                   ))}
-                </Stack>
+                </div>
               )}
-            </Box>
-          </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setFormOpen(false)}>Cancelar</Button>
+            </div>
+          </div>
+        </DialogBody>
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => setFormOpen(false)}>Cancelar</Button>
           <Button
-            variant="contained"
+            variant="primary"
             onClick={handleSave}
+            loading={saving}
             disabled={saving || !formData.promotor_id || !formData.rfc_cliente || !formData.nombre_cliente || !formData.folio_portabilidad}
           >
-            {saving ? <CircularProgress size={20} /> : editingId ? "Actualizar" : "Crear"}
+            {editingId ? "Actualizar" : "Crear"}
           </Button>
-        </DialogActions>
+        </DialogFooter>
       </Dialog>
 
       {/* Delete Confirmation */}
-      <Dialog open={!!deleteId} onClose={() => setDeleteId(null)}>
-        <DialogTitle>Confirmar eliminación</DialogTitle>
-        <DialogContent>
-          <Alert severity="warning">
-            Esta acción eliminará el registro y sus evidencias de forma permanente.
+      <Dialog open={!!deleteId} onClose={() => setDeleteId(null)} maxWidth="sm">
+        <DialogHeader onClose={() => setDeleteId(null)}>
+          Confirmar eliminacion
+        </DialogHeader>
+        <DialogBody>
+          <Alert variant="warning">
+            Esta accion eliminara el registro y sus evidencias de forma permanente.
           </Alert>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDeleteId(null)}>Cancelar</Button>
-          <Button variant="contained" color="error" onClick={handleDelete}>Eliminar</Button>
-        </DialogActions>
+        </DialogBody>
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => setDeleteId(null)}>Cancelar</Button>
+          <Button variant="danger" onClick={handleDelete}>Eliminar</Button>
+        </DialogFooter>
       </Dialog>
 
       {/* Evidencia Viewer — Carousel */}
-      <Dialog open={!!evidenciaDialog} onClose={() => setEvidenciaDialog(null)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", pb: 0 }}>
-          <Typography variant="subtitle1" fontWeight={600}>
-            Evidencia {evidenciaDialog ? `${evidenciaIdx + 1} / ${evidenciaDialog.length}` : ""}
-          </Typography>
-          <IconButton onClick={() => setEvidenciaDialog(null)} size="small">
-            <CloseIcon />
-          </IconButton>
-        </DialogTitle>
-        <DialogContent sx={{ px: 1, py: 2 }}>
+      <Dialog open={!!evidenciaDialog} onClose={() => setEvidenciaDialog(null)} maxWidth="md">
+        <DialogHeader onClose={() => setEvidenciaDialog(null)}>
+          Evidencia {evidenciaDialog ? `${evidenciaIdx + 1} / ${evidenciaDialog.length}` : ""}
+        </DialogHeader>
+        <DialogBody>
           {evidenciaDialog && evidenciaDialog.length > 0 && (() => {
             const url = evidenciaDialog[evidenciaIdx];
             const isVideo = url.match(/\.mp4/i);
             return (
-              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                <IconButton
+              <div className="flex items-center gap-2">
+                <button
                   onClick={() => setEvidenciaIdx((p) => Math.max(0, p - 1))}
                   disabled={evidenciaIdx === 0}
+                  className="p-2 text-slate-400 hover:text-slate-200 disabled:opacity-30 transition-colors"
                 >
-                  <ChevronLeftIcon />
-                </IconButton>
+                  <ChevronLeft className="w-5 h-5" />
+                </button>
 
-                <Box sx={{ flex: 1, display: "flex", justifyContent: "center", minHeight: 300 }}>
+                <div className="flex-1 flex justify-center min-h-[300px]">
                   {isVideo ? (
                     <video
                       key={evidenciaIdx}
                       src={url}
                       controls
-                      style={{ maxWidth: "100%", maxHeight: 400, borderRadius: 8 }}
+                      className="max-w-full max-h-[400px] rounded-lg"
                     />
                   ) : (
-                    <Box
+                    <img
                       key={evidenciaIdx}
-                      component="img"
                       src={url}
                       alt={`Evidencia ${evidenciaIdx + 1}`}
-                      sx={{
-                        maxWidth: "100%",
-                        maxHeight: 400,
-                        objectFit: "contain",
-                        borderRadius: 2,
-                        border: "1px solid",
-                        borderColor: "divider",
-                      }}
+                      className="max-w-full max-h-[400px] object-contain rounded-lg border border-slate-700"
                     />
                   )}
-                </Box>
+                </div>
 
-                <IconButton
+                <button
                   onClick={() => setEvidenciaIdx((p) => Math.min(evidenciaDialog.length - 1, p + 1))}
                   disabled={evidenciaIdx === evidenciaDialog.length - 1}
+                  className="p-2 text-slate-400 hover:text-slate-200 disabled:opacity-30 transition-colors"
                 >
-                  <ChevronRightIcon />
-                </IconButton>
-              </Box>
+                  <ChevronRight className="w-5 h-5" />
+                </button>
+              </div>
             );
           })()}
 
           {/* Thumbnails */}
           {evidenciaDialog && evidenciaDialog.length > 1 && (
-            <Stack direction="row" spacing={1} justifyContent="center" sx={{ mt: 2 }}>
+            <div className="flex gap-2 justify-center mt-4">
               {evidenciaDialog.map((url, i) => (
-                <Box
+                <button
                   key={i}
                   onClick={() => setEvidenciaIdx(i)}
-                  sx={{
-                    width: 48,
-                    height: 48,
-                    borderRadius: 1,
-                    overflow: "hidden",
-                    border: i === evidenciaIdx ? "2px solid" : "1px solid",
-                    borderColor: i === evidenciaIdx ? "primary.main" : "divider",
-                    cursor: "pointer",
-                    opacity: i === evidenciaIdx ? 1 : 0.6,
-                    transition: "all 0.2s",
-                    "&:hover": { opacity: 1 },
-                  }}
+                  className={`w-12 h-12 rounded overflow-hidden transition-all ${
+                    i === evidenciaIdx
+                      ? "border-2 border-amber-500 opacity-100"
+                      : "border border-slate-700 opacity-60 hover:opacity-100"
+                  }`}
                 >
                   {url.match(/\.mp4/i) ? (
-                    <Box sx={{ width: "100%", height: "100%", bgcolor: "grey.200", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <Typography variant="caption" color="text.secondary">MP4</Typography>
-                    </Box>
+                    <div className="w-full h-full bg-slate-800 flex items-center justify-center">
+                      <span className="text-[10px] text-slate-500">MP4</span>
+                    </div>
                   ) : (
-                    <Box component="img" src={url} sx={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    <img src={url} className="w-full h-full object-cover" alt="" />
                   )}
-                </Box>
+                </button>
               ))}
-            </Stack>
+            </div>
           )}
-        </DialogContent>
+        </DialogBody>
       </Dialog>
-
-      {/* Snackbar */}
-      <Snackbar
-        open={snack.open}
-        autoHideDuration={4000}
-        onClose={() => setSnack({ ...snack, open: false })}
-        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
-      >
-        <Alert severity={snack.severity} onClose={() => setSnack({ ...snack, open: false })}>
-          {snack.message}
-        </Alert>
-      </Snackbar>
-    </Box>
+    </div>
   );
 }

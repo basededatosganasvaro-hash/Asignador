@@ -1,12 +1,13 @@
 "use client";
 import { useEffect, useState, useCallback, useRef } from "react";
-import {
-  Dialog, DialogTitle, DialogContent, DialogActions,
-  Box, Typography, Button, TextField, MenuItem, Select,
-  InputLabel, FormControl, Alert, CircularProgress,
-  Switch, FormControlLabel, Chip, Divider, LinearProgress,
-} from "@mui/material";
-import AssignmentIndIcon from "@mui/icons-material/AssignmentInd";
+import { Dialog, DialogHeader, DialogBody, DialogFooter } from "@/components/ui/Dialog";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
+import { Alert } from "@/components/ui/Alert";
+import { Spinner } from "@/components/ui/Spinner";
+import { LinearProgress } from "@/components/ui/LinearProgress";
+import { ClipboardList } from "lucide-react";
 
 interface Props {
   open: boolean;
@@ -62,7 +63,7 @@ export default function SolicitarAsignacionDialog({ open, onClose, onSuccess }: 
       }
     } catch (err: unknown) {
       if (err instanceof Error && err.name !== "AbortError") {
-        setError("Error al cargar opciones de asignación");
+        setError("Error al cargar opciones de asignacion");
       }
     } finally {
       setLoading(false);
@@ -97,14 +98,14 @@ export default function SolicitarAsignacionDialog({ open, onClose, onSuccess }: 
 
       if (!res.ok) {
         const data = await res.json();
-        setError(data.error || "Error al solicitar asignación");
+        setError(data.error || "Error al solicitar asignacion");
         return;
       }
 
       handleClose();
       onSuccess();
     } catch {
-      setError("Error de conexión");
+      setError("Error de conexion");
     } finally {
       setSubmitting(false);
     }
@@ -113,158 +114,150 @@ export default function SolicitarAsignacionDialog({ open, onClose, onSuccess }: 
   const maxAsignable = opciones?.asignables ?? 0;
 
   return (
-    <Dialog
-      open={open}
-      onClose={handleClose}
-      maxWidth="sm"
-      fullWidth
-      PaperProps={{ sx: { borderRadius: 3 } }}
-    >
-      <DialogTitle>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          <AssignmentIndIcon color="primary" />
-          <Typography variant="h6" fontWeight={700}>Solicitar Asignación</Typography>
-        </Box>
-      </DialogTitle>
+    <Dialog open={open} onClose={handleClose} maxWidth="lg">
+      <DialogHeader onClose={handleClose}>
+        <div className="flex items-center gap-2">
+          <ClipboardList className="w-5 h-5 text-amber-400" />
+          <span>Solicitar Asignacion</span>
+        </div>
+      </DialogHeader>
 
-      <DialogContent>
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 2, mt: 1 }}>
-          {/* Contadores grandes */}
+      <DialogBody>
+        <div className="flex flex-col gap-4">
+          {/* Counters */}
           {opciones && (
-            <Box sx={{ display: "flex", gap: 2, justifyContent: "center" }}>
-              <Box sx={{ textAlign: "center", flex: 1, p: 1.5, bgcolor: "#e3f2fd", borderRadius: 2 }}>
-                <Typography variant="h4" fontWeight={700} color="info.main">
+            <div className="flex gap-3 justify-center">
+              <div className="text-center flex-1 p-3 bg-blue-500/10 rounded-xl border border-blue-500/20">
+                <p className="text-3xl font-bold text-blue-400">
                   {opciones.disponibles.toLocaleString()}
-                </Typography>
-                <Typography variant="caption" color="text.secondary">En pool</Typography>
-              </Box>
-              <Box sx={{ textAlign: "center", flex: 1, p: 1.5, bgcolor: opciones.cupoRestante > 0 ? "#e8f5e9" : "#ffebee", borderRadius: 2 }}>
-                <Typography variant="h4" fontWeight={700} color={opciones.cupoRestante > 0 ? "success.main" : "error.main"}>
+                </p>
+                <p className="text-xs text-slate-400">En pool</p>
+              </div>
+              <div className={`text-center flex-1 p-3 rounded-xl border ${
+                opciones.cupoRestante > 0
+                  ? "bg-green-500/10 border-green-500/20"
+                  : "bg-red-500/10 border-red-500/20"
+              }`}>
+                <p className={`text-3xl font-bold ${opciones.cupoRestante > 0 ? "text-green-400" : "text-red-400"}`}>
                   {opciones.cupoRestante.toLocaleString()}
-                </Typography>
-                <Typography variant="caption" color="text.secondary">Cupo hoy</Typography>
-              </Box>
-            </Box>
+                </p>
+                <p className="text-xs text-slate-400">Cupo hoy</p>
+              </div>
+            </div>
           )}
 
           {opciones && opciones.cupoRestante > 0 && (
             <LinearProgress
-              variant="determinate"
-              value={((opciones.cupoMaximo - opciones.cupoRestante) / opciones.cupoMaximo) * 100}
-              sx={{ height: 6, borderRadius: 3 }}
+              value={(opciones.cupoMaximo - opciones.cupoRestante)}
+              max={opciones.cupoMaximo}
+              color="amber"
             />
           )}
 
-          <Divider />
+          <div className="h-px bg-slate-800/40" />
 
-          {/* Filtros cascada */}
-          <FormControl fullWidth size="small">
-            <InputLabel>Tipo de cliente</InputLabel>
-            <Select
-              value={filtros.tipo_cliente}
-              label="Tipo de cliente"
-              onChange={(e) => setFiltros((p) => ({ ...p, tipo_cliente: e.target.value, convenio: "", estado: "", municipio: "" }))}
-            >
-              <MenuItem value=""><em>Todos</em></MenuItem>
-              {opciones?.tiposCliente?.map((v) => <MenuItem key={v} value={v}>{v}</MenuItem>)}
-            </Select>
-          </FormControl>
-
-          <FormControl fullWidth size="small">
-            <InputLabel>Convenio</InputLabel>
-            <Select
-              value={filtros.convenio}
-              label="Convenio"
-              onChange={(e) => setFiltros((p) => ({ ...p, convenio: e.target.value, estado: "", municipio: "" }))}
-            >
-              <MenuItem value=""><em>Todos</em></MenuItem>
-              {opciones?.convenios?.map((v) => <MenuItem key={v} value={v}>{v}</MenuItem>)}
-            </Select>
-          </FormControl>
-
-          <FormControl fullWidth size="small">
-            <InputLabel>Estado</InputLabel>
-            <Select
-              value={filtros.estado}
-              label="Estado"
-              onChange={(e) => setFiltros((p) => ({ ...p, estado: e.target.value, municipio: "" }))}
-            >
-              <MenuItem value=""><em>Todos</em></MenuItem>
-              {opciones?.estados?.map((v) => <MenuItem key={v} value={v}>{v}</MenuItem>)}
-            </Select>
-          </FormControl>
-
-          <FormControl fullWidth size="small" disabled={!filtros.estado}>
-            <InputLabel>Municipio</InputLabel>
-            <Select
-              value={filtros.municipio}
-              label="Municipio"
-              onChange={(e) => setFiltros((p) => ({ ...p, municipio: e.target.value }))}
-            >
-              <MenuItem value=""><em>Todos</em></MenuItem>
-              {opciones?.municipios?.map((v) => <MenuItem key={v} value={v}>{v}</MenuItem>)}
-            </Select>
-          </FormControl>
-
-          <FormControlLabel
-            control={
-              <Switch
-                checked={filtros.tiene_telefono}
-                onChange={(e) => setFiltros((p) => ({ ...p, tiene_telefono: e.target.checked }))}
-                size="small"
-              />
-            }
-            label="Solo registros con teléfono"
+          {/* Cascade filters */}
+          <Select
+            label="Tipo de cliente"
+            value={filtros.tipo_cliente}
+            onChange={(e) => setFiltros((p) => ({ ...p, tipo_cliente: e.target.value, convenio: "", estado: "", municipio: "" }))}
+            options={(opciones?.tiposCliente ?? []).map((v) => ({ value: v, label: v }))}
+            placeholder="Todos"
           />
 
-          <Divider />
+          <Select
+            label="Convenio"
+            value={filtros.convenio}
+            onChange={(e) => setFiltros((p) => ({ ...p, convenio: e.target.value, estado: "", municipio: "" }))}
+            options={(opciones?.convenios ?? []).map((v) => ({ value: v, label: v }))}
+            placeholder="Todos"
+          />
 
-          {/* Cantidad y asignables */}
-          <TextField
+          <Select
+            label="Estado"
+            value={filtros.estado}
+            onChange={(e) => setFiltros((p) => ({ ...p, estado: e.target.value, municipio: "" }))}
+            options={(opciones?.estados ?? []).map((v) => ({ value: v, label: v }))}
+            placeholder="Todos"
+          />
+
+          <Select
+            label="Municipio"
+            value={filtros.municipio}
+            onChange={(e) => setFiltros((p) => ({ ...p, municipio: e.target.value }))}
+            options={(opciones?.municipios ?? []).map((v) => ({ value: v, label: v }))}
+            placeholder="Todos"
+            disabled={!filtros.estado}
+          />
+
+          {/* Toggle - solo registros con telefono */}
+          <label className="inline-flex items-center gap-3 cursor-pointer">
+            <div className="relative">
+              <input
+                type="checkbox"
+                className="sr-only peer"
+                checked={filtros.tiene_telefono}
+                onChange={(e) => setFiltros((p) => ({ ...p, tiene_telefono: e.target.checked }))}
+              />
+              <div className="w-9 h-5 bg-slate-700 rounded-full peer-checked:bg-amber-500 transition-colors" />
+              <div className="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-4" />
+            </div>
+            <span className="text-sm text-slate-300">Solo registros con telefono</span>
+          </label>
+
+          <div className="h-px bg-slate-800/40" />
+
+          {/* Cantidad */}
+          <Input
             label="Cantidad a solicitar"
             type="number"
-            fullWidth
             value={cantidad}
             onChange={(e) => setCantidad(Math.max(1, Math.min(maxAsignable, Number(e.target.value))))}
-            inputProps={{ min: 1, max: maxAsignable }}
+            min={1}
+            max={maxAsignable}
             disabled={maxAsignable === 0}
           />
 
           {opciones && (
-            <Box sx={{ textAlign: "center", p: 1.5, bgcolor: "#f3e5f5", borderRadius: 2 }}>
-              <Typography variant="h5" fontWeight={700} color="secondary.main">
+            <div className="text-center p-3 bg-purple-500/10 rounded-xl border border-purple-500/20">
+              <p className="text-2xl font-bold text-purple-400">
                 {opciones.asignables.toLocaleString()} asignables
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
+              </p>
+              <p className="text-xs text-slate-400">
                 Con los filtros seleccionados
-              </Typography>
-            </Box>
+              </p>
+            </div>
           )}
 
-          {loading && <LinearProgress />}
-          {error && <Alert severity="error">{error}</Alert>}
+          {loading && (
+            <div className="flex justify-center">
+              <Spinner size="sm" />
+            </div>
+          )}
+          {error && <Alert variant="error">{error}</Alert>}
 
           {opciones?.cupoRestante === 0 && (
-            <Alert severity="warning">
+            <Alert variant="warning">
               Has alcanzado tu limite diario de asignaciones. Se reinicia manana.
             </Alert>
           )}
-        </Box>
-      </DialogContent>
+        </div>
+      </DialogBody>
 
-      <DialogActions sx={{ px: 3, pb: 2 }}>
-        <Button onClick={handleClose} color="error" variant="outlined">Cancelar</Button>
+      <DialogFooter>
+        <Button variant="danger" onClick={handleClose}>Cancelar</Button>
         <Button
-          variant="contained"
-          size="large"
+          variant="primary"
+          size="lg"
           onClick={handleSubmit}
           disabled={submitting || maxAsignable === 0 || cantidad <= 0 || (opciones?.cupoRestante ?? 0) === 0}
-          startIcon={submitting ? <CircularProgress size={18} /> : <AssignmentIndIcon />}
-          sx={{ fontWeight: 700, px: 4 }}
+          loading={submitting}
+          icon={!submitting ? <ClipboardList className="w-4 h-4" /> : undefined}
+          className="font-bold px-6"
         >
           {submitting ? "Asignando..." : `Asignar ${cantidad}`}
         </Button>
-      </DialogActions>
+      </DialogFooter>
     </Dialog>
   );
 }
