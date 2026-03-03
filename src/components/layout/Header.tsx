@@ -2,7 +2,6 @@
 import { signOut, useSession } from "next-auth/react";
 import { LogOut } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
-import { DRAWER_COLLAPSED } from "./Sidebar";
 
 const rolLabels: Record<string, { label: string; color: "purple" | "blue" | "green" | "amber" | "orange" | "slate" }> = {
   admin: { label: "Admin", color: "purple" },
@@ -23,7 +22,6 @@ export default function Header() {
   return (
     <header
       className="sticky top-0 z-40 bg-surface/80 backdrop-blur-md border-b border-slate-800/60 px-8 py-3"
-      style={{ marginLeft: DRAWER_COLLAPSED }}
     >
       <div className="flex items-center justify-end gap-4">
         <Badge color={rolInfo.color}>{rolInfo.label}</Badge>

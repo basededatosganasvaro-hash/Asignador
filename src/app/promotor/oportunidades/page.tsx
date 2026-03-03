@@ -1,7 +1,7 @@
 "use client";
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { ColumnDef, RowSelectionState, VisibilityState } from "@tanstack/react-table";
-import { Eye, Phone, ArrowLeft, UserPlus, ClipboardList, Megaphone, RefreshCw } from "lucide-react";
+import { Eye, Phone, ArrowLeft, UserPlus, ClipboardList, Megaphone, RefreshCw, ChevronDown } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { buildWhatsAppUrl, formatPhoneForWA, WA_MENSAJES_DEFAULT } from "@/lib/whatsapp";
@@ -253,6 +253,7 @@ function OportunidadesContent() {
   const [cardFiltro, setCardFiltro] = useState<FiltroCard>("Asignado"); // default: Asignado
   const [observaciones, setObservaciones] = useState<Record<number, string>>({});
   const [transitioning, setTransitioning] = useState<number | null>(null);
+  const [openEtapaDropdown, setOpenEtapaDropdown] = useState<number | null>(null);
   const [confetti, setConfetti] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(() => {
@@ -579,28 +580,39 @@ function OportunidadesContent() {
           );
         }
 
+        const isOpen = openEtapaDropdown === row.original.id;
         return (
-          <select
-            value=""
-            onChange={(e) => {
-              if (e.target.value) handleTransicion(row.original.id, Number(e.target.value));
-            }}
-            onClick={(e) => e.stopPropagation()}
-            className="px-2 py-1 rounded-lg text-[11px] font-semibold text-white border-none outline-none cursor-pointer appearance-none pr-6"
-            style={{
-              backgroundColor: etapa.color,
-              backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`,
-              backgroundRepeat: "no-repeat",
-              backgroundPosition: "right 4px center",
-            }}
-          >
-            <option value="" disabled hidden>{etapa.nombre}</option>
-            {trans.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.nombre_accion}{t.etapa_destino ? ` → ${t.etapa_destino.nombre}` : " → Pool"}
-              </option>
-            ))}
-          </select>
+          <div className="relative" onClick={(e) => e.stopPropagation()}>
+            <button
+              type="button"
+              onClick={() => setOpenEtapaDropdown(isOpen ? null : row.original.id)}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold text-white cursor-pointer transition-opacity hover:opacity-90"
+              style={{ backgroundColor: etapa.color }}
+            >
+              {etapa.nombre}
+              <ChevronDown className={`w-3 h-3 transition-transform ${isOpen ? "rotate-180" : ""}`} />
+            </button>
+            {isOpen && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setOpenEtapaDropdown(null)} />
+                <div className="absolute left-0 top-full mt-1 z-50 min-w-[180px] bg-slate-800 border border-slate-700 rounded-lg shadow-xl shadow-black/40 py-1 animate-fade-in">
+                  {trans.map((t) => (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => {
+                        setOpenEtapaDropdown(null);
+                        handleTransicion(row.original.id, t.id);
+                      }}
+                      className="w-full text-left px-3 py-2 text-xs text-slate-200 hover:bg-slate-700/50 transition-colors"
+                    >
+                      {t.nombre_accion}{t.etapa_destino ? ` → ${t.etapa_destino.nombre}` : " → Pool"}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
         );
       },
     },
@@ -752,7 +764,7 @@ function OportunidadesContent() {
       },
     },
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  ], [transMap, transitioning, observaciones, cardFiltro, promotorNombre, plantillas]);
+  ], [transMap, transitioning, observaciones, cardFiltro, promotorNombre, plantillas, openEtapaDropdown]);
 
   // Destinatarios para la campana: filas seleccionadas con telefono
   const destinatariosSeleccionados = useMemo(() => {
