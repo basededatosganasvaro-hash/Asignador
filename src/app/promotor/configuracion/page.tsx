@@ -22,6 +22,7 @@ const ETAPA_COLORES: Record<string, string> = {
   Interesado: "#AB47BC",
   "Negociacion": "#66BB6A",
   Capturados: "#26C6DA",
+  Capacidades: "#4caf50",
 };
 
 const ETAPA_DESCRIPCIONES: Record<string, string> = {
@@ -30,6 +31,7 @@ const ETAPA_DESCRIPCIONES: Record<string, string> = {
   Interesado: "El cliente mostro interes, avanzar con tramite",
   "Negociacion": "Compartir propuesta y cerrar la venta",
   Capturados: "Clientes captados por ti directamente",
+  Capacidades: "Clientes con capacidad IMSS consultada por Telegram",
 };
 
 export default function ConfiguracionPage() {
@@ -140,7 +142,7 @@ export default function ConfiguracionPage() {
       </Alert>
 
       {/* Plantillas por etapa */}
-      <div className="flex flex-col gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         {WA_ETAPAS_ORDEN.map((etapa) => (
           <div
             key={etapa}

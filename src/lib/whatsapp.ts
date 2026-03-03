@@ -6,9 +6,10 @@ export const WA_MENSAJES_DEFAULT: Record<string, string> = {
   Interesado: "Hola {nombre}, como le comenté, tengo la información lista para avanzar con su trámite. ¿Le parece bien si revisamos los detalles?",
   "Negociación": "Hola {nombre}, le comparto los detalles de su propuesta. Quedo atento a cualquier duda para que podamos concretar.",
   Capturados: "Hola {nombre}, mi nombre es {promotor}. Le contacto porque tenemos una excelente oportunidad para usted. ¿Podemos platicar unos minutos?",
+  Capacidades: "Hola {nombre}, mi nombre es {promotor}. Revisamos su información y tiene un beneficio disponible. ¿Le gustaría conocer los detalles?",
 };
 
-export const WA_ETAPAS_ORDEN = ["Asignado", "Contactado", "Interesado", "Negociación", "Capturados"];
+export const WA_ETAPAS_ORDEN = ["Asignado", "Contactado", "Interesado", "Negociación", "Capturados", "Capacidades"];
 
 /** Formatear teléfono mexicano para WhatsApp: 10 dígitos → 521XXXXXXXXXX */
 export function formatPhoneForWA(telefono: string): string {
