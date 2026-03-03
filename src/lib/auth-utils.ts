@@ -29,6 +29,15 @@ export async function requireSupervisorOrAdmin() {
   return { session: session!, error: null };
 }
 
+export async function requireSupervisor() {
+  const { session, error } = await getSessionOrError();
+  if (error) return { session: null, error };
+  if (session!.user.rol !== "supervisor") {
+    return { session: null, error: NextResponse.json({ error: "Acceso denegado" }, { status: 403 }) };
+  }
+  return { session: session!, error: null };
+}
+
 export async function requireGestion() {
   // Roles que pueden gestionar: admin, gerente_regional, gerente_sucursal, supervisor
   const { session, error } = await getSessionOrError();

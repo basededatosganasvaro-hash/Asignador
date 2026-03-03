@@ -31,7 +31,8 @@ export default function Sidebar({ rol, open, onToggle }: SidebarProps) {
   const pathname = usePathname();
 
   const isOperaciones = rol === "operaciones";
-  const isPromotor = !isOperaciones && rol !== "admin" && rol !== "gerente_regional" && rol !== "gerente_sucursal" && rol !== "supervisor";
+  const isSupervisor = rol === "supervisor";
+  const isPromotor = !isOperaciones && !isSupervisor && rol !== "admin" && rol !== "gerente_regional" && rol !== "gerente_sucursal";
 
   return (
     <>
@@ -46,6 +47,7 @@ export default function Sidebar({ rol, open, onToggle }: SidebarProps) {
           pathname={pathname}
           rol={rol}
           isOperaciones={isOperaciones}
+          isSupervisor={isSupervisor}
           isPromotor={isPromotor}
           onToggle={onToggle}
         />
@@ -68,6 +70,7 @@ export default function Sidebar({ rol, open, onToggle }: SidebarProps) {
               pathname={pathname}
               rol={rol}
               isOperaciones={isOperaciones}
+              isSupervisor={isSupervisor}
               isPromotor={isPromotor}
               onToggle={onToggle}
             />
@@ -83,6 +86,7 @@ function SidebarContent({
   pathname,
   rol,
   isOperaciones,
+  isSupervisor,
   isPromotor,
   onToggle,
 }: {
@@ -90,6 +94,7 @@ function SidebarContent({
   pathname: string;
   rol: string;
   isOperaciones: boolean;
+  isSupervisor: boolean;
   isPromotor: boolean;
   onToggle: () => void;
 }) {
@@ -120,6 +125,13 @@ function SidebarContent({
       <nav className={`flex-1 overflow-y-auto py-2 ${showLabels ? "px-2" : "px-1"}`}>
         {isOperaciones ? (
           <NavItem label="Portabilidad" href="/operaciones/portabilidad" icon={<ArrowLeftRight className="w-5 h-5" />} pathname={pathname} showLabels={showLabels} />
+        ) : isSupervisor ? (
+          <>
+            <NavItem label="Dashboard" href="/supervisor" icon={<LayoutDashboard className="w-5 h-5" />} pathname={pathname} showLabels={showLabels} exact />
+            <NavItem label="Bandeja" href="/supervisor/bandeja" icon={<Inbox className="w-5 h-5" />} pathname={pathname} showLabels={showLabels} />
+            <NavItem label="Solicitar Datos" href="/supervisor/asignaciones" icon={<ClipboardList className="w-5 h-5" />} pathname={pathname} showLabels={showLabels} />
+            <NavItem label="WhatsApp" href="/supervisor/whatsapp" icon={<WhatsAppIcon />} pathname={pathname} showLabels={showLabels} exact />
+          </>
         ) : isPromotor ? (
           <>
             <NavItem label="Mi Asignación" href="/promotor/oportunidades" icon={<TrendingUp className="w-5 h-5" />} pathname={pathname} showLabels={showLabels} />

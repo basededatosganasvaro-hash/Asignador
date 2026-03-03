@@ -13,6 +13,10 @@ export default async function Home() {
     redirect("/operaciones");
   }
 
+  if (session.user.rol === "supervisor") {
+    redirect("/supervisor");
+  }
+
   if (session.user.rol === "promotor") {
     redirect("/promotor");
   }

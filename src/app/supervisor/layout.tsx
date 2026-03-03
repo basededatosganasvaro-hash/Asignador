@@ -3,17 +3,16 @@ import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import LayoutShell from "@/components/layout/LayoutShell";
 
-export default async function AdminLayout({
+export default async function SupervisorLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   const session = await getServerSession(authOptions);
 
-  const rolesGestion = ["admin", "gerente_regional", "gerente_sucursal"];
-  if (!session || !rolesGestion.includes(session.user.rol)) {
+  if (!session || session.user.rol !== "supervisor") {
     redirect("/login");
   }
 
-  return <LayoutShell rol="admin">{children}</LayoutShell>;
+  return <LayoutShell rol="supervisor">{children}</LayoutShell>;
 }
