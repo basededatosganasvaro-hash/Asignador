@@ -607,23 +607,28 @@ function OportunidadesContent() {
               <>
                 <div className="fixed inset-0 z-40" onClick={() => { setOpenEtapaDropdown(null); setDropdownPos(null); }} />
                 <div
-                  className="fixed z-50 min-w-[180px] bg-slate-800 border border-slate-700 rounded-lg shadow-xl shadow-black/40 py-1 animate-fade-in"
+                  className="fixed z-50 w-52 bg-slate-900/95 backdrop-blur-sm border border-slate-700/80 rounded-lg shadow-2xl shadow-black/60 py-1.5 animate-fade-in"
                   style={{ top: dropdownPos.top, left: dropdownPos.left }}
                 >
-                  {trans.map((t) => (
-                    <button
-                      key={t.id}
-                      type="button"
-                      onClick={() => {
-                        setOpenEtapaDropdown(null);
-                        setDropdownPos(null);
-                        handleTransicion(row.original.id, t.id);
-                      }}
-                      className="w-full text-left px-3 py-2 text-xs text-slate-200 hover:bg-slate-700/50 transition-colors"
-                    >
-                      {t.nombre_accion}{t.etapa_destino ? ` → ${t.etapa_destino.nombre}` : " → Pool"}
-                    </button>
-                  ))}
+                  <p className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-slate-500">Mover a</p>
+                  {trans.map((t) => {
+                    const destColor = t.etapa_destino?.color || "#ef4444";
+                    return (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={() => {
+                          setOpenEtapaDropdown(null);
+                          setDropdownPos(null);
+                          handleTransicion(row.original.id, t.id);
+                        }}
+                        className="w-full text-left px-3 py-1.5 text-xs hover:bg-slate-800/80 transition-colors flex items-center gap-2"
+                      >
+                        <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: destColor }} />
+                        <span style={{ color: destColor }}>{t.etapa_destino?.nombre || "Pool"}</span>
+                      </button>
+                    );
+                  })}
                 </div>
               </>,
               document.body
