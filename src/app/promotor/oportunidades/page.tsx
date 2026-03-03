@@ -965,7 +965,7 @@ function OportunidadesContent() {
             <p>Sin oportunidades en esta vista</p>
           </div>
         ) : (
-          <div className="flex-1 min-h-[1100px] overflow-auto">
+          <div className="flex-1 min-h-0">
             <DataTable
               data={filtered}
               columns={columns}
@@ -977,7 +977,7 @@ function OportunidadesContent() {
               columnVisibility={columnVisibility}
               onColumnVisibilityChange={handleColumnVisibilityChange}
               getRowId={(row) => String(row.id)}
-              className="border-0 rounded-none"
+              className="border-0 rounded-none h-full"
             />
           </div>
         )}

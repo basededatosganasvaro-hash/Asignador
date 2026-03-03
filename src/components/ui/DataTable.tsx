@@ -110,14 +110,14 @@ function DataTable<TData = any>({
   const totalPages = table.getPageCount();
 
   return (
-    <div className={`bg-surface rounded-xl border border-slate-800/60 overflow-hidden ${className}`}>
+    <div className={`bg-surface rounded-xl border border-slate-800/60 overflow-hidden flex flex-col ${className}`}>
       {toolbar && (
         <div className="px-4 py-3 border-b border-slate-800/40 flex items-center gap-3 flex-wrap">
           {toolbar}
         </div>
       )}
 
-      <div className="overflow-x-auto scrollbar-thin">
+      <div className="flex-1 min-h-0 overflow-auto scrollbar-thin">
         <table className="w-full text-sm">
           <thead className={`bg-slate-800/40 border-b border-slate-800/40 ${stickyHeader ? "sticky top-0 z-10" : ""}`}>
             {table.getHeaderGroups().map((headerGroup) => (
