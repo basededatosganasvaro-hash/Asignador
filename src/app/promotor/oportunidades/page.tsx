@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
+import { createPortal } from "react-dom";
 import { ColumnDef, RowSelectionState, VisibilityState } from "@tanstack/react-table";
 import { Eye, Phone, ArrowLeft, UserPlus, ClipboardList, Megaphone, RefreshCw, ChevronDown } from "lucide-react";
 import { useSession } from "next-auth/react";
@@ -254,6 +255,7 @@ function OportunidadesContent() {
   const [observaciones, setObservaciones] = useState<Record<number, string>>({});
   const [transitioning, setTransitioning] = useState<number | null>(null);
   const [openEtapaDropdown, setOpenEtapaDropdown] = useState<number | null>(null);
+  const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number } | null>(null);
   const [confetti, setConfetti] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(() => {
@@ -585,23 +587,36 @@ function OportunidadesContent() {
           <div className="relative" onClick={(e) => e.stopPropagation()}>
             <button
               type="button"
-              onClick={() => setOpenEtapaDropdown(isOpen ? null : row.original.id)}
+              onClick={(e) => {
+                if (isOpen) {
+                  setOpenEtapaDropdown(null);
+                  setDropdownPos(null);
+                } else {
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  setDropdownPos({ top: rect.bottom + 4, left: rect.left });
+                  setOpenEtapaDropdown(row.original.id);
+                }
+              }}
               className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold text-white cursor-pointer transition-opacity hover:opacity-90"
               style={{ backgroundColor: etapa.color }}
             >
               {etapa.nombre}
               <ChevronDown className={`w-3 h-3 transition-transform ${isOpen ? "rotate-180" : ""}`} />
             </button>
-            {isOpen && (
+            {isOpen && dropdownPos && createPortal(
               <>
-                <div className="fixed inset-0 z-40" onClick={() => setOpenEtapaDropdown(null)} />
-                <div className="absolute left-0 top-full mt-1 z-50 min-w-[180px] bg-slate-800 border border-slate-700 rounded-lg shadow-xl shadow-black/40 py-1 animate-fade-in">
+                <div className="fixed inset-0 z-40" onClick={() => { setOpenEtapaDropdown(null); setDropdownPos(null); }} />
+                <div
+                  className="fixed z-50 min-w-[180px] bg-slate-800 border border-slate-700 rounded-lg shadow-xl shadow-black/40 py-1 animate-fade-in"
+                  style={{ top: dropdownPos.top, left: dropdownPos.left }}
+                >
                   {trans.map((t) => (
                     <button
                       key={t.id}
                       type="button"
                       onClick={() => {
                         setOpenEtapaDropdown(null);
+                        setDropdownPos(null);
                         handleTransicion(row.original.id, t.id);
                       }}
                       className="w-full text-left px-3 py-2 text-xs text-slate-200 hover:bg-slate-700/50 transition-colors"
@@ -610,7 +625,8 @@ function OportunidadesContent() {
                     </button>
                   ))}
                 </div>
-              </>
+              </>,
+              document.body
             )}
           </div>
         );
@@ -764,7 +780,7 @@ function OportunidadesContent() {
       },
     },
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  ], [transMap, transitioning, observaciones, cardFiltro, promotorNombre, plantillas, openEtapaDropdown]);
+  ], [transMap, transitioning, observaciones, cardFiltro, promotorNombre, plantillas, openEtapaDropdown, dropdownPos]);
 
   // Destinatarios para la campana: filas seleccionadas con telefono
   const destinatariosSeleccionados = useMemo(() => {
@@ -944,7 +960,7 @@ function OportunidadesContent() {
             <p>Sin oportunidades en esta vista</p>
           </div>
         ) : (
-          <div className="flex-1 min-h-0 overflow-auto">
+          <div className="flex-1 min-h-[1100px] overflow-auto">
             <DataTable
               data={filtered}
               columns={columns}
