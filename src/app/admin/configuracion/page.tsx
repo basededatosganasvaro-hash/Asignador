@@ -17,12 +17,23 @@ import {
   PauseCircle,
   Shield,
   Info,
+  Hourglass,
 } from "lucide-react";
 
 interface Config {
   id: number;
   clave: string;
   valor: string;
+}
+
+interface Etapa {
+  id: number;
+  nombre: string;
+  orden: number;
+  tipo: string;
+  timer_horas: number | null;
+  color: string;
+  activo: boolean;
 }
 
 // Defaults match microservice config
@@ -139,6 +150,11 @@ export default function ConfiguracionPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
+  // Tiempos de permanencia (etapas AVANCE)
+  const [etapasAvance, setEtapasAvance] = useState<Etapa[]>([]);
+  const [timerValues, setTimerValues] = useState<Record<number, string>>({});
+  const [timerSaving, setTimerSaving] = useState(false);
+
   // WhatsApp config state -- display values (seconds for ms fields, raw for others)
   const [waValues, setWaValues] = useState<Record<string, string>>(() => {
     const init: Record<string, string> = {};
@@ -151,26 +167,40 @@ export default function ConfiguracionPage() {
   const [waSaving, setWaSaving] = useState(false);
 
   useEffect(() => {
-    fetch("/api/admin/configuracion")
-      .then((res) => {
+    Promise.all([
+      fetch("/api/admin/configuracion").then((res) => {
         if (!res.ok) throw new Error("Error al cargar configuracion");
         return res.json();
-      })
-      .then((data: Config[]) => {
-        setConfigs(data);
-        const maxReg = data.find((c: Config) => c.clave === "max_registros_por_dia");
+      }),
+      fetch("/api/admin/embudo/etapas").then((res) => {
+        if (!res.ok) throw new Error("Error al cargar etapas");
+        return res.json();
+      }),
+    ])
+      .then(([configData, etapasData]: [Config[], Etapa[]]) => {
+        setConfigs(configData);
+        const maxReg = configData.find((c: Config) => c.clave === "max_registros_por_dia");
         if (maxReg) setMaxRegistros(maxReg.valor);
-        const horario = data.find((c: Config) => c.clave === "horario_activo");
+        const horario = configData.find((c: Config) => c.clave === "horario_activo");
         if (horario) setHorarioActivo(horario.valor !== "false");
 
         // Load wa_* values from BD
         const newWaValues: Record<string, string> = {};
         for (const [key, defaultVal] of Object.entries(WA_DEFAULTS)) {
-          const found = data.find((c: Config) => c.clave === key);
+          const found = configData.find((c: Config) => c.clave === key);
           const rawVal = found ? Number(found.valor) : defaultVal;
           newWaValues[key] = String(msToSeconds(key, rawVal));
         }
         setWaValues(newWaValues);
+
+        // Load etapas AVANCE con timer
+        const avance = etapasData.filter((e: Etapa) => e.tipo === "AVANCE" && e.activo);
+        setEtapasAvance(avance);
+        const timers: Record<number, string> = {};
+        for (const e of avance) {
+          timers[e.id] = e.timer_horas != null ? String(e.timer_horas) : "";
+        }
+        setTimerValues(timers);
 
         setLoading(false);
       })
@@ -259,6 +289,33 @@ export default function ConfiguracionPage() {
     );
   };
 
+  const handleTimerSave = async () => {
+    setTimerSaving(true);
+    let allOk = true;
+
+    for (const etapa of etapasAvance) {
+      const val = timerValues[etapa.id];
+      const numVal = val === "" ? null : Number(val);
+      if (numVal !== null && (isNaN(numVal) || numVal <= 0)) {
+        toast(`"${etapa.nombre}": debe ser un numero positivo`, "error");
+        setTimerSaving(false);
+        return;
+      }
+      const res = await fetch(`/api/admin/embudo/etapas/${etapa.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ timer_horas: numVal }),
+      });
+      if (!res.ok) allOk = false;
+    }
+
+    setTimerSaving(false);
+    toast(
+      allOk ? "Tiempos de permanencia guardados" : "Error al guardar algunos tiempos",
+      allOk ? "success" : "error"
+    );
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center mt-20">
@@ -284,8 +341,11 @@ export default function ConfiguracionPage() {
         </div>
       </div>
 
+      {/* Grid 2×2 */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+
       {/* Card Horario Operativo */}
-      <div className="bg-surface rounded-xl border border-slate-800/60 p-5 max-w-[700px] mb-5 relative overflow-hidden">
+      <div className="bg-surface rounded-xl border border-slate-800/60 p-5 relative overflow-hidden">
         <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-blue-500 to-blue-600" />
         <div className="flex items-center gap-3 mb-2">
           <Clock className="w-5 h-5 text-blue-400" />
@@ -335,7 +395,7 @@ export default function ConfiguracionPage() {
       </div>
 
       {/* Card Asignaciones */}
-      <div className="bg-surface rounded-xl border border-slate-800/60 p-5 max-w-[700px] mb-5 relative overflow-hidden">
+      <div className="bg-surface rounded-xl border border-slate-800/60 p-5 relative overflow-hidden">
         <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-green-500 to-green-600" />
         <div className="flex items-center gap-3 mb-2">
           <ClipboardList className="w-5 h-5 text-green-400" />
@@ -375,8 +435,65 @@ export default function ConfiguracionPage() {
         </div>
       </div>
 
+      {/* Card Tiempos de Permanencia */}
+      <div className="bg-surface rounded-xl border border-slate-800/60 p-5 relative overflow-hidden">
+        <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-amber-500 to-orange-500" />
+        <div className="flex items-center gap-3 mb-2">
+          <Hourglass className="w-5 h-5 text-amber-400" />
+          <h2 className="text-lg font-semibold text-slate-100">
+            Tiempos de Permanencia
+          </h2>
+          <Tooltip content="Tiempo maximo que una oportunidad puede permanecer en cada etapa de avance antes de ser devuelta al pool">
+            <HelpCircle className="w-4 h-4 text-slate-600 cursor-help" />
+          </Tooltip>
+        </div>
+        <span className="text-sm text-slate-400 block mb-4 ml-8">
+          Define cuantas horas puede permanecer una oportunidad en cada etapa de avance.
+        </span>
+        <div className="ml-8 flex flex-col gap-3">
+          {etapasAvance.map((etapa) => (
+            <div key={etapa.id} className="flex items-center gap-3">
+              <div
+                className="w-3 h-3 rounded-full flex-shrink-0"
+                style={{ backgroundColor: etapa.color }}
+              />
+              <label className="text-sm text-slate-300 w-40 flex-shrink-0">
+                {etapa.nombre}
+              </label>
+              <input
+                type="number"
+                value={timerValues[etapa.id] ?? ""}
+                onChange={(e) =>
+                  setTimerValues((prev) => ({ ...prev, [etapa.id]: e.target.value }))
+                }
+                placeholder="Sin limite"
+                min={1}
+                className="w-24 px-3 py-1.5 bg-slate-800/50 border border-slate-700 text-slate-200 placeholder-slate-600 rounded-lg text-sm focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500/60 outline-none transition-all"
+              />
+              <span className="text-xs text-slate-500">horas</span>
+            </div>
+          ))}
+          {etapasAvance.length === 0 && (
+            <span className="text-sm text-slate-500">No hay etapas de avance configuradas</span>
+          )}
+        </div>
+        {etapasAvance.length > 0 && (
+          <div className="ml-8 mt-4">
+            <Button
+              variant="primary"
+              icon={<Save className="w-4 h-4" />}
+              loading={timerSaving}
+              onClick={handleTimerSave}
+              className="!bg-amber-600 hover:!bg-amber-500 !shadow-amber-600/20"
+            >
+              Guardar Cambios
+            </Button>
+          </div>
+        )}
+      </div>
+
       {/* Card WhatsApp Masivo */}
-      <div className="bg-surface rounded-xl border border-slate-800/60 p-5 max-w-[700px] relative overflow-hidden">
+      <div className="bg-surface rounded-xl border border-slate-800/60 p-5 relative overflow-hidden">
         <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-emerald-500 to-emerald-400" />
         <div className="flex items-center gap-3 mb-2">
           {/* WhatsApp custom SVG icon */}
@@ -469,6 +586,8 @@ export default function ConfiguracionPage() {
           </Tooltip>
         </div>
       </div>
+
+      </div>{/* end grid */}
     </div>
   );
 }
