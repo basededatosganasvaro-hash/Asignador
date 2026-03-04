@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Dialog, DialogHeader, DialogBody, DialogFooter } from "@/components/ui/Dialog";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
@@ -27,6 +27,81 @@ interface Props {
 interface Convenio {
   id: number;
   nombre: string;
+}
+
+function ConvenioAutocomplete({
+  convenios,
+  value,
+  onChange,
+}: {
+  convenios: Convenio[];
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const [query, setQuery] = useState(value);
+  const [showList, setShowList] = useState(false);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => { setQuery(value); }, [value]);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
+        setShowList(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const filtered = convenios.filter((c) =>
+    c.nombre.toLowerCase().includes(query.toLowerCase())
+  );
+
+  return (
+    <div ref={wrapperRef} className="relative">
+      <label className="block text-xs font-medium text-slate-400 mb-1">Convenio *</label>
+      <input
+        type="text"
+        value={query}
+        onChange={(e) => {
+          setQuery(e.target.value);
+          onChange("");
+          setShowList(true);
+        }}
+        onFocus={() => setShowList(true)}
+        placeholder="Buscar convenio..."
+        className="w-full px-3 py-2 bg-slate-800/50 border border-slate-700 text-sm text-slate-200 placeholder-slate-600 rounded-lg focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500/60 outline-none transition-all"
+        required
+      />
+      {showList && filtered.length > 0 && (
+        <ul className="absolute z-50 w-full mt-1 max-h-48 overflow-auto bg-slate-800 border border-slate-700 rounded-lg shadow-xl">
+          {filtered.map((c) => (
+            <li
+              key={c.id}
+              onClick={() => {
+                onChange(c.nombre);
+                setQuery(c.nombre);
+                setShowList(false);
+              }}
+              className={`px-3 py-2 text-sm cursor-pointer transition-colors ${
+                value === c.nombre
+                  ? "bg-amber-500/20 text-amber-300"
+                  : "text-slate-300 hover:bg-slate-700"
+              }`}
+            >
+              {c.nombre}
+            </li>
+          ))}
+        </ul>
+      )}
+      {showList && query && filtered.length === 0 && (
+        <div className="absolute z-50 w-full mt-1 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-xs text-slate-500">
+          Sin resultados
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function ImportCaptacionDialog({ open, onClose, onSuccess, embedded = false }: Props) {
@@ -136,13 +211,10 @@ export default function ImportCaptacionDialog({ open, onClose, onSuccess, embedd
         required
       />
 
-      <Select
-        label="Convenio *"
+      <ConvenioAutocomplete
+        convenios={convenios}
         value={convenio}
-        onChange={(e) => setConvenio(e.target.value)}
-        options={convenios.map((c) => ({ value: c.nombre, label: c.nombre }))}
-        placeholder="Seleccionar convenio"
-        required
+        onChange={setConvenio}
       />
 
       {/* Divider with label */}

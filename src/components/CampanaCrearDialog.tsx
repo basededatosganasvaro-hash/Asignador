@@ -191,11 +191,13 @@ export default function CampanaCrearDialog({ open, onClose, onSuccess, destinata
               </p>
               <Button
                 size="sm"
-                icon={generandoIA ? <Spinner className="w-4 h-4" /> : <Sparkles className="w-4 h-4" />}
+                icon={<Sparkles className="w-4 h-4" />}
                 onClick={handleGenerarVariaciones}
                 disabled={generandoIA || !mensajeBase.trim()}
+                loading={generandoIA}
+                className="bg-purple-600 text-white hover:bg-purple-500 shadow-lg shadow-purple-600/20"
               >
-                {generandoIA ? "Generando..." : variaciones.length > 0 ? "Regenerar" : "Generar"}
+                {generandoIA ? "Generando variaciones..." : variaciones.length > 0 ? "Regenerar" : "Generar variaciones"}
               </Button>
             </div>
 

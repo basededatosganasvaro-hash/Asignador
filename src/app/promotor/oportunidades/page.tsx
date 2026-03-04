@@ -664,11 +664,14 @@ function OportunidadesContent() {
         accessorKey: "imss_capacidad_actual",
         header: "Capacidad",
         size: 110,
-        cell: ({ row }: { row: { original: Oportunidad } }) => (
-          <span className="text-xs font-semibold text-green-400">
-            {row.original.imss_capacidad_actual != null ? `$${Number(row.original.imss_capacidad_actual).toLocaleString("es-MX")}` : "—"}
-          </span>
-        ),
+        cell: ({ row }: { row: { original: Oportunidad } }) => {
+          const val = row.original.imss_capacidad_actual != null ? Number(row.original.imss_capacidad_actual) : null;
+          return (
+            <span className={`text-xs font-semibold ${val != null && val < 0 ? "text-red-400" : "text-green-400"}`}>
+              {val != null ? `$${val.toLocaleString("es-MX")}` : "—"}
+            </span>
+          );
+        },
       } as ColumnDef<Oportunidad, unknown>,
       {
         accessorKey: "imss_num_creditos",
