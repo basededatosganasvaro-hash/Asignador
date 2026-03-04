@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Tooltip } from "@/components/ui/Tooltip";
@@ -168,6 +168,9 @@ export default function ConfiguracionPage() {
   const [betaUsuarios, setBetaUsuarios] = useState<Promotor[]>([]);
   const [promotores, setPromotores] = useState<Promotor[]>([]);
   const [selectedPromotor, setSelectedPromotor] = useState("");
+  const [promotorQuery, setPromotorQuery] = useState("");
+  const [showPromotorList, setShowPromotorList] = useState(false);
+  const promotorSearchRef = useRef<HTMLDivElement>(null);
 
   // WhatsApp config state -- display values (seconds for ms fields, raw for others)
   const [waValues, setWaValues] = useState<Record<string, string>>(() => {
@@ -243,6 +246,26 @@ export default function ConfiguracionPage() {
         setLoading(false);
       });
   }, []);
+
+  // Close promotor autocomplete on click outside
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (promotorSearchRef.current && !promotorSearchRef.current.contains(e.target as Node)) {
+        setShowPromotorList(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Filtered promotores for autocomplete
+  const filteredPromotores = promotores
+    .filter((p) => !betaUsuarios.some((u) => u.id === p.id))
+    .filter((p) => {
+      if (!promotorQuery) return true;
+      const q = promotorQuery.toLowerCase();
+      return p.nombre.toLowerCase().includes(q) || p.username.toLowerCase().includes(q);
+    });
 
   const handleSave = async () => {
     setSaving(true);
@@ -713,30 +736,64 @@ export default function ConfiguracionPage() {
         {/* Testers list (only when beta active) */}
         {betaActivo && (
           <div className="ml-8">
-            {/* Add tester */}
-            <div className="flex items-center gap-2 mb-4">
-              <select
-                value={selectedPromotor}
-                onChange={(e) => setSelectedPromotor(e.target.value)}
-                className="flex-1 px-3 py-2 bg-slate-800/50 border border-slate-700 text-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500/40 focus:border-purple-500/60 outline-none transition-all"
-              >
-                <option value="">Seleccionar promotor...</option>
-                {promotores
-                  .filter((p) => !betaUsuarios.some((u) => u.id === p.id))
-                  .map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.nombre} (@{p.username})
-                    </option>
-                  ))}
-              </select>
-              <Button
-                variant="primary"
-                onClick={handleAddTester}
-                disabled={!selectedPromotor}
-                className="!bg-purple-600 hover:!bg-purple-500 !shadow-purple-600/20"
-              >
-                Agregar
-              </Button>
+            {/* Add tester — autocomplete */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-slate-300 mb-1.5">
+                Agregar promotor
+              </label>
+              <div className="flex gap-2">
+                <div className="relative min-w-0 flex-1" ref={promotorSearchRef}>
+                  <input
+                    type="text"
+                    value={promotorQuery}
+                    onChange={(e) => {
+                      setPromotorQuery(e.target.value);
+                      setSelectedPromotor("");
+                      setShowPromotorList(true);
+                    }}
+                    onFocus={() => setShowPromotorList(true)}
+                    placeholder="Buscar por nombre o username..."
+                    className="w-full px-3 py-2 bg-slate-800/50 border border-slate-700 text-slate-200 placeholder-slate-600 rounded-lg text-sm focus:ring-2 focus:ring-purple-500/40 focus:border-purple-500/60 outline-none transition-all"
+                  />
+                  {showPromotorList && filteredPromotores.length > 0 && (
+                    <ul className="absolute z-50 w-full mt-1 max-h-48 overflow-auto bg-slate-800 border border-slate-700 rounded-lg shadow-xl">
+                      {filteredPromotores.map((p) => (
+                        <li
+                          key={p.id}
+                          onClick={() => {
+                            setSelectedPromotor(String(p.id));
+                            setPromotorQuery(`${p.nombre} (@${p.username})`);
+                            setShowPromotorList(false);
+                          }}
+                          className={`px-3 py-2 text-sm cursor-pointer transition-colors ${
+                            selectedPromotor === String(p.id)
+                              ? "bg-purple-500/20 text-purple-300"
+                              : "text-slate-300 hover:bg-slate-700"
+                          }`}
+                        >
+                          {p.nombre} <span className="text-slate-500">@{p.username}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {showPromotorList && promotorQuery && filteredPromotores.length === 0 && (
+                    <div className="absolute z-50 w-full mt-1 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-slate-500">
+                      Sin resultados
+                    </div>
+                  )}
+                </div>
+                <Button
+                  variant="primary"
+                  onClick={() => {
+                    handleAddTester();
+                    setPromotorQuery("");
+                  }}
+                  disabled={!selectedPromotor}
+                  className="shrink-0 !bg-purple-600 hover:!bg-purple-500 !shadow-purple-600/20"
+                >
+                  Agregar
+                </Button>
+              </div>
             </div>
 
             {/* Testers list */}
