@@ -66,17 +66,35 @@ export default function UsuariosPage() {
   const [equipos, setEquipos] = useState<OrgItem[]>([]);
 
   const [busqueda, setBusqueda] = useState("");
+  const [filtroRol, setFiltroRol] = useState("");
+  const [filtroEquipo, setFiltroEquipo] = useState("");
+
+  const equiposUnicos = useMemo(() => {
+    const map = new Map<number, string>();
+    usuarios.forEach((u) => {
+      if (u.equipo) map.set(u.equipo.id, u.equipo.nombre);
+    });
+    return Array.from(map, ([id, nombre]) => ({ id, nombre })).sort((a, b) =>
+      a.nombre.localeCompare(b.nombre)
+    );
+  }, [usuarios]);
 
   const usuariosFiltrados = useMemo(() => {
-    if (!busqueda.trim()) return usuarios;
-    const term = busqueda.toLowerCase();
-    return usuarios.filter(
-      (u) =>
-        u.nombre.toLowerCase().includes(term) ||
-        (u.username && u.username.toLowerCase().includes(term)) ||
-        (u.equipo?.nombre && u.equipo.nombre.toLowerCase().includes(term))
-    );
-  }, [usuarios, busqueda]);
+    return usuarios.filter((u) => {
+      if (filtroRol && u.rol !== filtroRol) return false;
+      if (filtroEquipo && String(u.equipo?.id ?? "") !== filtroEquipo) return false;
+      if (busqueda.trim()) {
+        const term = busqueda.toLowerCase();
+        if (
+          !u.nombre.toLowerCase().includes(term) &&
+          !(u.username && u.username.toLowerCase().includes(term)) &&
+          !(u.equipo?.nombre && u.equipo.nombre.toLowerCase().includes(term))
+        )
+          return false;
+      }
+      return true;
+    });
+  }, [usuarios, busqueda, filtroRol, filtroEquipo]);
 
   const [formData, setFormData] = useState({
     nombre: "",
@@ -322,13 +340,41 @@ export default function UsuariosPage() {
         </div>
       </div>
 
-      <div className="mb-4 max-w-md">
-        <Input
-          placeholder="Buscar por nombre, usuario o equipo..."
-          value={busqueda}
-          onChange={(e) => setBusqueda(e.target.value)}
-          icon={<Search className="w-4 h-4" />}
-        />
+      <div className="mb-4 flex flex-wrap items-end gap-3">
+        <div className="w-full sm:w-64">
+          <Input
+            placeholder="Buscar por nombre, usuario o equipo..."
+            value={busqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
+            icon={<Search className="w-4 h-4" />}
+          />
+        </div>
+        <div className="w-full sm:w-48">
+          <Select
+            label="Rol"
+            value={filtroRol}
+            onChange={(e) => setFiltroRol(e.target.value)}
+            placeholder="Todos los roles"
+            options={Object.entries(ROL_LABELS).map(([value, label]) => ({ value, label }))}
+          />
+        </div>
+        <div className="w-full sm:w-48">
+          <Select
+            label="Equipo"
+            value={filtroEquipo}
+            onChange={(e) => setFiltroEquipo(e.target.value)}
+            placeholder="Todos los equipos"
+            options={equiposUnicos.map((eq) => ({ value: String(eq.id), label: eq.nombre }))}
+          />
+        </div>
+        {(filtroRol || filtroEquipo) && (
+          <button
+            onClick={() => { setFiltroRol(""); setFiltroEquipo(""); }}
+            className="text-xs text-slate-400 hover:text-amber-400 transition-colors pb-2"
+          >
+            Limpiar filtros
+          </button>
+        )}
       </div>
 
       <DataTable
