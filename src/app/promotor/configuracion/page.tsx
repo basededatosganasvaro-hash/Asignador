@@ -1,10 +1,10 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
-import { Save, RotateCcw } from "lucide-react";
+import { Save, RotateCcw, Sparkles, Pencil } from "lucide-react";
 import { Alert } from "@/components/ui/Alert";
 import { Spinner } from "@/components/ui/Spinner";
 import { Button } from "@/components/ui/Button";
-import { Divider } from "@/components/ui/Divider";
+import { Dialog, DialogHeader, DialogBody, DialogFooter } from "@/components/ui/Dialog";
 import { useToast } from "@/components/ui/Toast";
 import { WA_MENSAJES_DEFAULT, WA_ETAPAS_ORDEN } from "@/lib/whatsapp";
 
@@ -34,10 +34,19 @@ const ETAPA_DESCRIPCIONES: Record<string, string> = {
   Capacidades: "Clientes con capacidad IMSS consultada por Telegram",
 };
 
+const IA_LIMIT = 5;
+
 export default function ConfiguracionPage() {
   const [plantillas, setPlantillas] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+
+  // Modal de edicion
+  const [editingEtapa, setEditingEtapa] = useState<string | null>(null);
+  const [editingMsg, setEditingMsg] = useState("");
+  const [iaUsadas, setIaUsadas] = useState(0);
+  const [iaLoading, setIaLoading] = useState(false);
+
   const { toast } = useToast();
 
   const fetchPlantillas = useCallback(async () => {
@@ -46,7 +55,6 @@ export default function ConfiguracionPage() {
       if (res.ok) {
         setPlantillas(await res.json());
       } else {
-        // Si la API falla (ej: tabla no existe aun), usar defaults
         setPlantillas({ ...WA_MENSAJES_DEFAULT });
       }
     } catch {
@@ -56,14 +64,6 @@ export default function ConfiguracionPage() {
   }, []);
 
   useEffect(() => { fetchPlantillas(); }, [fetchPlantillas]);
-
-  const handleChange = (etapa: string, valor: string) => {
-    setPlantillas((prev) => ({ ...prev, [etapa]: valor }));
-  };
-
-  const handleReset = (etapa: string) => {
-    setPlantillas((prev) => ({ ...prev, [etapa]: WA_MENSAJES_DEFAULT[etapa] || "" }));
-  };
 
   const handleResetAll = () => {
     setPlantillas({ ...WA_MENSAJES_DEFAULT });
@@ -89,6 +89,59 @@ export default function ConfiguracionPage() {
     setSaving(false);
   };
 
+  // ── Modal handlers ──────────────────────────────────────────────────────────
+
+  const handleOpenEdit = (etapa: string) => {
+    setEditingEtapa(etapa);
+    setEditingMsg(plantillas[etapa] || WA_MENSAJES_DEFAULT[etapa] || "");
+  };
+
+  const handleCloseEdit = () => {
+    setEditingEtapa(null);
+    setEditingMsg("");
+  };
+
+  const handleApplyEdit = () => {
+    if (editingEtapa) {
+      setPlantillas((prev) => ({ ...prev, [editingEtapa]: editingMsg }));
+    }
+    handleCloseEdit();
+  };
+
+  const handleResetInModal = () => {
+    if (editingEtapa) {
+      setEditingMsg(WA_MENSAJES_DEFAULT[editingEtapa] || "");
+    }
+  };
+
+  const handleMejorarIA = async () => {
+    if (iaUsadas >= IA_LIMIT || !editingMsg.trim()) return;
+    setIaLoading(true);
+    try {
+      const res = await fetch("/api/whatsapp/variaciones", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mensaje_base: editingMsg, cantidad: 1 }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.variaciones?.[0]) {
+          setEditingMsg(data.variaciones[0]);
+          setIaUsadas((prev) => prev + 1);
+          toast("Mensaje mejorado con IA", "success");
+        }
+      } else {
+        const errData = await res.json();
+        toast(errData.error || "Error al mejorar mensaje", "error");
+      }
+    } catch {
+      toast("Error de conexion", "error");
+    }
+    setIaLoading(false);
+  };
+
+  // ── Render ──────────────────────────────────────────────────────────────────
+
   if (loading) {
     return (
       <div className="flex justify-center mt-16">
@@ -96,6 +149,8 @@ export default function ConfiguracionPage() {
       </div>
     );
   }
+
+  const iaRestantes = IA_LIMIT - iaUsadas;
 
   return (
     <div>
@@ -107,10 +162,18 @@ export default function ConfiguracionPage() {
             <h1 className="text-xl font-semibold text-slate-100">Mensajes de WhatsApp</h1>
           </div>
           <p className="text-sm text-slate-500">
-            Personaliza el mensaje que se enviara a tus clientes en cada etapa del embudo
+            Toca una tarjeta para editar el mensaje de cada etapa
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-3">
+          {/* Contador IA */}
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-500/10 border border-purple-500/20">
+            <Sparkles className="w-3.5 h-3.5 text-purple-400" />
+            <span className="text-xs font-medium text-purple-300">
+              {iaRestantes}/{IA_LIMIT} mejoras IA
+            </span>
+          </div>
+
           <Button
             variant="outline"
             size="sm"
@@ -141,65 +204,158 @@ export default function ConfiguracionPage() {
         </p>
       </Alert>
 
-      {/* Plantillas por etapa */}
+      {/* Cards por etapa — solo lectura, clickeables */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        {WA_ETAPAS_ORDEN.map((etapa) => (
-          <div
-            key={etapa}
-            className="bg-surface rounded-xl border border-slate-800/60 overflow-hidden"
-            style={{ borderLeftWidth: 4, borderLeftColor: ETAPA_COLORES[etapa] || "#94a3b8" }}
-          >
-            <div className="p-5 pb-4">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <span
-                    className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold text-white"
-                    style={{ backgroundColor: ETAPA_COLORES[etapa] || "#94a3b8" }}
-                  >
-                    {etapa}
-                  </span>
-                  <span className="text-xs text-slate-500">
-                    {ETAPA_DESCRIPCIONES[etapa]}
-                  </span>
+        {WA_ETAPAS_ORDEN.map((etapa) => {
+          const mensaje = plantillas[etapa] || WA_MENSAJES_DEFAULT[etapa] || "";
+          const isDefault = mensaje === WA_MENSAJES_DEFAULT[etapa];
+
+          return (
+            <button
+              key={etapa}
+              type="button"
+              onClick={() => handleOpenEdit(etapa)}
+              className="bg-surface rounded-xl border border-slate-800/60 overflow-hidden text-left transition-all hover:border-slate-600 hover:bg-slate-800/30 group"
+              style={{ borderLeftWidth: 4, borderLeftColor: ETAPA_COLORES[etapa] || "#94a3b8" }}
+            >
+              <div className="p-5">
+                {/* Etapa badge + edit icon */}
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold text-white"
+                      style={{ backgroundColor: ETAPA_COLORES[etapa] || "#94a3b8" }}
+                    >
+                      {etapa}
+                    </span>
+                    <span className="text-xs text-slate-500">
+                      {ETAPA_DESCRIPCIONES[etapa]}
+                    </span>
+                  </div>
+                  <Pencil className="w-4 h-4 text-slate-600 group-hover:text-amber-400 transition-colors" />
                 </div>
-                <button
-                  className="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-slate-300 transition-colors"
-                  onClick={() => handleReset(etapa)}
-                >
-                  <RotateCcw className="w-3 h-3" />
-                  Restaurar
-                </button>
+
+                {/* Mensaje preview */}
+                <div className="flex items-start gap-2">
+                  <WhatsAppIcon className="w-4 h-4 text-[#25D366] mt-0.5 shrink-0" />
+                  <p className="text-sm text-slate-300 leading-relaxed line-clamp-3">
+                    {mensaje}
+                  </p>
+                </div>
+
+                {/* Indicador personalizado */}
+                {!isDefault && (
+                  <div className="mt-2 flex justify-end">
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                      Personalizado
+                    </span>
+                  </div>
+                )}
               </div>
+            </button>
+          );
+        })}
+      </div>
 
+      {/* ── Modal de edicion ──────────────────────────────────────────────────── */}
+      <Dialog open={!!editingEtapa} onClose={handleCloseEdit} maxWidth="lg">
+        <DialogHeader onClose={handleCloseEdit}>
+          <div className="flex items-center gap-2">
+            {editingEtapa && (
+              <span
+                className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold text-white"
+                style={{ backgroundColor: ETAPA_COLORES[editingEtapa] || "#94a3b8" }}
+              >
+                {editingEtapa}
+              </span>
+            )}
+            <span>Editar mensaje</span>
+          </div>
+        </DialogHeader>
+
+        <DialogBody>
+          <div className="flex flex-col gap-4">
+            {/* Descripcion de la etapa */}
+            {editingEtapa && (
+              <p className="text-sm text-slate-400">
+                {ETAPA_DESCRIPCIONES[editingEtapa]}
+              </p>
+            )}
+
+            {/* Textarea */}
+            <div>
+              <label className="block text-xs font-medium text-slate-400 mb-1.5">
+                Mensaje
+              </label>
               <textarea
-                className="w-full px-3 py-2 bg-slate-800/50 border border-slate-700 text-sm text-slate-200 placeholder-slate-600 rounded-lg focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500/60 outline-none transition-all resize-none"
-                rows={3}
-                value={plantillas[etapa] || ""}
-                onChange={(e) => handleChange(etapa, e.target.value)}
-                placeholder={WA_MENSAJES_DEFAULT[etapa]}
+                className="w-full px-4 py-3 bg-slate-800/50 border border-slate-700 text-sm text-slate-200 placeholder-slate-600 rounded-lg focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500/60 outline-none transition-all resize-none"
+                rows={5}
+                value={editingMsg}
+                onChange={(e) => setEditingMsg(e.target.value)}
+                placeholder="Escribe tu mensaje..."
               />
+            </div>
 
-              <Divider />
+            {/* Boton IA + contador */}
+            <div className="flex items-center gap-3">
+              <Button
+                variant="outline"
+                size="sm"
+                icon={iaLoading ? <Spinner size="sm" /> : <Sparkles className="w-4 h-4" />}
+                onClick={handleMejorarIA}
+                disabled={iaLoading || iaUsadas >= IA_LIMIT || !editingMsg.trim()}
+              >
+                {iaLoading ? "Mejorando..." : "Mejorar con IA"}
+              </Button>
+              <span className={`text-xs ${iaRestantes > 0 ? "text-purple-400" : "text-red-400"}`}>
+                {iaRestantes > 0
+                  ? `${iaRestantes} mejora${iaRestantes !== 1 ? "s" : ""} restante${iaRestantes !== 1 ? "s" : ""}`
+                  : "Limite de mejoras alcanzado"
+                }
+              </span>
+            </div>
 
-              {/* Preview */}
+            {/* Variables hint */}
+            <div className="text-xs text-slate-500 bg-slate-800/30 rounded-lg px-3 py-2">
+              Variables: <code className="text-amber-400">{"{nombre}"}</code> = nombre del cliente, <code className="text-amber-400">{"{promotor}"}</code> = tu nombre
+            </div>
+
+            {/* Preview */}
+            <div className="bg-slate-900/50 rounded-lg p-4 border border-slate-800/40">
               <div className="flex items-start gap-2">
                 <WhatsAppIcon className="w-4 h-4 text-[#25D366] mt-0.5 shrink-0" />
                 <div>
-                  <p className="text-xs font-semibold text-slate-500">
-                    Vista previa:
-                  </p>
-                  <p className="text-[13px] text-slate-500 italic">
-                    {(plantillas[etapa] || "")
+                  <p className="text-xs font-semibold text-slate-500 mb-1">Vista previa:</p>
+                  <p className="text-sm text-slate-400 italic leading-relaxed">
+                    {editingMsg
                       .replace(/\{nombre\}/g, "Carlos Perez Lopez")
                       .replace(/\{promotor\}/g, "Juan Perez")
-                    || "—"}
+                    || "\u2014"}
                   </p>
                 </div>
               </div>
             </div>
           </div>
-        ))}
-      </div>
+        </DialogBody>
+
+        <DialogFooter>
+          <Button
+            variant="ghost"
+            size="sm"
+            icon={<RotateCcw className="w-4 h-4" />}
+            onClick={handleResetInModal}
+          >
+            Restaurar original
+          </Button>
+          <div className="flex-1" />
+          <Button variant="danger" size="sm" onClick={handleCloseEdit}>
+            Cancelar
+          </Button>
+          <Button variant="primary" size="sm" onClick={handleApplyEdit}>
+            Aplicar
+          </Button>
+        </DialogFooter>
+      </Dialog>
     </div>
   );
 }
