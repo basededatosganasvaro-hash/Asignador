@@ -134,22 +134,22 @@ export default function SolicitarAsignacionDialog({ open, onClose, onSuccess }: 
           )}
           {/* Counters */}
           {opciones && (
-            <div className="flex gap-3 justify-center">
-              <div className="text-center flex-1 p-3 bg-blue-500/10 rounded-xl border border-blue-500/20">
-                <p className="text-xl font-bold text-blue-400">
+            <div className="flex gap-2 justify-center">
+              <div className="text-center flex-1 px-3 py-2 bg-blue-500/10 rounded-lg border border-blue-500/20">
+                <p className="text-lg font-bold text-blue-400">
                   {opciones.disponibles.toLocaleString()}
                 </p>
-                <p className="text-xs text-slate-400">En pool</p>
+                <p className="text-[11px] text-slate-400">En pool</p>
               </div>
-              <div className={`text-center flex-1 p-3 rounded-xl border ${
+              <div className={`text-center flex-1 px-3 py-2 rounded-lg border ${
                 opciones.cupoRestante > 0
                   ? "bg-green-500/10 border-green-500/20"
                   : "bg-red-500/10 border-red-500/20"
               }`}>
-                <p className={`text-xl font-bold ${opciones.cupoRestante > 0 ? "text-green-400" : "text-red-400"}`}>
+                <p className={`text-lg font-bold ${opciones.cupoRestante > 0 ? "text-green-400" : "text-red-400"}`}>
                   {opciones.cupoRestante.toLocaleString()}
                 </p>
-                <p className="text-xs text-slate-400">Cupo hoy</p>
+                <p className="text-[11px] text-slate-400">Cupo hoy</p>
               </div>
             </div>
           )}
@@ -240,8 +240,6 @@ export default function SolicitarAsignacionDialog({ open, onClose, onSuccess }: 
                 const num = parseInt(val, 10);
                 if (!isNaN(num) && num >= 0 && num <= 300) setCantidad(num);
               }}
-              min={1}
-              max={300}
               placeholder="1 - 300"
               disabled={maxAsignable === 0}
               className="w-full px-3 py-2 bg-slate-800/50 border border-slate-700 text-slate-200 placeholder-slate-600 rounded-lg text-sm focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500/60 outline-none transition-all disabled:opacity-50"
