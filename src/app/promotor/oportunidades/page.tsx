@@ -175,6 +175,11 @@ const CARD_COLORS: Record<string, string> = {
   Venta: "#2E7D32",
 };
 
+/** Resuelve el color de una etapa: prioriza CARD_COLORS sobre el color de BD */
+function resolveEtapaColor(nombre: string, dbColor?: string): string {
+  return CARD_COLORS[nombre] || dbColor || "#64748b";
+}
+
 // ════════════════════════════════════════════
 // CONFETTI
 // ════════════════════════════════════════════
@@ -575,7 +580,7 @@ function OportunidadesContent() {
           return (
             <span
               className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold text-white"
-              style={{ backgroundColor: etapa.color }}
+              style={{ backgroundColor: resolveEtapaColor(etapa.nombre, etapa.color) }}
             >
               {etapa.nombre}
             </span>
@@ -598,7 +603,7 @@ function OportunidadesContent() {
                 }
               }}
               className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold text-white cursor-pointer transition-opacity hover:opacity-90"
-              style={{ backgroundColor: etapa.color }}
+              style={{ backgroundColor: resolveEtapaColor(etapa.nombre, etapa.color) }}
             >
               {etapa.nombre}
               <ChevronDown className={`w-3 h-3 transition-transform ${isOpen ? "rotate-180" : ""}`} />
@@ -612,7 +617,7 @@ function OportunidadesContent() {
                 >
                   <p className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-slate-500">Mover a</p>
                   {trans.map((t) => {
-                    const destColor = t.etapa_destino?.color || "#ef4444";
+                    const destColor = resolveEtapaColor(t.etapa_destino?.nombre || "", t.etapa_destino?.color || "#ef4444");
                     return (
                       <button
                         key={t.id}
@@ -1049,7 +1054,7 @@ function OportunidadesContent() {
             {verDialog.data?.etapa && (
               <span
                 className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold text-white"
-                style={{ backgroundColor: verDialog.data.etapa.color }}
+                style={{ backgroundColor: resolveEtapaColor(verDialog.data.etapa.nombre, verDialog.data.etapa.color) }}
               >
                 {verDialog.data.etapa.nombre}
               </span>
@@ -1101,14 +1106,14 @@ function OportunidadesContent() {
                       <div key={entry.id} className="flex gap-3 items-start">
                         <span
                           className="w-2 h-2 rounded-full mt-1.5 shrink-0"
-                          style={{ backgroundColor: entry.etapa_nueva?.color || "#64748b" }}
+                          style={{ backgroundColor: resolveEtapaColor(entry.etapa_nueva?.nombre || "", entry.etapa_nueva?.color || "#64748b") }}
                         />
                         <div className="flex-1 min-w-0">
                           <div className="flex gap-1 items-center flex-wrap">
                             {entry.etapa_anterior && (
                               <span
                                 className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium text-white"
-                                style={{ backgroundColor: entry.etapa_anterior.color }}
+                                style={{ backgroundColor: resolveEtapaColor(entry.etapa_anterior.nombre, entry.etapa_anterior.color) }}
                               >
                                 {entry.etapa_anterior.nombre}
                               </span>
@@ -1119,7 +1124,7 @@ function OportunidadesContent() {
                             {entry.etapa_nueva && (
                               <span
                                 className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium text-white"
-                                style={{ backgroundColor: entry.etapa_nueva.color }}
+                                style={{ backgroundColor: resolveEtapaColor(entry.etapa_nueva.nombre, entry.etapa_nueva.color) }}
                               >
                                 {entry.etapa_nueva.nombre}
                               </span>
