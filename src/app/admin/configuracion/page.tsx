@@ -18,6 +18,8 @@ import {
   Shield,
   Info,
   Hourglass,
+  FlaskConical,
+  X,
 } from "lucide-react";
 
 interface Config {
@@ -34,6 +36,12 @@ interface Etapa {
   timer_horas: number | null;
   color: string;
   activo: boolean;
+}
+
+interface Promotor {
+  id: number;
+  nombre: string;
+  username: string;
 }
 
 // Defaults match microservice config
@@ -155,6 +163,12 @@ export default function ConfiguracionPage() {
   const [timerValues, setTimerValues] = useState<Record<number, string>>({});
   const [timerSaving, setTimerSaving] = useState(false);
 
+  // Beta testers state
+  const [betaActivo, setBetaActivo] = useState(false);
+  const [betaUsuarios, setBetaUsuarios] = useState<Promotor[]>([]);
+  const [promotores, setPromotores] = useState<Promotor[]>([]);
+  const [selectedPromotor, setSelectedPromotor] = useState("");
+
   // WhatsApp config state -- display values (seconds for ms fields, raw for others)
   const [waValues, setWaValues] = useState<Record<string, string>>(() => {
     const init: Record<string, string> = {};
@@ -176,9 +190,15 @@ export default function ConfiguracionPage() {
         if (!res.ok) throw new Error("Error al cargar etapas");
         return res.json();
       }),
+      fetch("/api/admin/usuarios/promotores").then((res) => {
+        if (!res.ok) throw new Error("Error al cargar promotores");
+        return res.json();
+      }),
     ])
-      .then(([configData, etapasData]: [Config[], Etapa[]]) => {
+      .then(([configData, etapasData, promotoresData]: [Config[], Etapa[], Promotor[]]) => {
         setConfigs(configData);
+        setPromotores(promotoresData);
+
         const maxReg = configData.find((c: Config) => c.clave === "max_registros_por_dia");
         if (maxReg) setMaxRegistros(maxReg.valor);
         const horario = configData.find((c: Config) => c.clave === "horario_activo");
@@ -201,6 +221,20 @@ export default function ConfiguracionPage() {
           timers[e.id] = e.timer_horas != null ? String(e.timer_horas) : "";
         }
         setTimerValues(timers);
+
+        // Load beta testers config
+        const betaConfig = configData.find((c: Config) => c.clave === "wa_beta_activo");
+        const betaUsersConfig = configData.find((c: Config) => c.clave === "wa_beta_usuarios");
+        setBetaActivo(betaConfig?.valor === "true");
+
+        if (betaUsersConfig) {
+          const ids = betaUsersConfig.valor
+            .split(",")
+            .map((s) => parseInt(s.trim(), 10))
+            .filter((n) => !isNaN(n));
+          const testers = promotoresData.filter((p: Promotor) => ids.includes(p.id));
+          setBetaUsuarios(testers);
+        }
 
         setLoading(false);
       })
@@ -287,6 +321,60 @@ export default function ConfiguracionPage() {
       allOk ? "Configuracion WhatsApp guardada" : "Error al guardar algunos valores",
       allOk ? "success" : "error"
     );
+  };
+
+  // Beta testers helpers
+  const saveBetaUsuarios = async (ids: number[]) => {
+    const valor = ids.length > 0 ? ids.join(",") : " ";
+    const res = await fetch("/api/admin/configuracion", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ clave: "wa_beta_usuarios", valor }),
+    });
+    return res.ok;
+  };
+
+  const handleBetaToggle = async (checked: boolean) => {
+    setBetaActivo(checked);
+    const res = await fetch("/api/admin/configuracion", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ clave: "wa_beta_activo", valor: String(checked) }),
+    });
+    if (res.ok) {
+      toast(checked ? "Modo beta activado" : "Modo beta desactivado — todos tienen acceso", "success");
+    } else {
+      setBetaActivo(!checked);
+      toast("Error al cambiar modo beta", "error");
+    }
+  };
+
+  const handleAddTester = async () => {
+    const id = Number(selectedPromotor);
+    if (!id) return;
+    const promotor = promotores.find((p) => p.id === id);
+    if (!promotor || betaUsuarios.some((u) => u.id === id)) return;
+
+    const newTesters = [...betaUsuarios, promotor];
+    const ok = await saveBetaUsuarios(newTesters.map((u) => u.id));
+    if (ok) {
+      setBetaUsuarios(newTesters);
+      setSelectedPromotor("");
+      toast(`${promotor.nombre} agregado como tester`, "success");
+    } else {
+      toast("Error al agregar tester", "error");
+    }
+  };
+
+  const handleRemoveTester = async (id: number) => {
+    const newTesters = betaUsuarios.filter((u) => u.id !== id);
+    const ok = await saveBetaUsuarios(newTesters.map((u) => u.id));
+    if (ok) {
+      setBetaUsuarios(newTesters);
+      toast("Tester removido", "success");
+    } else {
+      toast("Error al remover tester", "error");
+    }
   };
 
   const handleTimerSave = async () => {
@@ -585,6 +673,102 @@ export default function ConfiguracionPage() {
             </Button>
           </Tooltip>
         </div>
+      </div>
+
+      {/* Card Beta Testers — WhatsApp Masivo */}
+      <div className="bg-surface rounded-xl border border-slate-800/60 p-5 relative overflow-hidden">
+        <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-purple-500 to-purple-400" />
+        <div className="flex items-center gap-3 mb-2">
+          <FlaskConical className="w-5 h-5 text-purple-400" />
+          <h2 className="text-lg font-semibold text-slate-100">
+            Beta Testers — WhatsApp Masivo
+          </h2>
+          <Tooltip content="Controla que promotores pueden acceder a WhatsApp Masivo durante la fase de pruebas">
+            <HelpCircle className="w-4 h-4 text-slate-600 cursor-help" />
+          </Tooltip>
+        </div>
+        <span className="text-sm text-slate-400 block mb-4 ml-8">
+          Cuando el modo beta esta activo, solo los promotores seleccionados pueden usar WhatsApp Masivo.
+        </span>
+
+        {/* Toggle beta */}
+        <div className="ml-8 mb-4">
+          <label className="inline-flex items-center gap-2 cursor-pointer">
+            <div className="relative inline-flex">
+              <input
+                type="checkbox"
+                checked={betaActivo}
+                onChange={(e) => handleBetaToggle(e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-10 h-5 bg-slate-700 peer-checked:bg-purple-500 rounded-full transition-colors" />
+              <div className="absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-5" />
+            </div>
+            <span className="text-sm text-slate-300">
+              {betaActivo ? "Modo beta activo — acceso restringido" : "Modo beta desactivado — todos tienen acceso"}
+            </span>
+          </label>
+        </div>
+
+        {/* Testers list (only when beta active) */}
+        {betaActivo && (
+          <div className="ml-8">
+            {/* Add tester */}
+            <div className="flex items-center gap-2 mb-4">
+              <select
+                value={selectedPromotor}
+                onChange={(e) => setSelectedPromotor(e.target.value)}
+                className="flex-1 px-3 py-2 bg-slate-800/50 border border-slate-700 text-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500/40 focus:border-purple-500/60 outline-none transition-all"
+              >
+                <option value="">Seleccionar promotor...</option>
+                {promotores
+                  .filter((p) => !betaUsuarios.some((u) => u.id === p.id))
+                  .map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.nombre} (@{p.username})
+                    </option>
+                  ))}
+              </select>
+              <Button
+                variant="primary"
+                onClick={handleAddTester}
+                disabled={!selectedPromotor}
+                className="!bg-purple-600 hover:!bg-purple-500 !shadow-purple-600/20"
+              >
+                Agregar
+              </Button>
+            </div>
+
+            {/* Testers list */}
+            {betaUsuarios.length === 0 ? (
+              <span className="text-sm text-slate-500">No hay testers seleccionados. Todos los promotores estan bloqueados.</span>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {betaUsuarios.map((user) => (
+                  <div
+                    key={user.id}
+                    className="flex items-center gap-3 bg-slate-800/40 rounded-lg px-3 py-2 border border-slate-700/40"
+                  >
+                    <div className="w-8 h-8 rounded-full bg-purple-500/20 border border-purple-500/30 flex items-center justify-center text-sm font-semibold text-purple-300">
+                      {user.nombre.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <span className="text-sm text-slate-200 block truncate">{user.nombre}</span>
+                      <span className="text-xs text-slate-500">@{user.username}</span>
+                    </div>
+                    <button
+                      onClick={() => handleRemoveTester(user.id)}
+                      className="p-1 rounded hover:bg-red-500/20 text-slate-500 hover:text-red-400 transition-colors"
+                      title="Remover tester"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       </div>{/* end grid */}
