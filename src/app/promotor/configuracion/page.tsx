@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
-import { Save, RotateCcw, Sparkles, Pencil } from "lucide-react";
+import { Save, RotateCcw, Sparkles, Pencil, AlertTriangle } from "lucide-react";
 import { Alert } from "@/components/ui/Alert";
 import { Spinner } from "@/components/ui/Spinner";
 import { Button } from "@/components/ui/Button";
@@ -34,7 +34,14 @@ const ETAPA_DESCRIPCIONES: Record<string, string> = {
   Capacidades: "Clientes con capacidad IMSS consultada por Telegram",
 };
 
-const IA_LIMIT = 5;
+const IA_LIMIT = 10;
+
+const PALABRAS_RIESGO = ["prestamo", "préstamo", "credito", "crédito"];
+
+function detectaPalabrasRiesgo(texto: string): boolean {
+  const lower = texto.toLowerCase();
+  return PALABRAS_RIESGO.some((p) => lower.includes(p));
+}
 
 export default function ConfiguracionPage() {
   const [plantillas, setPlantillas] = useState<Record<string, string>>({});
@@ -121,7 +128,7 @@ export default function ConfiguracionPage() {
       const res = await fetch("/api/whatsapp/variaciones", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mensaje_base: editingMsg, cantidad: 1 }),
+        body: JSON.stringify({ mensaje_base: editingMsg, cantidad: 1, modo: "mejorar" }),
       });
       if (res.ok) {
         const data = await res.json();
@@ -295,6 +302,21 @@ export default function ConfiguracionPage() {
                 placeholder="Escribe tu mensaje..."
               />
             </div>
+
+            {/* Alerta palabras de riesgo */}
+            {detectaPalabrasRiesgo(editingMsg) && (
+              <div className="flex items-start gap-2.5 px-4 py-3 rounded-lg bg-red-500/10 border border-red-500/30">
+                <AlertTriangle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-semibold text-red-400">Palabras de riesgo detectadas</p>
+                  <p className="text-xs text-red-300/80 mt-0.5">
+                    Las palabras <strong>&quot;prestamo&quot;</strong> y <strong>&quot;credito&quot;</strong> aumentan
+                    la posibilidad de bloqueo en WhatsApp. Usa alternativas como
+                    &quot;beneficio&quot;, &quot;apoyo financiero&quot; u &quot;oportunidad&quot;.
+                  </p>
+                </div>
+              </div>
+            )}
 
             {/* Boton IA + contador */}
             <div className="flex items-center gap-3">

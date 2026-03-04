@@ -35,13 +35,26 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Demasiadas solicitudes. Espera un minuto." }, { status: 429 });
   }
 
-  const { mensaje_base, cantidad = 15 } = await req.json();
+  const { mensaje_base, cantidad = 15, modo } = await req.json();
 
   if (!mensaje_base || typeof mensaje_base !== "string") {
     return NextResponse.json({ error: "mensaje_base requerido" }, { status: 400 });
   }
 
   const cant = Math.min(Math.max(Number(cantidad), 1), 30);
+
+  const systemPrompt = modo === "mejorar"
+    ? `Mejora el siguiente mensaje de WhatsApp para un asesor financiero. Reglas:
+- Agrega emojis relevantes de forma natural (3-5 emojis como 👋🏼 😊 🤝 ✨ 📋 🎉 💪 🙌 📞 💼)
+- Hazlo más cálido, amigable y cercano — que el cliente sienta confianza desde el primer mensaje
+- Tono respetuoso pero accesible, como si hablaras con alguien conocido
+- Transmite profesionalismo y seguridad — que el cliente sepa que está en buenas manos
+- Mantén el mensaje conciso (máximo 3-4 oraciones)
+- NUNCA uses las palabras "préstamo", "crédito", "deuda", "interés" ni variantes — estas palabras causan bloqueo en WhatsApp. Usa alternativas como "beneficio", "apoyo financiero", "oportunidad", "recurso"
+- Preserva las variables {nombre} y {promotor} EXACTAMENTE así, sin modificarlas
+- Español mexicano, sin groserías ni modismos excesivos
+- Responde SOLO un JSON array con ${cant} versión(es) mejorada(s) del mensaje.`
+    : `Genera ${cant} variaciones de un mensaje WhatsApp. Reglas: mismo significado, varía estructura/saludos/emojis/sinónimos, preserva {nombre} y {promotor} tal cual, español mexicano semi-formal, sin groserías. NUNCA uses las palabras "préstamo", "crédito", "deuda" ni "interés" — causan bloqueo en WhatsApp. Responde SOLO un JSON array de strings.`;
 
   try {
     const completion = await getOpenAI().chat.completions.create({
@@ -51,7 +64,7 @@ export async function POST(req: Request) {
       messages: [
         {
           role: "system",
-          content: `Genera ${cant} variaciones de un mensaje WhatsApp. Reglas: mismo significado, varía estructura/saludos/emojis/sinónimos, preserva {nombre} y {promotor} tal cual, español mexicano semi-formal, sin groserías. Responde SOLO un JSON array de strings.`,
+          content: systemPrompt,
         },
         {
           role: "user",
