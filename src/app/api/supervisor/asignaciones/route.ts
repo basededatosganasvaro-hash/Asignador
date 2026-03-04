@@ -108,6 +108,7 @@ export async function POST(request: Request) {
   let convenio: string | undefined;
   let estado: string | undefined;
   let municipio: string | undefined;
+  let rango_oferta: string | undefined;
   let tiene_telefono: boolean | undefined;
 
   try {
@@ -124,6 +125,7 @@ export async function POST(request: Request) {
     convenio = body.convenio || undefined;
     estado = body.estado || undefined;
     municipio = body.municipio || undefined;
+    rango_oferta = body.rango_oferta || undefined;
     tiene_telefono = body.tiene_telefono || false;
   } catch {
     return NextResponse.json({ error: "Body invalido" }, { status: 400 });
@@ -206,6 +208,26 @@ export async function POST(request: Request) {
     if (estado)       { params.push(estado);       clauses.push(`estado = $${params.length}`); }
     if (municipio)    { params.push(municipio);    clauses.push(`municipio = $${params.length}`); }
     if (tiene_telefono) clauses.push(`tel_1 IS NOT NULL AND TRIM(tel_1) != ''`);
+
+    // Rango de oferta — CAST numérico del campo oferta (varchar)
+    if (rango_oferta) {
+      const OFERTA_NUM = `CAST(NULLIF(regexp_replace(COALESCE(oferta, ''), '[^0-9]', '', 'g'), '') AS NUMERIC)`;
+      const rangos: Record<string, { min: number; max: number | null }> = {
+        "0-50000": { min: 0, max: 50000 },
+        "50000-100000": { min: 50000, max: 100000 },
+        "100000-500000": { min: 100000, max: 500000 },
+        "500000+": { min: 500000, max: null },
+      };
+      const rango = rangos[rango_oferta];
+      if (rango) {
+        params.push(rango.min);
+        clauses.push(`${OFERTA_NUM} >= $${params.length}`);
+        if (rango.max !== null) {
+          params.push(rango.max);
+          clauses.push(`${OFERTA_NUM} < $${params.length}`);
+        }
+      }
+    }
 
     params.push(requested);
     const limitParam = `$${params.length}`;

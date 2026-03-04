@@ -27,6 +27,7 @@ export async function GET(req: Request) {
   const estado        = searchParams.get("estado")        || undefined;
   const municipio     = searchParams.get("municipio")     || undefined;
   const tiene_telefono = searchParams.get("tiene_telefono") === "true" || searchParams.get("tiene_telefono") === "1";
+  const rango_oferta   = searchParams.get("rango_oferta")   || undefined;
 
   // IDs a excluir: activos + cooldown en una sola query
   const cooldownConfig = await prisma.configuracion.findUnique({
@@ -70,6 +71,45 @@ export async function GET(req: Request) {
     });
     cupoRestante = Math.max(0, maxPerDay - lotesHoy.reduce((s, l) => s + l.cantidad, 0));
   }
+
+  // Parse rango de oferta a min/max numérico
+  function parseRangoOferta(rango: string | undefined): { min: number; max: number | null } | null {
+    if (!rango) return null;
+    switch (rango) {
+      case "0-50000": return { min: 0, max: 50000 };
+      case "50000-100000": return { min: 50000, max: 100000 };
+      case "100000-500000": return { min: 100000, max: 500000 };
+      case "500000+": return { min: 500000, max: null };
+      default: return null;
+    }
+  }
+  const rangoOferta = parseRangoOferta(rango_oferta);
+
+  // Construir query raw para conteo (soporta CAST numérico de oferta)
+  const OFERTA_NUM = `CAST(NULLIF(regexp_replace(COALESCE(oferta, ''), '[^0-9]', '', 'g'), '') AS NUMERIC)`;
+  const countParams: unknown[] = [];
+  const countClauses: string[] = [];
+
+  if (excludeArray.length > 0) {
+    countParams.push(excludeArray);
+    countClauses.push(`id != ALL($${countParams.length})`);
+  }
+  if (tipo_cliente) { countParams.push(tipo_cliente); countClauses.push(`tipo_cliente = $${countParams.length}`); }
+  if (convenio)     { countParams.push(convenio);     countClauses.push(`convenio = $${countParams.length}`); }
+  if (estado)       { countParams.push(estado);       countClauses.push(`estado = $${countParams.length}`); }
+  if (municipio)    { countParams.push(municipio);    countClauses.push(`municipio = $${countParams.length}`); }
+  if (tiene_telefono) countClauses.push(`tel_1 IS NOT NULL`);
+  if (rangoOferta) {
+    countParams.push(rangoOferta.min);
+    countClauses.push(`${OFERTA_NUM} >= $${countParams.length}`);
+    if (rangoOferta.max !== null) {
+      countParams.push(rangoOferta.max);
+      countClauses.push(`${OFERTA_NUM} < $${countParams.length}`);
+    }
+  }
+
+  const countWhere = countClauses.length > 0 ? `WHERE ${countClauses.join(" AND ")}` : "";
+  const countSql = `SELECT COUNT(*)::int as count FROM clientes ${countWhere}`;
 
   // Queries en paralelo — cada una filtra por disponibilidad real (excluye activos + cooldown)
   const [tiposRaw, conveniosRaw, estadosRaw, municipiosRaw, disponibles] = await Promise.all([
@@ -119,17 +159,9 @@ export async function GET(req: Request) {
         })
       : Promise.resolve([]),
 
-    // conteo disponible con todos los filtros activos
-    prismaClientes.clientes.count({
-      where: {
-        ...baseExclude,
-        ...(tipo_cliente ? { tipo_cliente } : {}),
-        ...(convenio ? { convenio } : {}),
-        ...(estado ? { estado } : {}),
-        ...(municipio ? { municipio } : {}),
-        ...(tiene_telefono ? { tel_1: { not: null } } : {}),
-      },
-    }),
+    // conteo disponible con todos los filtros activos (raw SQL para soportar rango oferta)
+    prismaClientes.$queryRawUnsafe<{ count: number }[]>(countSql, ...countParams)
+      .then((r) => r[0]?.count ?? 0),
   ]);
 
   return NextResponse.json({

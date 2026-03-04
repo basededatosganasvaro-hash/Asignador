@@ -114,6 +114,7 @@ function SolicitarTab({ toast }: { toast: (m: string, t?: "success" | "error" | 
   const [convenio, setConvenio] = useState("");
   const [estado, setEstado] = useState("");
   const [municipio, setMunicipio] = useState("");
+  const [rangoOferta, setRangoOferta] = useState("");
   const [tieneTelefono, setTieneTelefono] = useState(false);
   const [cantidad, setCantidad] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -145,12 +146,13 @@ function SolicitarTab({ toast }: { toast: (m: string, t?: "success" | "error" | 
       if (convenio) params.set("convenio", convenio);
       if (estado) params.set("estado", estado);
       if (municipio) params.set("municipio", municipio);
+      if (rangoOferta) params.set("rango_oferta", rangoOferta);
       if (tieneTelefono) params.set("tiene_telefono", "true");
       const res = await fetch(`/api/supervisor/asignaciones/opciones?${params}`);
       if (res.ok) setOpciones(await res.json());
     } catch { /* ignore */ }
     setLoadingOpciones(false);
-  }, [selectedPromotor, tipoCliente, convenio, estado, municipio, tieneTelefono]);
+  }, [selectedPromotor, tipoCliente, convenio, estado, municipio, rangoOferta, tieneTelefono]);
 
   useEffect(() => { fetchOpciones(); }, [fetchOpciones]);
 
@@ -176,6 +178,7 @@ function SolicitarTab({ toast }: { toast: (m: string, t?: "success" | "error" | 
     setConvenio("");
     setEstado("");
     setMunicipio("");
+    setRangoOferta("");
     setCantidad("");
   };
 
@@ -198,6 +201,7 @@ function SolicitarTab({ toast }: { toast: (m: string, t?: "success" | "error" | 
           convenio: convenio || undefined,
           estado: estado || undefined,
           municipio: municipio || undefined,
+          rango_oferta: rangoOferta || undefined,
           tiene_telefono: tieneTelefono || undefined,
         }),
       });
@@ -260,7 +264,7 @@ function SolicitarTab({ toast }: { toast: (m: string, t?: "success" | "error" | 
             <div className="flex justify-center py-4"><Spinner /></div>
           ) : (
             <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                 <Select
                   label="Tipo Cliente"
                   value={tipoCliente}
@@ -289,6 +293,18 @@ function SolicitarTab({ toast }: { toast: (m: string, t?: "success" | "error" | 
                   placeholder="Todos"
                   options={(opciones?.municipios || []).map((m) => ({ value: m, label: m }))}
                   disabled={!estado}
+                />
+                <Select
+                  label="Rango de oferta"
+                  value={rangoOferta}
+                  onChange={(e) => setRangoOferta(e.target.value)}
+                  placeholder="Todos"
+                  options={[
+                    { value: "0-50000", label: "$0 - $50,000" },
+                    { value: "50000-100000", label: "$50,000 - $100,000" },
+                    { value: "100000-500000", label: "$100,000 - $500,000" },
+                    { value: "500000+", label: "$500,000+" },
+                  ]}
                 />
               </div>
 

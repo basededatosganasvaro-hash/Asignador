@@ -33,6 +33,7 @@ export default function SolicitarAsignacionDialog({ open, onClose, onSuccess }: 
     convenio: "",
     estado: "",
     municipio: "",
+    rango_oferta: "",
     tiene_telefono: false,
   });
   const [cantidad, setCantidad] = useState(0);
@@ -53,6 +54,7 @@ export default function SolicitarAsignacionDialog({ open, onClose, onSuccess }: 
       if (filtros.convenio) params.set("convenio", filtros.convenio);
       if (filtros.estado) params.set("estado", filtros.estado);
       if (filtros.municipio) params.set("municipio", filtros.municipio);
+      if (filtros.rango_oferta) params.set("rango_oferta", filtros.rango_oferta);
       if (filtros.tiene_telefono) params.set("tiene_telefono", "true");
 
       const res = await fetch(`/api/asignaciones/opciones?${params}`, { signal: controller.signal });
@@ -76,7 +78,7 @@ export default function SolicitarAsignacionDialog({ open, onClose, onSuccess }: 
   }, [open, fetchOpciones]);
 
   const handleClose = () => {
-    setFiltros({ tipo_cliente: "", convenio: "", estado: "", municipio: "", tiene_telefono: false });
+    setFiltros({ tipo_cliente: "", convenio: "", estado: "", municipio: "", rango_oferta: "", tiene_telefono: false });
     setCantidad(0);
     setError("");
     onClose();
@@ -188,6 +190,19 @@ export default function SolicitarAsignacionDialog({ open, onClose, onSuccess }: 
             options={(opciones?.municipios ?? []).map((v) => ({ value: v, label: v }))}
             placeholder="Todos"
             disabled={!filtros.estado}
+          />
+
+          <Select
+            label="Rango de oferta"
+            value={filtros.rango_oferta}
+            onChange={(e) => setFiltros((p) => ({ ...p, rango_oferta: e.target.value }))}
+            options={[
+              { value: "0-50000", label: "$0 - $50,000" },
+              { value: "50000-100000", label: "$50,000 - $100,000" },
+              { value: "100000-500000", label: "$100,000 - $500,000" },
+              { value: "500000+", label: "$500,000+" },
+            ]}
+            placeholder="Todos"
           />
 
           {/* Toggle - solo registros con telefono */}
