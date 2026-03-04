@@ -937,7 +937,7 @@ function OportunidadesContent() {
           {cardFiltro && (
             <span
               className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold text-white"
-              style={{ backgroundColor: CARD_COLORS[cardFiltro] || "#6366f1" }}
+              style={{ backgroundColor: resolveEtapaColor(cardFiltro) }}
             >
               {cardFiltro === "capturados" ? "Capturados" : cardFiltro === "capacidades" ? "Capacidades" : cardFiltro}
               <button

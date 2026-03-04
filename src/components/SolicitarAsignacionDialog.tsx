@@ -125,12 +125,18 @@ export default function SolicitarAsignacionDialog({ open, onClose, onSuccess }: 
       </DialogHeader>
 
       <DialogBody>
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4 relative">
+          {/* Loading overlay */}
+          {loading && (
+            <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-[2px] z-10 flex items-center justify-center rounded-xl">
+              <Spinner size="md" />
+            </div>
+          )}
           {/* Counters */}
           {opciones && (
             <div className="flex gap-3 justify-center">
               <div className="text-center flex-1 p-3 bg-blue-500/10 rounded-xl border border-blue-500/20">
-                <p className="text-3xl font-bold text-blue-400">
+                <p className="text-xl font-bold text-blue-400">
                   {opciones.disponibles.toLocaleString()}
                 </p>
                 <p className="text-xs text-slate-400">En pool</p>
@@ -140,7 +146,7 @@ export default function SolicitarAsignacionDialog({ open, onClose, onSuccess }: 
                   ? "bg-green-500/10 border-green-500/20"
                   : "bg-red-500/10 border-red-500/20"
               }`}>
-                <p className={`text-3xl font-bold ${opciones.cupoRestante > 0 ? "text-green-400" : "text-red-400"}`}>
+                <p className={`text-xl font-bold ${opciones.cupoRestante > 0 ? "text-green-400" : "text-red-400"}`}>
                   {opciones.cupoRestante.toLocaleString()}
                 </p>
                 <p className="text-xs text-slate-400">Cupo hoy</p>
@@ -223,30 +229,34 @@ export default function SolicitarAsignacionDialog({ open, onClose, onSuccess }: 
           <div className="h-px bg-slate-800/40" />
 
           {/* Cantidad */}
-          <Input
-            label="Cantidad a solicitar"
-            type="number"
-            value={cantidad}
-            onChange={(e) => setCantidad(Math.max(1, Math.min(maxAsignable, Number(e.target.value))))}
-            min={1}
-            max={maxAsignable}
-            disabled={maxAsignable === 0}
-          />
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-1">Cantidad a solicitar</label>
+            <input
+              type="number"
+              value={cantidad || ""}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val === "") { setCantidad(0); return; }
+                const num = parseInt(val, 10);
+                if (!isNaN(num) && num >= 0 && num <= 300) setCantidad(num);
+              }}
+              min={1}
+              max={300}
+              placeholder="1 - 300"
+              disabled={maxAsignable === 0}
+              className="w-full px-3 py-2 bg-slate-800/50 border border-slate-700 text-slate-200 placeholder-slate-600 rounded-lg text-sm focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500/60 outline-none transition-all disabled:opacity-50"
+            />
+            {cantidad > maxAsignable && maxAsignable > 0 && (
+              <p className="mt-1 text-xs text-amber-400">Solo hay {maxAsignable} disponibles con estos filtros</p>
+            )}
+          </div>
 
           {opciones && (
-            <div className="text-center p-3 bg-purple-500/10 rounded-xl border border-purple-500/20">
-              <p className="text-2xl font-bold text-purple-400">
+            <div className="text-center p-2.5 bg-purple-500/10 rounded-xl border border-purple-500/20">
+              <p className="text-sm font-semibold text-purple-400">
                 {opciones.asignables.toLocaleString()} asignables
+                <span className="font-normal text-slate-400"> con los filtros seleccionados</span>
               </p>
-              <p className="text-xs text-slate-400">
-                Con los filtros seleccionados
-              </p>
-            </div>
-          )}
-
-          {loading && (
-            <div className="flex justify-center">
-              <Spinner size="sm" />
             </div>
           )}
           {error && <Alert variant="error">{error}</Alert>}
@@ -265,7 +275,7 @@ export default function SolicitarAsignacionDialog({ open, onClose, onSuccess }: 
           variant="primary"
           size="lg"
           onClick={handleSubmit}
-          disabled={submitting || maxAsignable === 0 || cantidad <= 0 || (opciones?.cupoRestante ?? 0) === 0}
+          disabled={submitting || maxAsignable === 0 || cantidad <= 0 || cantidad > maxAsignable || (opciones?.cupoRestante ?? 0) === 0}
           loading={submitting}
           icon={!submitting ? <ClipboardList className="w-4 h-4" /> : undefined}
           className="font-bold px-6"
