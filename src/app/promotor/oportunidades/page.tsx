@@ -955,7 +955,7 @@ function OportunidadesContent() {
               size="sm"
               icon={<Megaphone className="w-4 h-4" />}
               onClick={() => setCampanaOpen(true)}
-              className="bg-[#25D366] text-white hover:bg-[#1da851] shadow-lg shadow-green-500/20"
+              className="!bg-[#25D366] !text-white hover:!bg-[#1da851] !shadow-lg !shadow-green-500/20"
             >
               WhatsApp Masivo ({selectedIds.length})
             </Button>

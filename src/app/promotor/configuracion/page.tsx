@@ -326,7 +326,7 @@ export default function ConfiguracionPage() {
                 onClick={handleMejorarIA}
                 disabled={iaLoading || iaUsadas >= IA_LIMIT || !editingMsg.trim()}
                 loading={iaLoading}
-                className="bg-purple-600 text-white hover:bg-purple-500 shadow-lg shadow-purple-600/20"
+                className="!bg-purple-600 !text-white hover:!bg-purple-500 !shadow-lg !shadow-purple-600/20"
               >
                 {iaLoading ? "Mejorando..." : "Mejorar con IA"}
               </Button>

@@ -195,7 +195,7 @@ export default function CampanaCrearDialog({ open, onClose, onSuccess, destinata
                 onClick={handleGenerarVariaciones}
                 disabled={generandoIA || !mensajeBase.trim()}
                 loading={generandoIA}
-                className="bg-purple-600 text-white hover:bg-purple-500 shadow-lg shadow-purple-600/20"
+                className="!bg-purple-600 !text-white hover:!bg-purple-500 !shadow-lg !shadow-purple-600/20"
               >
                 {generandoIA ? "Generando variaciones..." : variaciones.length > 0 ? "Regenerar" : "Generar variaciones"}
               </Button>
