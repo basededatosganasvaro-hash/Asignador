@@ -121,8 +121,18 @@ export default function ConfiguracionPage() {
     }
   };
 
+  const savePlantillas = useCallback(async (updated: Record<string, string>) => {
+    try {
+      await fetch("/api/promotor/plantillas-whatsapp", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updated),
+      });
+    } catch { /* silencioso — el usuario puede guardar manualmente */ }
+  }, []);
+
   const handleMejorarIA = async () => {
-    if (iaUsadas >= IA_LIMIT || !editingMsg.trim()) return;
+    if (iaUsadas >= IA_LIMIT || !editingMsg.trim() || !editingEtapa) return;
     setIaLoading(true);
     try {
       const res = await fetch("/api/whatsapp/variaciones", {
@@ -133,9 +143,14 @@ export default function ConfiguracionPage() {
       if (res.ok) {
         const data = await res.json();
         if (data.variaciones?.[0]) {
-          setEditingMsg(data.variaciones[0]);
+          const mejorado = data.variaciones[0];
+          setEditingMsg(mejorado);
+          // Auto-aplicar a plantillas y guardar en BD
+          const updated = { ...plantillas, [editingEtapa]: mejorado };
+          setPlantillas(updated);
+          savePlantillas(updated);
           setIaUsadas((prev) => prev + 1);
-          toast("Mensaje mejorado con IA", "success");
+          toast("Mensaje mejorado y guardado", "success");
         }
       } else {
         const errData = await res.json();
