@@ -138,7 +138,7 @@ model embudo_etapas {
   orden       Int
   tipo        String  @db.VarChar(20)
   // AVANCE | SALIDA | FINAL
-  timer_horas Int?
+  timer_dias  Int?
   color       String  @db.VarChar(7)
   activo      Boolean @default(true)
 

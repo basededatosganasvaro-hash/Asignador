@@ -103,8 +103,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   // Calcular nuevo timer_vence (no aplicar timer a items de bandeja)
   let timerVence: Date | null = null;
-  if (!enviarABandeja && transicion.etapa_destino?.timer_horas) {
-    timerVence = await calcularTimerVenceConConfig(transicion.etapa_destino.timer_horas);
+  if (!enviarABandeja && transicion.etapa_destino?.timer_dias) {
+    timerVence = await calcularTimerVenceConConfig(transicion.etapa_destino.timer_dias);
   }
 
   // Ejecutar en transacción

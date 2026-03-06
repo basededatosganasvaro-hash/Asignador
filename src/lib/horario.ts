@@ -73,12 +73,13 @@ export function verificarHorario(config?: {
 }
 
 /**
- * Calcula timer_vence sumando N horas operativas a partir de ahora.
+ * Calcula timer_vence sumando N días operativos a partir de ahora.
+ * 1 día = 1 jornada operativa completa (ej. 08:55-19:15 = ~10h20min).
  * Solo cuenta tiempo dentro del horario (L-V, inicio-fin).
  * Si estamos fuera del horario, empieza a contar desde la próxima ventana.
  */
 export function calcularTimerVence(
-  horasTimer: number,
+  diasTimer: number,
   config?: { horario_inicio?: string; horario_fin?: string; dias_operativos?: number[] }
 ): Date {
   const inicio = config?.horario_inicio || HORARIO_INICIO_DEFAULT;
@@ -91,7 +92,7 @@ export function calcularTimerVence(
   const minutosFin = hFin * 60 + mFin;
   const minutosOperativosPorDia = minutosFin - minutosInicio;
 
-  let minutosRestantes = horasTimer * 60;
+  let minutosRestantes = diasTimer * minutosOperativosPorDia;
   const cursor = getHoraMexico();
 
   // Avanzar al próximo momento operativo si estamos fuera de horario
@@ -140,19 +141,19 @@ export function calcularTimerVence(
 /**
  * Versión async que carga config de BD y calcula timer_vence.
  */
-export async function calcularTimerVenceConConfig(horasTimer: number): Promise<Date> {
+export async function calcularTimerVenceConConfig(diasTimer: number): Promise<Date> {
   const { getConfigBatch } = await import("@/lib/config-cache");
 
   const configMap = await getConfigBatch([
     "horario_inicio", "horario_fin", "dias_operativos", "horario_activo",
   ]);
 
-  // Si horario desactivado, usar cálculo simple
+  // Si horario desactivado, usar cálculo simple (días calendario)
   if (configMap.horario_activo === "false") {
-    return new Date(Date.now() + horasTimer * 60 * 60 * 1000);
+    return new Date(Date.now() + diasTimer * 24 * 60 * 60 * 1000);
   }
 
-  return calcularTimerVence(horasTimer, {
+  return calcularTimerVence(diasTimer, {
     horario_inicio: configMap.horario_inicio,
     horario_fin: configMap.horario_fin,
     dias_operativos: configMap.dias_operativos

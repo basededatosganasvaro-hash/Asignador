@@ -21,18 +21,18 @@ export async function POST(req: Request) {
   if (error) return error;
 
   const body = await req.json();
-  const { nombre, orden, tipo, timer_horas, color } = body;
+  const { nombre, orden, tipo, timer_dias, color } = body;
 
   if (!nombre || !orden || !tipo || !color) {
     return NextResponse.json({ error: "Faltan campos requeridos" }, { status: 400 });
   }
 
-  if (timer_horas != null && Number(timer_horas) <= 0) {
-    return NextResponse.json({ error: "timer_horas debe ser un numero positivo" }, { status: 400 });
+  if (timer_dias != null && Number(timer_dias) <= 0) {
+    return NextResponse.json({ error: "timer_dias debe ser un numero positivo" }, { status: 400 });
   }
 
   const etapa = await prisma.embudo_etapas.create({
-    data: { nombre, orden: Number(orden), tipo, timer_horas: timer_horas ? Number(timer_horas) : null, color },
+    data: { nombre, orden: Number(orden), tipo, timer_dias: timer_dias ? Number(timer_dias) : null, color },
   });
 
   return NextResponse.json(etapa, { status: 201 });

@@ -17,7 +17,7 @@ interface Etapa {
   nombre: string;
   orden: number;
   tipo: string;
-  timer_horas: number | null;
+  timer_dias: number | null;
   color: string;
   activo: boolean;
 }
@@ -48,7 +48,7 @@ export default function EmbudoPage() {
 
   const [etapaDialogOpen, setEtapaDialogOpen] = useState(false);
   const [editingEtapa, setEditingEtapa] = useState<Etapa | null>(null);
-  const [etapaForm, setEtapaForm] = useState({ nombre: "", orden: "", tipo: "AVANCE", timer_horas: "", color: "#1565c0" });
+  const [etapaForm, setEtapaForm] = useState({ nombre: "", orden: "", tipo: "AVANCE", timer_dias: "", color: "#1565c0" });
 
   const [transDialogOpen, setTransDialogOpen] = useState(false);
   const [transForm, setTransForm] = useState({
@@ -85,7 +85,7 @@ export default function EmbudoPage() {
     const method = editingEtapa ? "PUT" : "POST";
     const body = {
       nombre: etapaForm.nombre, orden: Number(etapaForm.orden), tipo: etapaForm.tipo,
-      timer_horas: etapaForm.timer_horas ? Number(etapaForm.timer_horas) : null, color: etapaForm.color,
+      timer_dias: etapaForm.timer_dias ? Number(etapaForm.timer_dias) : null, color: etapaForm.color,
     };
     const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
     if (res.ok) {
@@ -149,7 +149,7 @@ export default function EmbudoPage() {
       cell: ({ getValue }) => <Badge color={TIPO_COLORS[getValue() as string] ?? "slate"}>{getValue() as string}</Badge>,
     },
     {
-      accessorKey: "timer_horas", header: "Timer (h)", size: 100,
+      accessorKey: "timer_dias", header: "Timer (dias)", size: 100,
       cell: ({ getValue }) => <span className="text-center block text-slate-400">{(getValue() as number | null) ?? "—"}</span>,
     },
     {
@@ -160,7 +160,7 @@ export default function EmbudoPage() {
       id: "actions", header: "Acciones", size: 110, enableSorting: false,
       cell: ({ row }) => (
         <div className="flex gap-1">
-          <button onClick={() => { setEditingEtapa(row.original); setEtapaForm({ nombre: row.original.nombre, orden: String(row.original.orden), tipo: row.original.tipo, timer_horas: row.original.timer_horas ? String(row.original.timer_horas) : "", color: row.original.color }); setEtapaDialogOpen(true); }} className="p-1.5 text-blue-400 hover:bg-blue-500/10 rounded-lg transition-colors">
+          <button onClick={() => { setEditingEtapa(row.original); setEtapaForm({ nombre: row.original.nombre, orden: String(row.original.orden), tipo: row.original.tipo, timer_dias: row.original.timer_dias ? String(row.original.timer_dias) : "", color: row.original.color }); setEtapaDialogOpen(true); }} className="p-1.5 text-blue-400 hover:bg-blue-500/10 rounded-lg transition-colors">
             <Pencil className="w-4 h-4" />
           </button>
           <button onClick={() => handleToggleEtapa(row.original)} className={`p-1.5 rounded-lg transition-colors ${row.original.activo ? "text-red-400 hover:bg-red-500/10" : "text-green-400 hover:bg-green-500/10"}`}>
@@ -209,7 +209,7 @@ export default function EmbudoPage() {
       {/* ETAPAS */}
       <div className="flex justify-between items-center mb-3">
         <h2 className="text-lg font-semibold text-slate-100">Etapas</h2>
-        <Button size="sm" icon={<Plus className="w-4 h-4" />} onClick={() => { setEditingEtapa(null); setEtapaForm({ nombre: "", orden: "", tipo: "AVANCE", timer_horas: "", color: "#1565c0" }); setEtapaDialogOpen(true); }}>
+        <Button size="sm" icon={<Plus className="w-4 h-4" />} onClick={() => { setEditingEtapa(null); setEtapaForm({ nombre: "", orden: "", tipo: "AVANCE", timer_dias: "", color: "#1565c0" }); setEtapaDialogOpen(true); }}>
           Nueva Etapa
         </Button>
       </div>
@@ -235,7 +235,7 @@ export default function EmbudoPage() {
           <Input label="Nombre" value={etapaForm.nombre} onChange={(e) => setEtapaForm({ ...etapaForm, nombre: e.target.value })} required />
           <Input label="Orden" type="number" value={etapaForm.orden} onChange={(e) => setEtapaForm({ ...etapaForm, orden: e.target.value })} required />
           <Select label="Tipo" value={etapaForm.tipo} onChange={(e) => setEtapaForm({ ...etapaForm, tipo: e.target.value })} options={[{ value: "AVANCE", label: "AVANCE" }, { value: "SALIDA", label: "SALIDA" }, { value: "FINAL", label: "FINAL" }]} />
-          <Input label="Timer (horas, opcional)" type="number" value={etapaForm.timer_horas} onChange={(e) => setEtapaForm({ ...etapaForm, timer_horas: e.target.value })} />
+          <Input label="Timer (dias, opcional)" type="number" value={etapaForm.timer_dias} onChange={(e) => setEtapaForm({ ...etapaForm, timer_dias: e.target.value })} />
           <div className="flex items-center gap-3">
             <Input label="Color (hex)" value={etapaForm.color} onChange={(e) => setEtapaForm({ ...etapaForm, color: e.target.value })} />
             <div className="w-9 h-9 rounded-lg border border-slate-700 shrink-0 mt-6" style={{ backgroundColor: etapaForm.color }} />

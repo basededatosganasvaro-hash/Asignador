@@ -247,8 +247,8 @@ export async function POST(request: Request) {
     const etapaAsignado = await prisma.embudo_etapas.findFirst({
       where: { nombre: "Asignado", activo: true },
     });
-    const timerVence = etapaAsignado?.timer_horas
-      ? await calcularTimerVenceConConfig(etapaAsignado.timer_horas)
+    const timerVence = etapaAsignado?.timer_dias
+      ? await calcularTimerVenceConConfig(etapaAsignado.timer_dias)
       : null;
 
     const registrosFinales = records.slice(0, Math.min(records.length, cupoDisponible));

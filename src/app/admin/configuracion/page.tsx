@@ -33,7 +33,7 @@ interface Etapa {
   nombre: string;
   orden: number;
   tipo: string;
-  timer_horas: number | null;
+  timer_dias: number | null;
   color: string;
   activo: boolean;
 }
@@ -221,7 +221,7 @@ export default function ConfiguracionPage() {
         setEtapasAvance(avance);
         const timers: Record<number, string> = {};
         for (const e of avance) {
-          timers[e.id] = e.timer_horas != null ? String(e.timer_horas) : "";
+          timers[e.id] = e.timer_dias != null ? String(e.timer_dias) : "";
         }
         setTimerValues(timers);
 
@@ -415,7 +415,7 @@ export default function ConfiguracionPage() {
       const res = await fetch(`/api/admin/embudo/etapas/${etapa.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ timer_horas: numVal }),
+        body: JSON.stringify({ timer_dias: numVal }),
       });
       if (!res.ok) allOk = false;
     }
@@ -554,12 +554,12 @@ export default function ConfiguracionPage() {
           <h2 className="text-lg font-semibold text-slate-100">
             Tiempos de Permanencia
           </h2>
-          <Tooltip content="Tiempo maximo que una oportunidad puede permanecer en cada etapa de avance antes de ser devuelta al pool">
+          <Tooltip content="Dias operativos maximos que una oportunidad puede permanecer en cada etapa de avance antes de ser devuelta al pool">
             <HelpCircle className="w-4 h-4 text-slate-600 cursor-help" />
           </Tooltip>
         </div>
         <span className="text-sm text-slate-400 block mb-4 ml-8">
-          Define cuantas horas puede permanecer una oportunidad en cada etapa de avance.
+          Define cuantos dias operativos puede permanecer una oportunidad en cada etapa de avance.
         </span>
         <div className="ml-8 flex flex-col gap-3">
           {etapasAvance.map((etapa) => (
@@ -581,7 +581,7 @@ export default function ConfiguracionPage() {
                 min={1}
                 className="w-24 px-3 py-1.5 bg-slate-800/50 border border-slate-700 text-slate-200 placeholder-slate-600 rounded-lg text-sm focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500/60 outline-none transition-all"
               />
-              <span className="text-xs text-slate-500">horas</span>
+              <span className="text-xs text-slate-500">dias</span>
             </div>
           ))}
           {etapasAvance.length === 0 && (

@@ -7,15 +7,15 @@ async function main() {
   // ETAPAS
   // =============================================
   const etapasData = [
-    { nombre: "Asignado",         orden: 1, tipo: "AVANCE", timer_horas: 72,   color: "#1565c0" },
-    { nombre: "Contactado",       orden: 2, tipo: "AVANCE", timer_horas: 48,   color: "#2196f3" },
-    { nombre: "Interesado",       orden: 3, tipo: "AVANCE", timer_horas: 72,   color: "#4caf50" },
-    { nombre: "Negociacion",      orden: 4, tipo: "AVANCE", timer_horas: 48,   color: "#ff9800" },
-    { nombre: "Venta",            orden: 5, tipo: "FINAL",  timer_horas: null, color: "#66bb6a" },
-    { nombre: "No contactado",    orden: 6, tipo: "SALIDA", timer_horas: null, color: "#ef9a9a" },
-    { nombre: "No interesado",    orden: 7, tipo: "SALIDA", timer_horas: null, color: "#ef5350" },
-    { nombre: "Negociacion caida",orden: 8, tipo: "SALIDA", timer_horas: null, color: "#b71c1c" },
-    { nombre: "Descartado",       orden: 9, tipo: "FINAL",  timer_horas: null, color: "#9e9e9e" },
+    { nombre: "Asignado",         orden: 1, tipo: "AVANCE", timer_dias: 3,    color: "#1565c0" },
+    { nombre: "Contactado",       orden: 2, tipo: "AVANCE", timer_dias: 2,    color: "#2196f3" },
+    { nombre: "Interesado",       orden: 3, tipo: "AVANCE", timer_dias: 3,    color: "#4caf50" },
+    { nombre: "Negociacion",      orden: 4, tipo: "AVANCE", timer_dias: 2,    color: "#ff9800" },
+    { nombre: "Venta",            orden: 5, tipo: "FINAL",  timer_dias: null, color: "#66bb6a" },
+    { nombre: "No contactado",    orden: 6, tipo: "SALIDA", timer_dias: null, color: "#ef9a9a" },
+    { nombre: "No interesado",    orden: 7, tipo: "SALIDA", timer_dias: null, color: "#ef5350" },
+    { nombre: "Negociacion caida",orden: 8, tipo: "SALIDA", timer_dias: null, color: "#b71c1c" },
+    { nombre: "Descartado",       orden: 9, tipo: "FINAL",  timer_dias: null, color: "#9e9e9e" },
   ];
 
   const etapas: Record<string, number> = {};
