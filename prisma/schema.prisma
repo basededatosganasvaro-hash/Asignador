@@ -197,9 +197,10 @@ model oportunidades {
   // POOL | CAPTACION | REASIGNACION
   lote_id         Int?
   timer_vence     DateTime?
-  num_operacion   String?  @db.VarChar(100)
-  venta_validada  Boolean  @default(false)
-  activo          Boolean  @default(true)
+  num_operacion        String?  @db.VarChar(100)
+  venta_validada       Boolean  @default(false)
+  escalada_supervisor  Boolean  @default(false)
+  activo               Boolean  @default(true)
   created_at      DateTime @default(now())
   updated_at      DateTime @default(now()) @updatedAt
 
@@ -221,6 +222,7 @@ model oportunidades {
   @@index([usuario_id, etapa_id, activo])
   @@index([timer_vence, etapa_id, activo])
   @@index([cliente_id, etapa_id, activo])
+  @@index([escalada_supervisor, activo])
 }
 
 // =============================================

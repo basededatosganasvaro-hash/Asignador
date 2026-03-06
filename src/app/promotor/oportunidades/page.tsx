@@ -2,7 +2,7 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { createPortal } from "react-dom";
 import { ColumnDef, RowSelectionState, VisibilityState } from "@tanstack/react-table";
-import { Eye, Phone, ArrowLeft, UserPlus, ClipboardList, Megaphone, RefreshCw, ChevronDown } from "lucide-react";
+import { Eye, Phone, ArrowLeft, UserPlus, ClipboardList, Megaphone, RefreshCw, ChevronDown, AlertTriangle } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { buildWhatsAppUrl, formatPhoneForWA, WA_MENSAJES_DEFAULT } from "@/lib/whatsapp";
@@ -402,6 +402,20 @@ function OportunidadesContent() {
       .reduce((sum, r) => sum + (Number(r.monto_venta) || 0), 0);
   }, [rows]);
 
+  // ─── ALERTA: oportunidades por vencer (<8h) ───
+  const UMBRAL_ALERTA_MS = 8 * 60 * 60 * 1000; // 8 horas
+
+  const porVencer = useMemo(() => {
+    const ahora = Date.now();
+    return rows.filter((r) => {
+      if (!r.timer_vence) return false;
+      const restante = new Date(r.timer_vence).getTime() - ahora;
+      return restante > 0 && restante <= UMBRAL_ALERTA_MS;
+    });
+  }, [rows]);
+
+  const porVencerIds = useMemo(() => new Set(porVencer.map((r) => r.id)), [porVencer]);
+
   // ─── FILTRADO por card activa ───
   const filtered = useMemo(() => {
     if (cardFiltro === "capturados") {
@@ -560,10 +574,11 @@ function OportunidadesContent() {
     {
       accessorKey: "etapa",
       header: "Etapa",
-      size: 180,
+      size: 220,
       enableSorting: false,
       cell: ({ row }) => {
         const etapa = row.original.etapa;
+        const esPorVencer = porVencerIds.has(row.original.id);
         if (!etapa) {
           return (
             <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-slate-700/50 text-slate-400">
@@ -576,20 +591,30 @@ function OportunidadesContent() {
 
         if (isLoading) return <Spinner size="sm" />;
 
+        const venceBadge = esPorVencer ? (
+          <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30 animate-pulse">
+            <AlertTriangle className="w-2.5 h-2.5" />
+            Vence pronto
+          </span>
+        ) : null;
+
         if (trans.length === 0) {
           return (
-            <span
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold text-white"
-              style={{ backgroundColor: resolveEtapaColor(etapa.nombre, etapa.color) }}
-            >
-              {etapa.nombre}
-            </span>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold text-white"
+                style={{ backgroundColor: resolveEtapaColor(etapa.nombre, etapa.color) }}
+              >
+                {etapa.nombre}
+              </span>
+              {venceBadge}
+            </div>
           );
         }
 
         const isOpen = openEtapaDropdown === row.original.id;
         return (
-          <div className="relative" onClick={(e) => e.stopPropagation()}>
+          <div className="relative flex items-center gap-1.5 flex-wrap" onClick={(e) => e.stopPropagation()}>
             <button
               type="button"
               onClick={(e) => {
@@ -638,6 +663,7 @@ function OportunidadesContent() {
               </>,
               document.body
             )}
+            {venceBadge}
           </div>
         );
       },
@@ -793,7 +819,7 @@ function OportunidadesContent() {
       },
     },
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  ], [transMap, transitioning, observaciones, cardFiltro, promotorNombre, plantillas, openEtapaDropdown, dropdownPos]);
+  ], [transMap, transitioning, observaciones, cardFiltro, promotorNombre, plantillas, openEtapaDropdown, dropdownPos, porVencerIds]);
 
   // Destinatarios para la campana: filas seleccionadas con telefono
   const destinatariosSeleccionados = useMemo(() => {
@@ -929,6 +955,17 @@ function OportunidadesContent() {
           );
         })}
       </div>
+
+      {/* ═══════ ALERTA POR VENCER ═══════ */}
+      {porVencer.length > 0 && (
+        <div className="flex items-center gap-2 px-4 py-2 mb-2 rounded-lg bg-amber-500/10 border border-amber-500/30 shrink-0 animate-pulse">
+          <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+          <span className="text-sm text-amber-300">
+            <strong>{porVencer.length}</strong> {porVencer.length === 1 ? "registro vence" : "registros vencen"} en las proximas 8 horas.
+            {" "}Gestionalos para no perderlos.
+          </span>
+        </div>
+      )}
 
       {/* ═══════ FILTROS + GRID ═══════ */}
       <div className="bg-surface rounded-xl border border-slate-800/60 overflow-hidden flex-1 flex flex-col min-h-0">

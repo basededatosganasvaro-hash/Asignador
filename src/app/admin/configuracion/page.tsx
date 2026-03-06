@@ -161,6 +161,7 @@ export default function ConfiguracionPage() {
   // Tiempos de permanencia (etapas AVANCE)
   const [etapasAvance, setEtapasAvance] = useState<Etapa[]>([]);
   const [timerValues, setTimerValues] = useState<Record<number, string>>({});
+  const [timerRetorno, setTimerRetorno] = useState("30");
   const [timerSaving, setTimerSaving] = useState(false);
 
   // Beta testers state
@@ -224,6 +225,10 @@ export default function ConfiguracionPage() {
           timers[e.id] = e.timer_dias != null ? String(e.timer_dias) : "";
         }
         setTimerValues(timers);
+
+        // Load timer retorno supervisor
+        const retornoConfig = configData.find((c: Config) => c.clave === "timer_retorno_supervisor");
+        if (retornoConfig) setTimerRetorno(retornoConfig.valor);
 
         // Load beta testers config
         const betaConfig = configData.find((c: Config) => c.clave === "wa_beta_activo");
@@ -420,6 +425,20 @@ export default function ConfiguracionPage() {
       if (!res.ok) allOk = false;
     }
 
+    // Guardar timer retorno supervisor
+    const retornoNum = Number(timerRetorno);
+    if (isNaN(retornoNum) || retornoNum < 1) {
+      toast("Retorno supervisor: debe ser al menos 1 dia", "error");
+      setTimerSaving(false);
+      return;
+    }
+    const resRetorno = await fetch("/api/admin/configuracion", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ clave: "timer_retorno_supervisor", valor: String(retornoNum) }),
+    });
+    if (!resRetorno.ok) allOk = false;
+
     setTimerSaving(false);
     toast(
       allOk ? "Tiempos de permanencia guardados" : "Error al guardar algunos tiempos",
@@ -554,12 +573,12 @@ export default function ConfiguracionPage() {
           <h2 className="text-lg font-semibold text-slate-100">
             Tiempos de Permanencia
           </h2>
-          <Tooltip content="Dias operativos maximos que una oportunidad puede permanecer en cada etapa de avance antes de ser devuelta al pool">
+          <Tooltip content="Dias operativos maximos por etapa. Asignado vence al pool; las demas etapas se escalan al supervisor.">
             <HelpCircle className="w-4 h-4 text-slate-600 cursor-help" />
           </Tooltip>
         </div>
         <span className="text-sm text-slate-400 block mb-4 ml-8">
-          Define cuantos dias operativos puede permanecer una oportunidad en cada etapa de avance.
+          Asignado vence al pool. Contactado, Interesado y Negociacion se escalan al supervisor para reasignacion.
         </span>
         <div className="ml-8 flex flex-col gap-3">
           {etapasAvance.map((etapa) => (
@@ -587,6 +606,28 @@ export default function ConfiguracionPage() {
           {etapasAvance.length === 0 && (
             <span className="text-sm text-slate-500">No hay etapas de avance configuradas</span>
           )}
+
+          {/* Separador */}
+          <div className="border-t border-slate-700/40 my-3" />
+
+          {/* Retorno supervisor */}
+          <div className="flex items-center gap-3">
+            <div className="w-3 h-3 rounded-full flex-shrink-0 bg-red-400" />
+            <Tooltip content="Cuando el timer de una etapa avanzada vence (Contactado, Interesado, Negociacion), la oportunidad se escala al supervisor. Este es el plazo que tendra el promotor al ser reasignado.">
+              <label className="text-sm text-slate-300 w-40 flex-shrink-0 cursor-help border-b border-dashed border-slate-600">
+                Retorno supervisor
+              </label>
+            </Tooltip>
+            <input
+              type="number"
+              value={timerRetorno}
+              onChange={(e) => setTimerRetorno(e.target.value)}
+              placeholder="30"
+              min={1}
+              className="w-24 px-3 py-1.5 bg-slate-800/50 border border-slate-700 text-slate-200 placeholder-slate-600 rounded-lg text-sm focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500/60 outline-none transition-all"
+            />
+            <span className="text-xs text-slate-500">dias</span>
+          </div>
         </div>
         {etapasAvance.length > 0 && (
           <div className="ml-8 mt-4">

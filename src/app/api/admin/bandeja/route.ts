@@ -25,12 +25,19 @@ export async function GET() {
   const oportunidades = await prisma.oportunidades.findMany({
     where: {
       activo: true,
-      etapa: {
-        OR: [
-          { tipo: "SALIDA" },
-          { tipo: "FINAL", nombre: { not: "Venta" } },
-        ],
-      },
+      OR: [
+        // Salidas/finales (comportamiento original)
+        {
+          etapa: {
+            OR: [
+              { tipo: "SALIDA" },
+              { tipo: "FINAL", nombre: { not: "Venta" } },
+            ],
+          },
+        },
+        // Escaladas por timer vencido
+        { escalada_supervisor: true },
+      ],
       ...equipoFilter,
     },
     include: {
@@ -82,6 +89,7 @@ export async function GET() {
       etapa: op.etapa,
       promotor: op.usuario,
       timer_vence: op.timer_vence,
+      escalada_supervisor: op.escalada_supervisor,
       updated_at: op.updated_at,
     };
   });

@@ -23,6 +23,7 @@ interface OportunidadBandeja {
   etapa: { id: number; nombre: string; color: string; tipo: string } | null;
   promotor: { id: number; nombre: string };
   timer_vence: string | null;
+  escalada_supervisor: boolean;
   updated_at: string;
 }
 
@@ -188,10 +189,15 @@ function BandejaTab({ toast }: { toast: (m: string, t?: "success" | "error" | "i
     {
       accessorKey: "etapa",
       header: "Etapa",
-      size: 150,
+      size: 180,
       cell: ({ row }) =>
         row.original.etapa ? (
-          <Badge color={getEtapaBadgeColor(row.original.etapa.color)}>{row.original.etapa.nombre}</Badge>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <Badge color={getEtapaBadgeColor(row.original.etapa.color)}>{row.original.etapa.nombre}</Badge>
+            {row.original.escalada_supervisor && (
+              <Badge color="amber">Timer vencido</Badge>
+            )}
+          </div>
         ) : (
           <span className="text-sm text-slate-500">&mdash;</span>
         ),

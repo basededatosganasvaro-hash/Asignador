@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireSupervisorOrAdmin } from "@/lib/auth-utils";
+import { calcularTimerVenceConConfig } from "@/lib/horario";
+import { getConfig } from "@/lib/config-cache";
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { session, error } = await requireSupervisorOrAdmin();
@@ -79,10 +81,27 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         throw new Error("CUPO_AGOTADO");
       }
 
+      // Si es una oportunidad escalada, calcular timer de retorno
+      let timerRetorno: Date | null = null;
+      if (op.escalada_supervisor) {
+        const retornoDiasStr = await getConfig("timer_retorno_supervisor");
+        const retornoDias = parseInt(retornoDiasStr || "30");
+        timerRetorno = await calcularTimerVenceConConfig(retornoDias);
+      }
+
       // Reasignar (limpiar lote_id para no distorsionar conteos del lote original)
       await tx.oportunidades.update({
         where: { id: Number(id) },
-        data: { usuario_id: Number(nuevo_usuario_id), origen: "REASIGNACION", lote_id: null },
+        data: {
+          usuario_id: Number(nuevo_usuario_id),
+          origen: "REASIGNACION",
+          lote_id: null,
+          // Limpiar escalada y setear timer de retorno si aplica
+          ...(op.escalada_supervisor && {
+            escalada_supervisor: false,
+            timer_vence: timerRetorno,
+          }),
+        },
       });
 
       await tx.historial.create({
