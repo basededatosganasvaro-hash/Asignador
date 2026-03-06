@@ -742,23 +742,35 @@ function OportunidadesContent() {
     {
       accessorKey: "wa_estado",
       header: "WA",
-      size: 90,
+      size: 110,
       enableSorting: false,
       cell: ({ row }) => {
         const estado = row.original.wa_estado as string | null;
-        if (!estado) return <span className="text-[10px] text-slate-600">—</span>;
+        const waManual = row.original.wa_manual_at as string | null;
+        if (!estado && !waManual) return <span className="text-[10px] text-slate-600">—</span>;
         const colorMap: Record<string, string> = {
           PENDIENTE: "#9e9e9e", ENVIANDO: "#ff9800", ENVIADO: "#2196f3",
           ENTREGADO: "#4caf50", LEIDO: "#00bcd4", FALLIDO: "#f44336",
         };
-        const bgColor = colorMap[estado] || "#9e9e9e";
         return (
-          <span
-            className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold text-white"
-            style={{ backgroundColor: bgColor }}
-          >
-            {estado}
-          </span>
+          <div className="flex flex-col gap-0.5">
+            {waManual && (
+              <span
+                className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold text-white"
+                style={{ backgroundColor: "#25D366" }}
+              >
+                Manual
+              </span>
+            )}
+            {estado && (
+              <span
+                className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold text-white"
+                style={{ backgroundColor: colorMap[estado] || "#9e9e9e" }}
+              >
+                {estado}
+              </span>
+            )}
+          </div>
         );
       },
     },
@@ -811,7 +823,19 @@ function OportunidadesContent() {
               <button
                 className={`p-1.5 rounded-lg transition-colors ${waUrl ? "text-[#25D366] hover:bg-green-500/10" : "text-slate-600 cursor-not-allowed"}`}
                 disabled={!waUrl}
-                onClick={(e) => { e.stopPropagation(); if (waUrl) window.open(waUrl, "_blank"); }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (waUrl) {
+                    window.open(waUrl, "_blank");
+                    fetch(`/api/oportunidades/${row.original.id}/wa-manual`, { method: "POST" })
+                      .then(() => {
+                        setRows((prev) => prev.map((r) =>
+                          r.id === row.original.id ? { ...r, wa_manual_at: new Date().toISOString() } : r
+                        ));
+                      })
+                      .catch(() => {});
+                  }
+                }}
               >
                 <WhatsAppIcon className="w-4 h-4" />
               </button>
@@ -920,7 +944,7 @@ function OportunidadesContent() {
           return (
             <div
               key={item.key}
-              onClick={() => { setCardFiltro(isSelected ? "" : item.key); setBusqueda(""); }}
+              onClick={() => { if (!isSelected) { setCardFiltro(item.key); setBusqueda(""); } }}
               className="px-4 py-3 cursor-pointer min-w-[120px] flex-1 rounded-xl text-center border-2 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg"
               style={{
                 backgroundColor: isSelected ? item.color : "var(--color-surface, #1e293b)",

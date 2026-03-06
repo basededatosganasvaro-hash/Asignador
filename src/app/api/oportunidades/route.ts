@@ -67,6 +67,7 @@ export async function GET() {
     const waFields = {
       wa_estado: ultimoWa?.estado ?? null,
       wa_enviado_at: ultimoWa?.enviado_at ?? null,
+      wa_manual_at: op.wa_manual_at ?? null,
     };
 
     if (op.cliente_id !== null) {

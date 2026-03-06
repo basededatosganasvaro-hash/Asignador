@@ -200,6 +200,7 @@ model oportunidades {
   num_operacion        String?  @db.VarChar(100)
   venta_validada       Boolean  @default(false)
   escalada_supervisor  Boolean  @default(false)
+  wa_manual_at         DateTime?
   activo               Boolean  @default(true)
   created_at      DateTime @default(now())
   updated_at      DateTime @default(now()) @updatedAt
