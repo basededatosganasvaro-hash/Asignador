@@ -2,7 +2,7 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { createPortal } from "react-dom";
 import { ColumnDef, RowSelectionState, VisibilityState } from "@tanstack/react-table";
-import { Eye, Phone, ArrowLeft, UserPlus, ClipboardList, Megaphone, RefreshCw, ChevronDown, AlertTriangle, FlaskConical } from "lucide-react";
+import { Eye, Phone, ArrowLeft, UserPlus, ClipboardList, Megaphone, RefreshCw, ChevronDown, AlertTriangle, FlaskConical, Search, X } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { buildWhatsAppUrl, formatPhoneForWA, WA_MENSAJES_DEFAULT } from "@/lib/whatsapp";
@@ -258,6 +258,7 @@ function OportunidadesContent() {
   const [etapas, setEtapas] = useState<Etapa[]>([]);
   const [loading, setLoading] = useState(true);
   const [cardFiltro, setCardFiltro] = useState<FiltroCard>("Asignado"); // default: Asignado
+  const [busqueda, setBusqueda] = useState("");
   const [observaciones, setObservaciones] = useState<Record<number, string>>({});
   const [transitioning, setTransitioning] = useState<number | null>(null);
   const [openEtapaDropdown, setOpenEtapaDropdown] = useState<number | null>(null);
@@ -420,7 +421,7 @@ function OportunidadesContent() {
   const porVencerIds = useMemo(() => new Set(porVencer.map((r) => r.id)), [porVencer]);
 
   // ─── FILTRADO por card activa ───
-  const filtered = useMemo(() => {
+  const filteredByCard = useMemo(() => {
     if (cardFiltro === "capturados") {
       return rows.filter((r) => r.origen === "CAPTACION");
     } else if (cardFiltro === "capacidades") {
@@ -430,6 +431,19 @@ function OportunidadesContent() {
     }
     return rows;
   }, [rows, cardFiltro]);
+
+  // ─── Busqueda dentro de la etapa seleccionada ───
+  const filtered = useMemo(() => {
+    if (!busqueda.trim()) return filteredByCard;
+    const q = busqueda.toLowerCase().trim();
+    return filteredByCard.filter((r) =>
+      (r.nombres && r.nombres.toLowerCase().includes(q)) ||
+      (r.convenio && r.convenio.toLowerCase().includes(q)) ||
+      (r.tel_1 && r.tel_1.includes(q)) ||
+      (r.estado && r.estado.toLowerCase().includes(q)) ||
+      (r.municipio && r.municipio.toLowerCase().includes(q))
+    );
+  }, [filteredByCard, busqueda]);
 
   // ─── Cambiar etapa inline ───
   const handleTransicion = async (opId: number, transicionId: number) => {
@@ -906,7 +920,7 @@ function OportunidadesContent() {
           return (
             <div
               key={item.key}
-              onClick={() => setCardFiltro(isSelected ? "" : item.key)}
+              onClick={() => { setCardFiltro(isSelected ? "" : item.key); setBusqueda(""); }}
               className="px-4 py-3 cursor-pointer min-w-[120px] flex-1 rounded-xl text-center border-2 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg"
               style={{
                 backgroundColor: isSelected ? item.color : "var(--color-surface, #1e293b)",
@@ -972,26 +986,28 @@ function OportunidadesContent() {
 
       {/* ═══════ FILTROS + GRID ═══════ */}
       <div className="bg-surface rounded-xl border border-slate-800/60 overflow-hidden flex-1 flex flex-col min-h-0">
-        {/* Barra superior */}
-        <div className="flex items-center gap-3 flex-wrap px-4 py-2 bg-slate-800/30 border-b border-slate-800/40 shrink-0">
-          {cardFiltro && (
-            <span
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold text-white"
-              style={{ backgroundColor: resolveEtapaColor(cardFiltro) }}
-            >
-              {cardFiltro === "capturados" ? "Capturados" : cardFiltro === "capacidades" ? "Capacidades" : cardFiltro}
+        {/* Barra superior: busqueda + acciones */}
+        <div className="flex items-center gap-3 px-4 py-2 bg-slate-800/30 border-b border-slate-800/40 shrink-0">
+          <div className="relative flex-1 max-w-sm">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
+            <input
+              type="text"
+              value={busqueda}
+              onChange={(e) => setBusqueda(e.target.value)}
+              placeholder="Buscar por nombre, convenio, telefono..."
+              className="w-full pl-8 pr-8 py-1.5 bg-slate-800/50 border border-slate-700/60 text-xs text-slate-200 placeholder-slate-600 rounded-lg outline-none focus:ring-1 focus:ring-amber-500/40 focus:border-amber-500/50 transition-all"
+            />
+            {busqueda && (
               <button
-                onClick={() => setCardFiltro("")}
-                className="ml-0.5 hover:opacity-70 transition-opacity"
+                onClick={() => setBusqueda("")}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
               >
-                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
+                <X className="w-3.5 h-3.5" />
               </button>
-            </span>
-          )}
+            )}
+          </div>
 
-          <span className="text-xs text-slate-500 flex-1">
+          <span className="text-xs text-slate-500 shrink-0">
             {filtered.length} resultado{filtered.length !== 1 ? "s" : ""}
           </span>
 
