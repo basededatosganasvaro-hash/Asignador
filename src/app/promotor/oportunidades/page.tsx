@@ -2,13 +2,14 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { createPortal } from "react-dom";
 import { ColumnDef, RowSelectionState, VisibilityState } from "@tanstack/react-table";
-import { Eye, Phone, ArrowLeft, UserPlus, ClipboardList, Megaphone, RefreshCw, ChevronDown, AlertTriangle } from "lucide-react";
+import { Eye, Phone, ArrowLeft, UserPlus, ClipboardList, Megaphone, RefreshCw, ChevronDown, AlertTriangle, FlaskConical } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { buildWhatsAppUrl, formatPhoneForWA, WA_MENSAJES_DEFAULT } from "@/lib/whatsapp";
 import CaptacionModal from "@/components/CaptacionModal";
 import SolicitarAsignacionDialog from "@/components/SolicitarAsignacionDialog";
 import CampanaCrearDialog from "@/components/CampanaCrearDialog";
+import { useWhatsAppBeta } from "@/hooks/useWhatsAppBeta";
 import { DataTable, createSelectionColumn } from "@/components/ui/DataTable";
 import { Dialog, DialogHeader, DialogBody, DialogFooter } from "@/components/ui/Dialog";
 import { Button } from "@/components/ui/Button";
@@ -294,6 +295,8 @@ function OportunidadesContent() {
   const [asignacionOpen, setAsignacionOpen] = useState(false);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [campanaOpen, setCampanaOpen] = useState(false);
+  const [betaBlockOpen, setBetaBlockOpen] = useState(false);
+  const { permitido: waBetaPermitido } = useWhatsAppBeta();
 
   // Modal Ver detalle
   const [verDialog, setVerDialog] = useState<{ open: boolean; loading: boolean; data: OportunidadDetalle | null }>({
@@ -996,7 +999,7 @@ function OportunidadesContent() {
             <Button
               size="sm"
               icon={<Megaphone className="w-4 h-4" />}
-              onClick={() => setCampanaOpen(true)}
+              onClick={() => waBetaPermitido ? setCampanaOpen(true) : setBetaBlockOpen(true)}
               className="!bg-[#25D366] !text-white hover:!bg-[#1da851] !shadow-lg !shadow-green-500/20"
             >
               WhatsApp Masivo ({selectedIds.length})
@@ -1305,6 +1308,42 @@ function OportunidadesContent() {
         destinatarios={destinatariosSeleccionados}
         mensajeInicial={mensajeInicial}
       />
+
+      {/* Dialog beta block WhatsApp Masivo */}
+      <Dialog open={betaBlockOpen} onClose={() => setBetaBlockOpen(false)} maxWidth="sm">
+        <DialogBody>
+          <div className="text-center py-4">
+            <div className="flex justify-center mb-5">
+              <div className="relative">
+                <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+                  <WhatsAppIcon className="w-8 h-8 text-emerald-400" />
+                </div>
+                <div className="absolute -top-2 -right-2 bg-purple-500 rounded-full p-1.5">
+                  <FlaskConical className="w-3.5 h-3.5 text-white" />
+                </div>
+              </div>
+            </div>
+            <h2 className="text-xl font-bold text-slate-100 mb-2">
+              WhatsApp Masivo en Fase de Pruebas
+            </h2>
+            <p className="text-sm text-slate-400 leading-relaxed">
+              Esta funcionalidad se encuentra en periodo de pruebas con un grupo
+              seleccionado de promotores. Pronto estara disponible para todos.
+            </p>
+            <p className="text-xs text-slate-500 mt-4">
+              Si necesitas acceso, contacta a tu supervisor o administrador.
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setBetaBlockOpen(false)}
+              className="mt-5"
+            >
+              Entendido
+            </Button>
+          </div>
+        </DialogBody>
+      </Dialog>
     </div>
   );
 }
