@@ -896,7 +896,7 @@ function OportunidadesContent() {
 
       {/* ═══════ 7 CARDS PIPELINE ═══════ */}
       <div
-        className="flex gap-3 mb-3 overflow-x-auto pb-1 shrink-0 scrollbar-thin"
+        className="flex gap-3 mb-3 overflow-x-auto pt-1 pb-2 shrink-0 scrollbar-thin"
       >
         {cardItems.map((item) => {
           const count = conteos[item.key] || 0;
