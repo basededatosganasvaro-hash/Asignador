@@ -97,6 +97,7 @@ export default function AsesorDigitalPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<Registro | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
+  const [viewRecord, setViewRecord] = useState<Registro | null>(null);
   const [busqueda, setBusqueda] = useState("");
   const [filtroStatus, setFiltroStatus] = useState("");
   const [filtroEstrategia, setFiltroEstrategia] = useState("");
@@ -250,6 +251,14 @@ export default function AsesorDigitalPage() {
       accessorKey: "nombre_cliente",
       header: "Cliente",
       size: 180,
+      cell: ({ row }) => (
+        <button
+          onClick={() => setViewRecord(row.original)}
+          className="text-sm text-slate-200 hover:text-amber-400 transition-colors text-left underline decoration-slate-700 hover:decoration-amber-400"
+        >
+          {row.original.nombre_cliente}
+        </button>
+      ),
     },
     {
       accessorKey: "status",
@@ -446,6 +455,71 @@ export default function AsesorDigitalPage() {
         pageSizeOptions={[15, 30, 50]}
       />
 
+      {/* Dialog detalle del cliente */}
+      <Dialog open={viewRecord !== null} onClose={() => setViewRecord(null)} maxWidth="lg">
+        <DialogHeader onClose={() => setViewRecord(null)}>
+          {viewRecord?.nombre_cliente}
+        </DialogHeader>
+        <DialogBody className="max-h-[70vh] overflow-y-auto">
+          {viewRecord && (
+            <>
+              <div className="flex items-center gap-3 mb-5">
+                <Badge color={STATUS_COLORS[viewRecord.status] ?? "slate"}>
+                  {viewRecord.status}
+                </Badge>
+                <span className="text-sm text-slate-500">
+                  {viewRecord.etapa}
+                </span>
+                <span className="text-sm text-slate-600 ml-auto">
+                  {viewRecord.fecha ? new Date(viewRecord.fecha).toLocaleDateString("es-MX") : ""}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
+                <DetailRow label="Telefono" value={viewRecord.numero_telefono} />
+                <DetailRow label="CURP" value={viewRecord.curp} />
+                <DetailRow label="NSS" value={viewRecord.nss} />
+                <DetailRow label="RFC" value={viewRecord.rfc} />
+                <DetailRow label="Estrategia" value={viewRecord.estrategia} />
+                <DetailRow label="Flujo" value={viewRecord.flujo} />
+                <DetailRow label="Zona" value={viewRecord.zona} />
+                <DetailRow label="Campaña" value={viewRecord.campana} />
+                <DetailRow label="Capacidad" value={viewRecord.capacidad} />
+                <DetailRow label="Monto de Credito" value={viewRecord.monto_credito != null ? `$${Number(viewRecord.monto_credito).toLocaleString("es-MX")}` : null} />
+                <DetailRow label="Tipo de Credito" value={viewRecord.tipo_credito} />
+                <DetailRow label="Convenio" value={viewRecord.convenio} />
+                <DetailRow label="Etiqueta" value={viewRecord.etiqueta} />
+                <DetailRow label="Oferta" value={viewRecord.oferta} />
+                <DetailRow label="ID Venta" value={viewRecord.id_venta} />
+                <DetailRow label="Viabilidad" value={viewRecord.viabilidad} />
+              </div>
+
+              {viewRecord.motivo && (
+                <div className="mt-4 pt-4 border-t border-slate-800/50">
+                  <span className="text-xs font-medium text-slate-500 uppercase tracking-wider">Motivo</span>
+                  <p className="text-sm text-slate-300 mt-1 whitespace-pre-wrap">{viewRecord.motivo}</p>
+                </div>
+              )}
+            </>
+          )}
+        </DialogBody>
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => setViewRecord(null)}>Cerrar</Button>
+          <Button
+            variant="primary"
+            icon={<Pencil className="w-4 h-4" />}
+            onClick={() => {
+              if (viewRecord) {
+                handleOpenEdit(viewRecord);
+                setViewRecord(null);
+              }
+            }}
+          >
+            Editar
+          </Button>
+        </DialogFooter>
+      </Dialog>
+
       {/* Dialog confirmar eliminacion */}
       <Dialog open={deleteConfirmId !== null} onClose={() => setDeleteConfirmId(null)} maxWidth="sm">
         <DialogHeader onClose={() => setDeleteConfirmId(null)}>Confirmar Eliminacion</DialogHeader>
@@ -607,6 +681,19 @@ export default function AsesorDigitalPage() {
           </Button>
         </DialogFooter>
       </Dialog>
+    </div>
+  );
+}
+
+function DetailRow({ label, value }: { label: string; value: string | null | undefined }) {
+  return (
+    <div className="flex items-baseline gap-2 py-1.5 border-b border-slate-800/30">
+      <span className="text-xs font-medium text-slate-500 uppercase tracking-wider w-36 flex-shrink-0">
+        {label}
+      </span>
+      <span className="text-sm text-slate-200">
+        {value || <span className="text-slate-600">&mdash;</span>}
+      </span>
     </div>
   );
 }
