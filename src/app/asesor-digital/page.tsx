@@ -3,13 +3,15 @@ import { useEffect, useState, useCallback, useMemo } from "react";
 import { DataTable } from "@/components/ui/DataTable";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
-import StatCard from "@/components/ui/StatCard";
 import { Dialog, DialogHeader, DialogBody, DialogFooter } from "@/components/ui/Dialog";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { useToast } from "@/components/ui/Toast";
 import { ColumnDef } from "@tanstack/react-table";
-import { Plus, Pencil, Trash2, Search, TrendingUp, Users, ShoppingCart, XCircle, Download } from "lucide-react";
+import {
+  Plus, Pencil, Trash2, Search, Download,
+  ShoppingCart, UserCheck, FileText, XCircle, Clock, HelpCircle,
+} from "lucide-react";
 
 interface Registro {
   id: number;
@@ -37,16 +39,8 @@ interface Registro {
   created_at: string;
 }
 
-const ETAPAS = ["Leads", "Cotizacion", "No sujeto a credito", "Ventas"] as const;
-
-const ETAPA_CONFIG: Record<string, { color: "blue" | "amber" | "red" | "green"; icon: typeof TrendingUp }> = {
-  Leads: { color: "blue", icon: Users },
-  Cotizacion: { color: "amber", icon: TrendingUp },
-  "No sujeto a credito": { color: "red", icon: XCircle },
-  Ventas: { color: "green", icon: ShoppingCart },
-};
-
 const STATUS_OPTIONS = ["Venta", "Interesado", "Cotizacion", "No viable", "Proceso", "Sin informacion"];
+const ETAPA_OPTIONS = ["Leads", "Cotizacion", "No sujeto a credito", "Ventas"];
 const ESTRATEGIA_OPTIONS = ["facebook", "VoxImplant", "Wasapi", "WasapiCNCA", "WasapiNuevo", "Consunomina", "Organico"];
 const FLUJO_OPTIONS = ["1 contacto", "2 contactos", "3 contactos"];
 const CAMPANA_OPTIONS = ["IMSS Pensionados", "SNTE23", "SEIEM", "CDMX", "SNTE17y36", "GEM", "IMSS", "Nuevo Leon", "SNTE14"];
@@ -63,6 +57,15 @@ const STATUS_COLORS: Record<string, "green" | "blue" | "amber" | "red" | "purple
   Proceso: "purple",
   "Sin informacion": "slate",
 };
+
+const STATUS_PIPELINE: { key: string; label: string; color: string; gradient: string; icon: typeof ShoppingCart }[] = [
+  { key: "Venta", label: "Venta", color: "text-green-400", gradient: "from-green-500 to-green-600", icon: ShoppingCart },
+  { key: "Interesado", label: "Interesado", color: "text-blue-400", gradient: "from-blue-500 to-blue-600", icon: UserCheck },
+  { key: "Cotizacion", label: "Cotizacion", color: "text-amber-400", gradient: "from-amber-500 to-amber-600", icon: FileText },
+  { key: "No viable", label: "No viable", color: "text-red-400", gradient: "from-red-500 to-red-600", icon: XCircle },
+  { key: "Proceso", label: "Proceso", color: "text-purple-400", gradient: "from-purple-500 to-purple-600", icon: Clock },
+  { key: "Sin informacion", label: "Sin info", color: "text-slate-400", gradient: "from-slate-500 to-slate-600", icon: HelpCircle },
+];
 
 const EMPTY_FORM = {
   etapa: "Leads",
@@ -95,8 +98,8 @@ export default function AsesorDigitalPage() {
   const [editingRecord, setEditingRecord] = useState<Registro | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
   const [busqueda, setBusqueda] = useState("");
-  const [filtroEtapa, setFiltroEtapa] = useState("");
   const [filtroStatus, setFiltroStatus] = useState("");
+  const [filtroEstrategia, setFiltroEstrategia] = useState("");
   const { toast } = useToast();
 
   const [formData, setFormData] = useState(EMPTY_FORM);
@@ -117,19 +120,20 @@ export default function AsesorDigitalPage() {
     fetchRegistros();
   }, [fetchRegistros]);
 
+  // Conteos por status
   const conteos = useMemo(() => {
     const c: Record<string, number> = {};
-    ETAPAS.forEach((e) => (c[e] = 0));
+    STATUS_PIPELINE.forEach((s) => (c[s.key] = 0));
     registros.forEach((r) => {
-      if (c[r.etapa] !== undefined) c[r.etapa]++;
+      if (c[r.status] !== undefined) c[r.status]++;
     });
     return c;
   }, [registros]);
 
   const registrosFiltrados = useMemo(() => {
     return registros.filter((r) => {
-      if (filtroEtapa && r.etapa !== filtroEtapa) return false;
       if (filtroStatus && r.status !== filtroStatus) return false;
+      if (filtroEstrategia && r.estrategia !== filtroEstrategia) return false;
       if (busqueda.trim()) {
         const term = busqueda.toLowerCase();
         if (
@@ -142,7 +146,7 @@ export default function AsesorDigitalPage() {
       }
       return true;
     });
-  }, [registros, busqueda, filtroEtapa, filtroStatus]);
+  }, [registros, busqueda, filtroStatus, filtroEstrategia]);
 
   const handleOpenCreate = () => {
     setEditingRecord(null);
@@ -248,15 +252,6 @@ export default function AsesorDigitalPage() {
       size: 180,
     },
     {
-      accessorKey: "etapa",
-      header: "Etapa",
-      size: 150,
-      cell: ({ row }) => {
-        const cfg = ETAPA_CONFIG[row.original.etapa];
-        return <Badge color={cfg?.color ?? "slate"}>{row.original.etapa}</Badge>;
-      },
-    },
-    {
       accessorKey: "status",
       header: "Status",
       size: 130,
@@ -303,6 +298,16 @@ export default function AsesorDigitalPage() {
       cell: ({ row }) => (
         <span className="text-sm text-slate-400">
           {row.original.convenio || "\u2014"}
+        </span>
+      ),
+    },
+    {
+      accessorKey: "etapa",
+      header: "Etapa",
+      size: 140,
+      cell: ({ row }) => (
+        <span className="text-sm text-slate-400">
+          {row.original.etapa || "\u2014"}
         </span>
       ),
     },
@@ -363,19 +368,34 @@ export default function AsesorDigitalPage() {
         </div>
       </div>
 
-      {/* Pipeline cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        {ETAPAS.map((etapa) => {
-          const cfg = ETAPA_CONFIG[etapa];
-          const Icon = cfg.icon;
+      {/* Pipeline cards por Status — clicables */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
+        {STATUS_PIPELINE.map((s) => {
+          const Icon = s.icon;
+          const isActive = filtroStatus === s.key;
           return (
-            <StatCard
-              key={etapa}
-              title={etapa}
-              value={conteos[etapa] ?? 0}
-              icon={<Icon className="w-5 h-5" />}
-              color={cfg.color}
-            />
+            <button
+              key={s.key}
+              onClick={() => setFiltroStatus(isActive ? "" : s.key)}
+              className={`
+                bg-surface rounded-xl border p-4 relative overflow-hidden text-left transition-all
+                ${isActive
+                  ? "border-amber-500/60 ring-1 ring-amber-500/30"
+                  : "border-slate-800/60 hover:border-slate-700"
+                }
+              `}
+            >
+              <div className={`absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r ${s.gradient}`} />
+              <div className="flex items-center justify-between mb-2">
+                <Icon className={`w-5 h-5 ${s.color}`} />
+                <span className="font-display text-2xl font-extrabold text-slate-100">
+                  {conteos[s.key] ?? 0}
+                </span>
+              </div>
+              <span className="text-xs font-medium text-slate-500 uppercase tracking-wider">
+                {s.label}
+              </span>
+            </button>
           );
         })}
       </div>
@@ -392,15 +412,6 @@ export default function AsesorDigitalPage() {
         </div>
         <div className="w-full sm:w-48">
           <Select
-            label="Etapa"
-            value={filtroEtapa}
-            onChange={(e) => setFiltroEtapa(e.target.value)}
-            placeholder="Todas las etapas"
-            options={ETAPAS.map((e) => ({ value: e, label: e }))}
-          />
-        </div>
-        <div className="w-full sm:w-48">
-          <Select
             label="Status"
             value={filtroStatus}
             onChange={(e) => setFiltroStatus(e.target.value)}
@@ -408,9 +419,18 @@ export default function AsesorDigitalPage() {
             options={STATUS_OPTIONS.map((s) => ({ value: s, label: s }))}
           />
         </div>
-        {(filtroEtapa || filtroStatus) && (
+        <div className="w-full sm:w-48">
+          <Select
+            label="Estrategia"
+            value={filtroEstrategia}
+            onChange={(e) => setFiltroEstrategia(e.target.value)}
+            placeholder="Todas"
+            options={ESTRATEGIA_OPTIONS.map((s) => ({ value: s, label: s }))}
+          />
+        </div>
+        {(filtroStatus || filtroEstrategia) && (
           <button
-            onClick={() => { setFiltroEtapa(""); setFiltroStatus(""); }}
+            onClick={() => { setFiltroStatus(""); setFiltroEstrategia(""); }}
             className="text-xs text-slate-400 hover:text-amber-400 transition-colors pb-2"
           >
             Limpiar filtros
@@ -458,16 +478,16 @@ export default function AsesorDigitalPage() {
               onChange={(e) => updateField("fecha", e.target.value)}
             />
             <Select
-              label="Etapa"
-              value={formData.etapa}
-              onChange={(e) => updateField("etapa", e.target.value)}
-              options={ETAPAS.map((e) => ({ value: e, label: e }))}
-            />
-            <Select
               label="Status"
               value={formData.status}
               onChange={(e) => updateField("status", e.target.value)}
               options={STATUS_OPTIONS.map((s) => ({ value: s, label: s }))}
+            />
+            <Select
+              label="Etapa"
+              value={formData.etapa}
+              onChange={(e) => updateField("etapa", e.target.value)}
+              options={ETAPA_OPTIONS.map((e) => ({ value: e, label: e }))}
             />
             <Select
               label="Estrategia"
