@@ -39,6 +39,7 @@ const ROL_LABELS: Record<string, string> = {
   gestor_operaciones: "Gestor Op.",
   comercial: "Comercial",
   direccion: "Direccion",
+  asesor_digital: "Asesor Digital",
 };
 
 type BadgeColor = "red" | "orange" | "blue" | "purple" | "amber" | "teal" | "slate";
@@ -52,6 +53,7 @@ const ROL_COLORS: Record<string, BadgeColor> = {
   gestor_operaciones: "teal",
   comercial: "slate",
   direccion: "orange",
+  asesor_digital: "teal",
 };
 
 export default function UsuariosPage() {
@@ -425,6 +427,7 @@ export default function UsuariosPage() {
               { value: "gestor_operaciones", label: "Gestor de Operaciones" },
               { value: "comercial", label: "Comercial" },
               { value: "direccion", label: "Direccion" },
+              { value: "asesor_digital", label: "Asesor Digital" },
             ]}
           />
           <Input

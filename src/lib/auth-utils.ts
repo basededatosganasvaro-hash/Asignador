@@ -80,6 +80,15 @@ export async function requireAsistente() {
   return { session: session!, error: null };
 }
 
+export async function requireAsesorDigital() {
+  const { session, error } = await getSessionOrError();
+  if (error) return { session: null, error };
+  if (session!.user.rol !== "asesor_digital") {
+    return { session: null, error: NextResponse.json({ error: "Acceso denegado" }, { status: 403 }) };
+  }
+  return { session: session!, error: null };
+}
+
 export async function requireAuth() {
   const { session, error } = await getSessionOrError();
   if (error) return { session: null, error };

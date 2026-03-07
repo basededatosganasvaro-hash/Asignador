@@ -32,7 +32,8 @@ export default function Sidebar({ rol, open, onToggle }: SidebarProps) {
 
   const isOperaciones = rol === "operaciones";
   const isSupervisor = rol === "supervisor";
-  const isPromotor = !isOperaciones && !isSupervisor && rol !== "admin" && rol !== "gerente_regional" && rol !== "gerente_sucursal";
+  const isAsesorDigital = rol === "asesor_digital";
+  const isPromotor = !isOperaciones && !isSupervisor && !isAsesorDigital && rol !== "admin" && rol !== "gerente_regional" && rol !== "gerente_sucursal";
 
   return (
     <>
@@ -48,6 +49,7 @@ export default function Sidebar({ rol, open, onToggle }: SidebarProps) {
           rol={rol}
           isOperaciones={isOperaciones}
           isSupervisor={isSupervisor}
+          isAsesorDigital={isAsesorDigital}
           isPromotor={isPromotor}
           onToggle={onToggle}
         />
@@ -71,7 +73,8 @@ export default function Sidebar({ rol, open, onToggle }: SidebarProps) {
               rol={rol}
               isOperaciones={isOperaciones}
               isSupervisor={isSupervisor}
-              isPromotor={isPromotor}
+              isAsesorDigital={isAsesorDigital}
+          isPromotor={isPromotor}
               onToggle={onToggle}
             />
           </aside>
@@ -87,6 +90,7 @@ function SidebarContent({
   rol,
   isOperaciones,
   isSupervisor,
+  isAsesorDigital,
   isPromotor,
   onToggle,
 }: {
@@ -95,6 +99,7 @@ function SidebarContent({
   rol: string;
   isOperaciones: boolean;
   isSupervisor: boolean;
+  isAsesorDigital: boolean;
   isPromotor: boolean;
   onToggle: () => void;
 }) {
@@ -131,6 +136,10 @@ function SidebarContent({
             <NavItem label="Bandeja" href="/supervisor/bandeja" icon={<Inbox className="w-5 h-5" />} pathname={pathname} showLabels={showLabels} />
             <NavItem label="Solicitar Datos" href="/supervisor/asignaciones" icon={<ClipboardList className="w-5 h-5" />} pathname={pathname} showLabels={showLabels} />
             <NavItem label="WhatsApp" href="/supervisor/whatsapp" icon={<WhatsAppIcon />} pathname={pathname} showLabels={showLabels} exact />
+          </>
+        ) : isAsesorDigital ? (
+          <>
+            <NavItem label="Mis Registros" href="/asesor-digital" icon={<TrendingUp className="w-5 h-5" />} pathname={pathname} showLabels={showLabels} />
           </>
         ) : isPromotor ? (
           <>
