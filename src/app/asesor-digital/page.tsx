@@ -9,7 +9,7 @@ import { Select } from "@/components/ui/Select";
 import { useToast } from "@/components/ui/Toast";
 import { ColumnDef } from "@tanstack/react-table";
 import {
-  Plus, Pencil, Trash2, Search, Download, Save, Filter, Calendar,
+  Plus, Trash2, Search, Save, Filter, Calendar,
   ShoppingCart, UserCheck, FileText, XCircle, Clock, HelpCircle,
 } from "lucide-react";
 
@@ -670,13 +670,6 @@ export default function AsesorDigitalPage() {
       cell: ({ row }) => (
         <div className="flex items-center gap-1">
           <button
-            onClick={() => handleOpenEdit(row.original)}
-            title="Editar"
-            className="p-1.5 text-slate-400 hover:text-amber-400 hover:bg-slate-800/60 rounded-lg transition-colors"
-          >
-            <Pencil className="w-4 h-4" />
-          </button>
-          <button
             onClick={() => setDeleteConfirmId(row.original.id)}
             title="Eliminar"
             className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
@@ -692,18 +685,9 @@ export default function AsesorDigitalPage() {
     <div>
       <div className="flex justify-between items-center mb-6">
         <h1 className="font-display text-xl font-bold text-slate-100">Mis Registros</h1>
-        <div className="flex gap-2">
-          <Button
-            variant="secondary"
-            icon={<Download className="w-4 h-4" />}
-            onClick={() => window.open("/api/asesor-digital/registros/exportar", "_blank")}
-          >
-            Descargar
-          </Button>
-          <Button variant="primary" icon={<Plus className="w-4 h-4" />} onClick={handleOpenCreate}>
-            Nuevo Registro
-          </Button>
-        </div>
+        <Button variant="primary" icon={<Plus className="w-4 h-4" />} onClick={handleOpenCreate}>
+          Nuevo Registro
+        </Button>
       </div>
 
       {/* Pipeline cards por Status — clicables */}
