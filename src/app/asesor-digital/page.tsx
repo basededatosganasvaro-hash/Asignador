@@ -1,15 +1,15 @@
 "use client";
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { DataTable } from "@/components/ui/DataTable";
 import { Button } from "@/components/ui/Button";
-import { Badge } from "@/components/ui/Badge";
+import { Badge, BadgeColor } from "@/components/ui/Badge";
 import { Dialog, DialogHeader, DialogBody, DialogFooter } from "@/components/ui/Dialog";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { useToast } from "@/components/ui/Toast";
 import { ColumnDef } from "@tanstack/react-table";
 import {
-  Plus, Pencil, Trash2, Search, Download, Save,
+  Plus, Pencil, Trash2, Search, Download, Save, Filter,
   ShoppingCart, UserCheck, FileText, XCircle, Clock, HelpCircle,
 } from "lucide-react";
 
@@ -49,7 +49,7 @@ const CONVENIO_OPTIONS = ["IMSS Pensionados", "GEM", "CDMX", "IMSS Jubilados", "
 const ETIQUETA_OPTIONS = ["Llamada", "Whatsapp"];
 const OFERTA_OPTIONS = ["Si", "No"];
 
-const STATUS_COLORS: Record<string, "green" | "blue" | "amber" | "red" | "purple" | "slate"> = {
+const STATUS_COLORS: Record<string, BadgeColor> = {
   Venta: "green",
   Interesado: "blue",
   Cotizacion: "amber",
@@ -58,47 +58,47 @@ const STATUS_COLORS: Record<string, "green" | "blue" | "amber" | "red" | "purple
   "Sin informacion": "slate",
 };
 
-const ESTRATEGIA_COLORS: Record<string, "blue" | "purple" | "teal" | "orange" | "amber" | "green" | "slate"> = {
+const ESTRATEGIA_COLORS: Record<string, BadgeColor> = {
   facebook: "blue",
   VoxImplant: "purple",
-  Wasapi: "teal",
+  Wasapi: "emerald",
   WasapiCNCA: "teal",
   WasapiNuevo: "green",
-  Consunomina: "orange",
-  Organico: "amber",
+  Consunomina: "red",
+  Organico: "orange",
 };
 
-const CAMPANA_COLORS: Record<string, "blue" | "purple" | "teal" | "orange" | "amber" | "green" | "red" | "slate" | "emerald"> = {
+const CAMPANA_COLORS: Record<string, BadgeColor> = {
   "IMSS Pensionados": "blue",
   SNTE23: "purple",
   SEIEM: "teal",
   CDMX: "orange",
   "SNTE17y36": "amber",
   GEM: "green",
-  IMSS: "blue",
+  IMSS: "emerald",
   "Nuevo Leon": "red",
-  SNTE14: "emerald",
+  SNTE14: "yellow",
 };
 
-const ETAPA_COLORS: Record<string, "blue" | "amber" | "red" | "green"> = {
+const ETAPA_COLORS: Record<string, BadgeColor> = {
   Leads: "blue",
   Cotizacion: "amber",
   "No sujeto a credito": "red",
   Ventas: "green",
 };
 
-const CONVENIO_COLORS: Record<string, "blue" | "purple" | "teal" | "orange" | "amber" | "green" | "red" | "slate" | "emerald"> = {
+const CONVENIO_COLORS: Record<string, BadgeColor> = {
   "IMSS Pensionados": "blue",
   GEM: "green",
   CDMX: "orange",
-  "IMSS Jubilados": "blue",
+  "IMSS Jubilados": "teal",
   INE: "purple",
-  SEIEM: "teal",
+  SEIEM: "emerald",
   SEP: "amber",
   SNTE23: "purple",
   "Gob Chihuahua": "red",
   "Gob Nuevo Leon": "red",
-  SNTE14: "emerald",
+  SNTE14: "yellow",
   SEDUC: "teal",
   SNTE21: "orange",
 };
@@ -136,6 +136,80 @@ const EMPTY_FORM = {
   viabilidad: "",
 };
 
+// ─── Column filter dropdown (Excel-style) ───────────────────────────
+function ColumnFilterDropdown({
+  label,
+  options,
+  value,
+  onChange,
+  colorMap,
+}: {
+  label: string;
+  options: string[];
+  value: string;
+  onChange: (val: string) => void;
+  colorMap?: Record<string, BadgeColor>;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  const isFiltered = value !== "";
+
+  return (
+    <div ref={ref} className="relative inline-flex items-center">
+      <span className="mr-1">{label}</span>
+      <button
+        onClick={(e) => { e.stopPropagation(); setOpen(!open); }}
+        className={`p-0.5 rounded transition-colors ${
+          isFiltered ? "text-amber-400" : "text-slate-600 hover:text-slate-400"
+        }`}
+      >
+        <Filter className="w-3 h-3" />
+      </button>
+      {open && (
+        <div
+          className="absolute top-full left-0 mt-1 z-50 min-w-[180px] max-h-64 overflow-y-auto
+            bg-slate-800 border border-slate-700 rounded-lg shadow-xl py-1"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button
+            onClick={() => { onChange(""); setOpen(false); }}
+            className={`w-full text-left px-3 py-1.5 text-xs transition-colors ${
+              value === "" ? "bg-amber-500/15 text-amber-400" : "text-slate-400 hover:bg-slate-700"
+            }`}
+          >
+            Todos
+          </button>
+          {options.map((opt) => (
+            <button
+              key={opt}
+              onClick={() => { onChange(value === opt ? "" : opt); setOpen(false); }}
+              className={`w-full text-left px-3 py-1.5 text-xs transition-colors flex items-center gap-2 ${
+                value === opt ? "bg-amber-500/15 text-amber-400" : "text-slate-300 hover:bg-slate-700"
+              }`}
+            >
+              {colorMap ? (
+                <Badge color={colorMap[opt] ?? "slate"}>{opt}</Badge>
+              ) : (
+                opt
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Main Page ──────────────────────────────────────────────────────
 export default function AsesorDigitalPage() {
   const [registros, setRegistros] = useState<Registro[]>([]);
   const [loading, setLoading] = useState(true);
@@ -147,9 +221,14 @@ export default function AsesorDigitalPage() {
   const [viewDirty, setViewDirty] = useState(false);
   const [viewSaving, setViewSaving] = useState(false);
   const [busqueda, setBusqueda] = useState("");
-  const [filtroStatus, setFiltroStatus] = useState("");
-  const [filtroEstrategia, setFiltroEstrategia] = useState("");
   const { toast } = useToast();
+
+  // Column filters — default Status = Interesado
+  const [filtroStatus, setFiltroStatus] = useState("Interesado");
+  const [filtroEstrategia, setFiltroEstrategia] = useState("");
+  const [filtroCampana, setFiltroCampana] = useState("");
+  const [filtroConvenio, setFiltroConvenio] = useState("");
+  const [filtroEtapa, setFiltroEtapa] = useState("");
 
   const [formData, setFormData] = useState(EMPTY_FORM);
 
@@ -169,7 +248,23 @@ export default function AsesorDigitalPage() {
     fetchRegistros();
   }, [fetchRegistros]);
 
-  // Conteos por status
+  // Inline status change
+  const handleInlineStatusChange = async (registro: Registro, newStatus: string) => {
+    const res = await fetch(`/api/asesor-digital/registros/${registro.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: newStatus }),
+    });
+    if (res.ok) {
+      setRegistros((prev) =>
+        prev.map((r) => (r.id === registro.id ? { ...r, status: newStatus } : r))
+      );
+    } else {
+      toast("Error al cambiar status", "error");
+    }
+  };
+
+  // Conteos por status (sin filtros)
   const conteos = useMemo(() => {
     const c: Record<string, number> = {};
     STATUS_PIPELINE.forEach((s) => (c[s.key] = 0));
@@ -183,6 +278,9 @@ export default function AsesorDigitalPage() {
     return registros.filter((r) => {
       if (filtroStatus && r.status !== filtroStatus) return false;
       if (filtroEstrategia && r.estrategia !== filtroEstrategia) return false;
+      if (filtroCampana && r.campana !== filtroCampana) return false;
+      if (filtroConvenio && r.convenio !== filtroConvenio) return false;
+      if (filtroEtapa && r.etapa !== filtroEtapa) return false;
       if (busqueda.trim()) {
         const term = busqueda.toLowerCase();
         if (
@@ -195,7 +293,7 @@ export default function AsesorDigitalPage() {
       }
       return true;
     });
-  }, [registros, busqueda, filtroStatus, filtroEstrategia]);
+  }, [registros, busqueda, filtroStatus, filtroEstrategia, filtroCampana, filtroConvenio, filtroEtapa]);
 
   const handleOpenCreate = () => {
     setEditingRecord(null);
@@ -370,6 +468,9 @@ export default function AsesorDigitalPage() {
     }
   };
 
+  // Active filters count
+  const activeFilters = [filtroStatus, filtroEstrategia, filtroCampana, filtroConvenio, filtroEtapa].filter(Boolean).length;
+
   const columns: ColumnDef<Registro, unknown>[] = [
     {
       accessorKey: "nombre_cliente",
@@ -386,12 +487,36 @@ export default function AsesorDigitalPage() {
     },
     {
       accessorKey: "status",
-      header: "Status",
-      size: 130,
+      header: () => (
+        <ColumnFilterDropdown
+          label="Status"
+          options={STATUS_OPTIONS}
+          value={filtroStatus}
+          onChange={setFiltroStatus}
+          colorMap={STATUS_COLORS}
+        />
+      ),
+      size: 170,
+      enableSorting: false,
       cell: ({ row }) => (
-        <Badge color={STATUS_COLORS[row.original.status] ?? "slate"}>
-          {row.original.status}
-        </Badge>
+        <select
+          value={row.original.status}
+          onChange={(e) => handleInlineStatusChange(row.original, e.target.value)}
+          onClick={(e) => e.stopPropagation()}
+          className={`
+            text-xs font-medium rounded-full px-2.5 py-1 border-0 cursor-pointer outline-none transition-colors
+            ${STATUS_COLORS[row.original.status] === "green" ? "bg-green-500/15 text-green-400 ring-1 ring-green-500/30" : ""}
+            ${STATUS_COLORS[row.original.status] === "blue" ? "bg-blue-500/15 text-blue-400 ring-1 ring-blue-500/30" : ""}
+            ${STATUS_COLORS[row.original.status] === "amber" ? "bg-amber-500/15 text-amber-400 ring-1 ring-amber-500/30" : ""}
+            ${STATUS_COLORS[row.original.status] === "red" ? "bg-red-500/15 text-red-400 ring-1 ring-red-500/30" : ""}
+            ${STATUS_COLORS[row.original.status] === "purple" ? "bg-purple-500/15 text-purple-400 ring-1 ring-purple-500/30" : ""}
+            ${STATUS_COLORS[row.original.status] === "slate" ? "bg-slate-500/15 text-slate-400 ring-1 ring-slate-500/30" : ""}
+          `}
+        >
+          {STATUS_OPTIONS.map((s) => (
+            <option key={s} value={s} className="bg-slate-800 text-slate-200">{s}</option>
+          ))}
+        </select>
       ),
     },
     {
@@ -406,32 +531,68 @@ export default function AsesorDigitalPage() {
     },
     {
       accessorKey: "estrategia",
-      header: "Estrategia",
-      size: 120,
+      header: () => (
+        <ColumnFilterDropdown
+          label="Estrategia"
+          options={ESTRATEGIA_OPTIONS}
+          value={filtroEstrategia}
+          onChange={setFiltroEstrategia}
+          colorMap={ESTRATEGIA_COLORS}
+        />
+      ),
+      size: 140,
+      enableSorting: false,
       cell: ({ row }) => row.original.estrategia
         ? <Badge color={ESTRATEGIA_COLORS[row.original.estrategia] ?? "slate"}>{row.original.estrategia}</Badge>
         : <span className="text-sm text-slate-600">&mdash;</span>,
     },
     {
       accessorKey: "campana",
-      header: "Campaña",
-      size: 140,
+      header: () => (
+        <ColumnFilterDropdown
+          label="Campaña"
+          options={CAMPANA_OPTIONS}
+          value={filtroCampana}
+          onChange={setFiltroCampana}
+          colorMap={CAMPANA_COLORS}
+        />
+      ),
+      size: 160,
+      enableSorting: false,
       cell: ({ row }) => row.original.campana
         ? <Badge color={CAMPANA_COLORS[row.original.campana] ?? "slate"}>{row.original.campana}</Badge>
         : <span className="text-sm text-slate-600">&mdash;</span>,
     },
     {
       accessorKey: "convenio",
-      header: "Convenio",
-      size: 140,
+      header: () => (
+        <ColumnFilterDropdown
+          label="Convenio"
+          options={CONVENIO_OPTIONS}
+          value={filtroConvenio}
+          onChange={setFiltroConvenio}
+          colorMap={CONVENIO_COLORS}
+        />
+      ),
+      size: 160,
+      enableSorting: false,
       cell: ({ row }) => row.original.convenio
         ? <Badge color={CONVENIO_COLORS[row.original.convenio] ?? "slate"}>{row.original.convenio}</Badge>
         : <span className="text-sm text-slate-600">&mdash;</span>,
     },
     {
       accessorKey: "etapa",
-      header: "Etapa",
-      size: 140,
+      header: () => (
+        <ColumnFilterDropdown
+          label="Etapa"
+          options={ETAPA_OPTIONS}
+          value={filtroEtapa}
+          onChange={setFiltroEtapa}
+          colorMap={ETAPA_COLORS}
+        />
+      ),
+      size: 160,
+      enableSorting: false,
       cell: ({ row }) => row.original.etapa
         ? <Badge color={ETAPA_COLORS[row.original.etapa] ?? "slate"}>{row.original.etapa}</Badge>
         : <span className="text-sm text-slate-600">&mdash;</span>,
@@ -525,9 +686,9 @@ export default function AsesorDigitalPage() {
         })}
       </div>
 
-      {/* Filtros */}
+      {/* Barra de busqueda + info filtros activos */}
       <div className="mb-4 flex flex-wrap items-end gap-3">
-        <div className="w-full sm:w-64">
+        <div className="w-full sm:w-72">
           <Input
             placeholder="Buscar por nombre, telefono, NSS, CURP..."
             value={busqueda}
@@ -535,31 +696,18 @@ export default function AsesorDigitalPage() {
             icon={<Search className="w-4 h-4" />}
           />
         </div>
-        <div className="w-full sm:w-48">
-          <Select
-            label="Status"
-            value={filtroStatus}
-            onChange={(e) => setFiltroStatus(e.target.value)}
-            placeholder="Todos los status"
-            options={STATUS_OPTIONS.map((s) => ({ value: s, label: s }))}
-          />
-        </div>
-        <div className="w-full sm:w-48">
-          <Select
-            label="Estrategia"
-            value={filtroEstrategia}
-            onChange={(e) => setFiltroEstrategia(e.target.value)}
-            placeholder="Todas"
-            options={ESTRATEGIA_OPTIONS.map((s) => ({ value: s, label: s }))}
-          />
-        </div>
-        {(filtroStatus || filtroEstrategia) && (
-          <button
-            onClick={() => { setFiltroStatus(""); setFiltroEstrategia(""); }}
-            className="text-xs text-slate-400 hover:text-amber-400 transition-colors pb-2"
-          >
-            Limpiar filtros
-          </button>
+        {activeFilters > 0 && (
+          <div className="flex items-center gap-2 pb-1">
+            <span className="text-xs text-slate-500">
+              {activeFilters} filtro{activeFilters > 1 ? "s" : ""} activo{activeFilters > 1 ? "s" : ""}
+            </span>
+            <button
+              onClick={() => { setFiltroStatus(""); setFiltroEstrategia(""); setFiltroCampana(""); setFiltroConvenio(""); setFiltroEtapa(""); }}
+              className="text-xs text-amber-400 hover:text-amber-300 transition-colors"
+            >
+              Limpiar todos
+            </button>
+          </div>
         )}
       </div>
 
@@ -699,128 +847,26 @@ export default function AsesorDigitalPage() {
         </DialogHeader>
         <DialogBody className="space-y-4 max-h-[70vh] overflow-y-auto">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Input
-              label="Nombre del Cliente *"
-              value={formData.nombre_cliente}
-              onChange={(e) => updateField("nombre_cliente", e.target.value)}
-              required
-            />
-            <Input
-              label="Fecha"
-              type="date"
-              value={formData.fecha}
-              onChange={(e) => updateField("fecha", e.target.value)}
-            />
-            <Select
-              label="Status"
-              value={formData.status}
-              onChange={(e) => updateField("status", e.target.value)}
-              options={STATUS_OPTIONS.map((s) => ({ value: s, label: s }))}
-            />
-            <Select
-              label="Etapa"
-              value={formData.etapa}
-              onChange={(e) => updateField("etapa", e.target.value)}
-              options={ETAPA_OPTIONS.map((e) => ({ value: e, label: e }))}
-            />
-            <Select
-              label="Estrategia"
-              value={formData.estrategia}
-              onChange={(e) => updateField("estrategia", e.target.value)}
-              placeholder="Seleccionar..."
-              options={ESTRATEGIA_OPTIONS.map((s) => ({ value: s, label: s }))}
-            />
-            <Select
-              label="Flujo"
-              value={formData.flujo}
-              onChange={(e) => updateField("flujo", e.target.value)}
-              placeholder="Seleccionar..."
-              options={FLUJO_OPTIONS.map((s) => ({ value: s, label: s }))}
-            />
-            <Input
-              label="Numero Telefono"
-              value={formData.numero_telefono}
-              onChange={(e) => updateField("numero_telefono", e.target.value)}
-            />
-            <Input
-              label="CURP"
-              value={formData.curp}
-              onChange={(e) => updateField("curp", e.target.value)}
-              maxLength={18}
-            />
-            <Input
-              label="NSS"
-              value={formData.nss}
-              onChange={(e) => updateField("nss", e.target.value)}
-              maxLength={15}
-            />
-            <Input
-              label="RFC"
-              value={formData.rfc}
-              onChange={(e) => updateField("rfc", e.target.value)}
-              maxLength={13}
-            />
-            <Input
-              label="Zona"
-              value={formData.zona}
-              onChange={(e) => updateField("zona", e.target.value)}
-            />
-            <Select
-              label="Campaña"
-              value={formData.campana}
-              onChange={(e) => updateField("campana", e.target.value)}
-              placeholder="Seleccionar..."
-              options={CAMPANA_OPTIONS.map((s) => ({ value: s, label: s }))}
-            />
-            <Input
-              label="Capacidad"
-              value={formData.capacidad}
-              onChange={(e) => updateField("capacidad", e.target.value)}
-            />
-            <Input
-              label="Monto de Credito"
-              type="number"
-              value={formData.monto_credito}
-              onChange={(e) => updateField("monto_credito", e.target.value)}
-            />
-            <Select
-              label="Tipo de Credito"
-              value={formData.tipo_credito}
-              onChange={(e) => updateField("tipo_credito", e.target.value)}
-              placeholder="Seleccionar..."
-              options={TIPO_CREDITO_OPTIONS.map((s) => ({ value: s, label: s }))}
-            />
-            <Select
-              label="Convenio"
-              value={formData.convenio}
-              onChange={(e) => updateField("convenio", e.target.value)}
-              placeholder="Seleccionar..."
-              options={CONVENIO_OPTIONS.map((s) => ({ value: s, label: s }))}
-            />
-            <Select
-              label="Etiqueta"
-              value={formData.etiqueta}
-              onChange={(e) => updateField("etiqueta", e.target.value)}
-              placeholder="Seleccionar..."
-              options={ETIQUETA_OPTIONS.map((s) => ({ value: s, label: s }))}
-            />
-            <Select
-              label="Oferta"
-              value={formData.oferta}
-              onChange={(e) => updateField("oferta", e.target.value)}
-              placeholder="Seleccionar..."
-              options={OFERTA_OPTIONS.map((s) => ({ value: s, label: s }))}
-            />
-            <Input
-              label="ID Venta"
-              value={formData.id_venta}
-              onChange={(e) => updateField("id_venta", e.target.value)}
-            />
-            <Input
-              label="Viabilidad"
-              value={formData.viabilidad}
-              onChange={(e) => updateField("viabilidad", e.target.value)}
-            />
+            <Input label="Nombre del Cliente *" value={formData.nombre_cliente} onChange={(e) => updateField("nombre_cliente", e.target.value)} required />
+            <Input label="Fecha" type="date" value={formData.fecha} onChange={(e) => updateField("fecha", e.target.value)} />
+            <Select label="Status" value={formData.status} onChange={(e) => updateField("status", e.target.value)} options={STATUS_OPTIONS.map((s) => ({ value: s, label: s }))} />
+            <Select label="Etapa" value={formData.etapa} onChange={(e) => updateField("etapa", e.target.value)} options={ETAPA_OPTIONS.map((e) => ({ value: e, label: e }))} />
+            <Select label="Estrategia" value={formData.estrategia} onChange={(e) => updateField("estrategia", e.target.value)} placeholder="Seleccionar..." options={ESTRATEGIA_OPTIONS.map((s) => ({ value: s, label: s }))} />
+            <Select label="Flujo" value={formData.flujo} onChange={(e) => updateField("flujo", e.target.value)} placeholder="Seleccionar..." options={FLUJO_OPTIONS.map((s) => ({ value: s, label: s }))} />
+            <Input label="Numero Telefono" value={formData.numero_telefono} onChange={(e) => updateField("numero_telefono", e.target.value)} />
+            <Input label="CURP" value={formData.curp} onChange={(e) => updateField("curp", e.target.value)} maxLength={18} />
+            <Input label="NSS" value={formData.nss} onChange={(e) => updateField("nss", e.target.value)} maxLength={15} />
+            <Input label="RFC" value={formData.rfc} onChange={(e) => updateField("rfc", e.target.value)} maxLength={13} />
+            <Input label="Zona" value={formData.zona} onChange={(e) => updateField("zona", e.target.value)} />
+            <Select label="Campaña" value={formData.campana} onChange={(e) => updateField("campana", e.target.value)} placeholder="Seleccionar..." options={CAMPANA_OPTIONS.map((s) => ({ value: s, label: s }))} />
+            <Input label="Capacidad" value={formData.capacidad} onChange={(e) => updateField("capacidad", e.target.value)} />
+            <Input label="Monto de Credito" type="number" value={formData.monto_credito} onChange={(e) => updateField("monto_credito", e.target.value)} />
+            <Select label="Tipo de Credito" value={formData.tipo_credito} onChange={(e) => updateField("tipo_credito", e.target.value)} placeholder="Seleccionar..." options={TIPO_CREDITO_OPTIONS.map((s) => ({ value: s, label: s }))} />
+            <Select label="Convenio" value={formData.convenio} onChange={(e) => updateField("convenio", e.target.value)} placeholder="Seleccionar..." options={CONVENIO_OPTIONS.map((s) => ({ value: s, label: s }))} />
+            <Select label="Etiqueta" value={formData.etiqueta} onChange={(e) => updateField("etiqueta", e.target.value)} placeholder="Seleccionar..." options={ETIQUETA_OPTIONS.map((s) => ({ value: s, label: s }))} />
+            <Select label="Oferta" value={formData.oferta} onChange={(e) => updateField("oferta", e.target.value)} placeholder="Seleccionar..." options={OFERTA_OPTIONS.map((s) => ({ value: s, label: s }))} />
+            <Input label="ID Venta" value={formData.id_venta} onChange={(e) => updateField("id_venta", e.target.value)} />
+            <Input label="Viabilidad" value={formData.viabilidad} onChange={(e) => updateField("viabilidad", e.target.value)} />
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-300 mb-1">Motivo</label>
@@ -844,5 +890,3 @@ export default function AsesorDigitalPage() {
     </div>
   );
 }
-
-
