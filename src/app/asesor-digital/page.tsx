@@ -9,7 +9,7 @@ import { Select } from "@/components/ui/Select";
 import { useToast } from "@/components/ui/Toast";
 import { ColumnDef } from "@tanstack/react-table";
 import {
-  Plus, Pencil, Trash2, Search, Download, Save, Filter,
+  Plus, Pencil, Trash2, Search, Download, Save, Filter, Calendar,
   ShoppingCart, UserCheck, FileText, XCircle, Clock, HelpCircle,
 } from "lucide-react";
 
@@ -253,8 +253,14 @@ export default function AsesorDigitalPage() {
   const [busqueda, setBusqueda] = useState("");
   const { toast } = useToast();
 
-  // Column filters — default Status = Interesado
-  const [filtroStatus, setFiltroStatus] = useState("Interesado");
+  // Period filter — default current month (YYYY-MM)
+  const [filtroPeriodo, setFiltroPeriodo] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  });
+
+  // Column filters — default all statuses
+  const [filtroStatus, setFiltroStatus] = useState("");
   const [filtroEstrategia, setFiltroEstrategia] = useState("");
   const [filtroCampana, setFiltroCampana] = useState("");
   const [filtroConvenio, setFiltroConvenio] = useState("");
@@ -294,18 +300,28 @@ export default function AsesorDigitalPage() {
     }
   };
 
-  // Conteos por status (sin filtros)
+  // Registros filtrados por periodo (base para conteos y tabla)
+  const registrosPeriodo = useMemo(() => {
+    if (!filtroPeriodo) return registros;
+    return registros.filter((r) => {
+      if (!r.fecha) return false;
+      const fecha = r.fecha.slice(0, 7); // "YYYY-MM"
+      return fecha === filtroPeriodo;
+    });
+  }, [registros, filtroPeriodo]);
+
+  // Conteos por status (filtrados por periodo, sin otros filtros)
   const conteos = useMemo(() => {
     const c: Record<string, number> = {};
     STATUS_PIPELINE.forEach((s) => (c[s.key] = 0));
-    registros.forEach((r) => {
+    registrosPeriodo.forEach((r) => {
       if (c[r.status] !== undefined) c[r.status]++;
     });
     return c;
-  }, [registros]);
+  }, [registrosPeriodo]);
 
   const registrosFiltrados = useMemo(() => {
-    return registros.filter((r) => {
+    return registrosPeriodo.filter((r) => {
       if (filtroStatus && r.status !== filtroStatus) return false;
       if (filtroEstrategia && r.estrategia !== filtroEstrategia) return false;
       if (filtroCampana && r.campana !== filtroCampana) return false;
@@ -498,11 +514,11 @@ export default function AsesorDigitalPage() {
     }
   };
 
-  // Unique values for column filter dropdowns (from all data, not filtered)
-  const uniqueEstrategias = useMemo(() => [...new Set(registros.map((r) => r.estrategia).filter(Boolean) as string[])].sort(), [registros]);
-  const uniqueCampanas = useMemo(() => [...new Set(registros.map((r) => r.campana).filter(Boolean) as string[])].sort(), [registros]);
-  const uniqueConvenios = useMemo(() => [...new Set(registros.map((r) => r.convenio).filter(Boolean) as string[])].sort(), [registros]);
-  const uniqueEtapas = useMemo(() => [...new Set(registros.map((r) => r.etapa).filter(Boolean) as string[])].sort(), [registros]);
+  // Unique values for column filter dropdowns (from period-filtered data)
+  const uniqueEstrategias = useMemo(() => [...new Set(registrosPeriodo.map((r) => r.estrategia).filter(Boolean) as string[])].sort(), [registrosPeriodo]);
+  const uniqueCampanas = useMemo(() => [...new Set(registrosPeriodo.map((r) => r.campana).filter(Boolean) as string[])].sort(), [registrosPeriodo]);
+  const uniqueConvenios = useMemo(() => [...new Set(registrosPeriodo.map((r) => r.convenio).filter(Boolean) as string[])].sort(), [registrosPeriodo]);
+  const uniqueEtapas = useMemo(() => [...new Set(registrosPeriodo.map((r) => r.etapa).filter(Boolean) as string[])].sort(), [registrosPeriodo]);
 
   // Active filters count
   const activeFilters = [filtroStatus, filtroEstrategia, filtroCampana, filtroConvenio, filtroEtapa].filter(Boolean).length;
@@ -722,7 +738,7 @@ export default function AsesorDigitalPage() {
         })}
       </div>
 
-      {/* Barra de busqueda + info filtros activos */}
+      {/* Barra de busqueda + periodo + info filtros activos */}
       <div className="mb-4 flex flex-wrap items-end gap-3">
         <div className="w-full sm:w-72">
           <Input
@@ -730,6 +746,16 @@ export default function AsesorDigitalPage() {
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
             icon={<Search className="w-4 h-4" />}
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <Calendar className="w-4 h-4 text-slate-500" />
+          <input
+            type="month"
+            value={filtroPeriodo}
+            onChange={(e) => setFiltroPeriodo(e.target.value)}
+            className="rounded-lg bg-slate-900/50 border border-slate-700/60 text-slate-200 px-3 py-2 text-sm
+              focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500/50 transition-colors"
           />
         </div>
         {activeFilters > 0 && (
