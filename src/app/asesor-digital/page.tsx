@@ -114,13 +114,13 @@ const CONVENIO_COLORS: Record<string, BadgeColor> = {
   SNTE21: "orange",
 };
 
-const STATUS_PIPELINE: { key: string; label: string; color: string; gradient: string; hover: string; icon: typeof ShoppingCart }[] = [
-  { key: "Venta", label: "Venta", color: "text-green-400", gradient: "from-green-500 to-green-600", hover: "hover:border-green-500/50 hover:bg-green-500/5", icon: ShoppingCart },
-  { key: "Interesado", label: "Interesado", color: "text-blue-400", gradient: "from-blue-500 to-blue-600", hover: "hover:border-blue-500/50 hover:bg-blue-500/5", icon: UserCheck },
-  { key: "Cotizacion", label: "Cotizacion", color: "text-amber-400", gradient: "from-amber-500 to-amber-600", hover: "hover:border-amber-500/50 hover:bg-amber-500/5", icon: FileText },
-  { key: "No viable", label: "No viable", color: "text-red-400", gradient: "from-red-500 to-red-600", hover: "hover:border-red-500/50 hover:bg-red-500/5", icon: XCircle },
-  { key: "Proceso", label: "Proceso", color: "text-purple-400", gradient: "from-purple-500 to-purple-600", hover: "hover:border-purple-500/50 hover:bg-purple-500/5", icon: Clock },
-  { key: "Sin informacion", label: "Sin info", color: "text-slate-400", gradient: "from-slate-500 to-slate-600", hover: "hover:border-slate-500/50 hover:bg-slate-500/5", icon: HelpCircle },
+const STATUS_PIPELINE: { key: string; label: string; color: string; gradient: string; hover: string; active: string; icon: typeof ShoppingCart }[] = [
+  { key: "Venta", label: "Venta", color: "text-green-400", gradient: "from-green-500 to-green-600", hover: "hover:border-green-500/50 hover:bg-green-500/5", active: "border-green-500/60 ring-1 ring-green-500/30 bg-green-500/5", icon: ShoppingCart },
+  { key: "Interesado", label: "Interesado", color: "text-blue-400", gradient: "from-blue-500 to-blue-600", hover: "hover:border-blue-500/50 hover:bg-blue-500/5", active: "border-blue-500/60 ring-1 ring-blue-500/30 bg-blue-500/5", icon: UserCheck },
+  { key: "Cotizacion", label: "Cotizacion", color: "text-amber-400", gradient: "from-amber-500 to-amber-600", hover: "hover:border-amber-500/50 hover:bg-amber-500/5", active: "border-amber-500/60 ring-1 ring-amber-500/30 bg-amber-500/5", icon: FileText },
+  { key: "No viable", label: "No viable", color: "text-red-400", gradient: "from-red-500 to-red-600", hover: "hover:border-red-500/50 hover:bg-red-500/5", active: "border-red-500/60 ring-1 ring-red-500/30 bg-red-500/5", icon: XCircle },
+  { key: "Proceso", label: "Proceso", color: "text-purple-400", gradient: "from-purple-500 to-purple-600", hover: "hover:border-purple-500/50 hover:bg-purple-500/5", active: "border-purple-500/60 ring-1 ring-purple-500/30 bg-purple-500/5", icon: Clock },
+  { key: "Sin informacion", label: "Sin info", color: "text-slate-400", gradient: "from-slate-500 to-slate-600", hover: "hover:border-slate-500/50 hover:bg-slate-500/5", active: "border-slate-500/60 ring-1 ring-slate-500/30 bg-slate-500/5", icon: HelpCircle },
 ];
 
 const EMPTY_FORM = {
@@ -702,7 +702,7 @@ export default function AsesorDigitalPage() {
               className={`
                 bg-surface rounded-xl border p-4 relative overflow-hidden text-left transition-all
                 ${isActive
-                  ? "border-amber-500/60 ring-1 ring-amber-500/30"
+                  ? s.active
                   : `border-slate-800/60 ${s.hover}`
                 }
               `}
