@@ -152,47 +152,66 @@ function ColumnFilterDropdown({
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const [pos, setPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      if (ref.current && !ref.current.contains(e.target as Node) &&
+          btnRef.current && !btnRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
     }
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
 
+  const handleToggle = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!open && btnRef.current) {
+      const rect = btnRef.current.getBoundingClientRect();
+      setPos({ top: rect.bottom + 4, left: rect.left });
+    }
+    setOpen(!open);
+  };
+
   const isFiltered = value !== "";
+  const hasOptions = options.length > 0;
 
   return (
-    <div ref={ref} className="relative inline-flex items-center">
+    <div className="inline-flex items-center">
       <span className="mr-1">{label}</span>
       <button
-        onClick={(e) => { e.stopPropagation(); setOpen(!open); }}
+        ref={btnRef}
+        onClick={handleToggle}
         className={`p-0.5 rounded transition-colors ${
           isFiltered ? "text-amber-400" : "text-slate-600 hover:text-slate-400"
         }`}
       >
         <Filter className="w-3 h-3" />
       </button>
-      {open && (
+      {open && hasOptions && (
         <div
-          className="absolute top-full left-0 mt-1 z-50 min-w-[180px] max-h-64 overflow-y-auto
-            bg-slate-800 border border-slate-700 rounded-lg shadow-xl py-1"
+          ref={ref}
+          style={{ position: "fixed", top: pos.top, left: pos.left }}
+          className="z-[100] min-w-[200px] max-h-64 overflow-y-auto
+            bg-slate-800 border border-slate-700 rounded-lg shadow-2xl py-1"
           onClick={(e) => e.stopPropagation()}
         >
           <button
             onClick={() => { onChange(""); setOpen(false); }}
-            className={`w-full text-left px-3 py-1.5 text-xs transition-colors ${
+            className={`w-full text-left px-3 py-2 text-xs transition-colors ${
               value === "" ? "bg-amber-500/15 text-amber-400" : "text-slate-400 hover:bg-slate-700"
             }`}
           >
             Todos
           </button>
+          <div className="h-px bg-slate-700/50 my-0.5" />
           {options.map((opt) => (
             <button
               key={opt}
               onClick={() => { onChange(value === opt ? "" : opt); setOpen(false); }}
-              className={`w-full text-left px-3 py-1.5 text-xs transition-colors flex items-center gap-2 ${
+              className={`w-full text-left px-3 py-2 text-xs transition-colors flex items-center gap-2 ${
                 value === opt ? "bg-amber-500/15 text-amber-400" : "text-slate-300 hover:bg-slate-700"
               }`}
             >
@@ -468,6 +487,12 @@ export default function AsesorDigitalPage() {
     }
   };
 
+  // Unique values for column filter dropdowns (from all data, not filtered)
+  const uniqueEstrategias = useMemo(() => [...new Set(registros.map((r) => r.estrategia).filter(Boolean) as string[])].sort(), [registros]);
+  const uniqueCampanas = useMemo(() => [...new Set(registros.map((r) => r.campana).filter(Boolean) as string[])].sort(), [registros]);
+  const uniqueConvenios = useMemo(() => [...new Set(registros.map((r) => r.convenio).filter(Boolean) as string[])].sort(), [registros]);
+  const uniqueEtapas = useMemo(() => [...new Set(registros.map((r) => r.etapa).filter(Boolean) as string[])].sort(), [registros]);
+
   // Active filters count
   const activeFilters = [filtroStatus, filtroEstrategia, filtroCampana, filtroConvenio, filtroEtapa].filter(Boolean).length;
 
@@ -534,7 +559,7 @@ export default function AsesorDigitalPage() {
       header: () => (
         <ColumnFilterDropdown
           label="Estrategia"
-          options={ESTRATEGIA_OPTIONS}
+          options={uniqueEstrategias}
           value={filtroEstrategia}
           onChange={setFiltroEstrategia}
           colorMap={ESTRATEGIA_COLORS}
@@ -551,7 +576,7 @@ export default function AsesorDigitalPage() {
       header: () => (
         <ColumnFilterDropdown
           label="Campaña"
-          options={CAMPANA_OPTIONS}
+          options={uniqueCampanas}
           value={filtroCampana}
           onChange={setFiltroCampana}
           colorMap={CAMPANA_COLORS}
@@ -568,7 +593,7 @@ export default function AsesorDigitalPage() {
       header: () => (
         <ColumnFilterDropdown
           label="Convenio"
-          options={CONVENIO_OPTIONS}
+          options={uniqueConvenios}
           value={filtroConvenio}
           onChange={setFiltroConvenio}
           colorMap={CONVENIO_COLORS}
@@ -585,7 +610,7 @@ export default function AsesorDigitalPage() {
       header: () => (
         <ColumnFilterDropdown
           label="Etapa"
-          options={ETAPA_OPTIONS}
+          options={uniqueEtapas}
           value={filtroEtapa}
           onChange={setFiltroEtapa}
           colorMap={ETAPA_COLORS}
