@@ -68,6 +68,17 @@ const ESTRATEGIA_COLORS: Record<string, BadgeColor> = {
   Organico: "orange",
 };
 
+// Case-insensitive color lookup — matches DB values regardless of casing/spacing
+function getColor(map: Record<string, BadgeColor>, value: string | null | undefined): BadgeColor {
+  if (!value) return "slate";
+  if (map[value]) return map[value];
+  const normalized = value.toLowerCase().replace(/\s+/g, "");
+  for (const [key, color] of Object.entries(map)) {
+    if (key.toLowerCase().replace(/\s+/g, "") === normalized) return color;
+  }
+  return "slate";
+}
+
 const CAMPANA_COLORS: Record<string, BadgeColor> = {
   "IMSS Pensionados": "blue",
   SNTE23: "purple",
@@ -216,7 +227,7 @@ function ColumnFilterDropdown({
               }`}
             >
               {colorMap ? (
-                <Badge color={colorMap[opt] ?? "slate"}>{opt}</Badge>
+                <Badge color={getColor(colorMap, opt)}>{opt}</Badge>
               ) : (
                 opt
               )}
@@ -530,12 +541,12 @@ export default function AsesorDigitalPage() {
           onClick={(e) => e.stopPropagation()}
           className={`
             text-xs font-medium rounded-full px-2.5 py-1 border-0 cursor-pointer outline-none transition-colors
-            ${STATUS_COLORS[row.original.status] === "green" ? "bg-green-500/15 text-green-400 ring-1 ring-green-500/30" : ""}
-            ${STATUS_COLORS[row.original.status] === "blue" ? "bg-blue-500/15 text-blue-400 ring-1 ring-blue-500/30" : ""}
-            ${STATUS_COLORS[row.original.status] === "amber" ? "bg-amber-500/15 text-amber-400 ring-1 ring-amber-500/30" : ""}
-            ${STATUS_COLORS[row.original.status] === "red" ? "bg-red-500/15 text-red-400 ring-1 ring-red-500/30" : ""}
-            ${STATUS_COLORS[row.original.status] === "purple" ? "bg-purple-500/15 text-purple-400 ring-1 ring-purple-500/30" : ""}
-            ${STATUS_COLORS[row.original.status] === "slate" ? "bg-slate-500/15 text-slate-400 ring-1 ring-slate-500/30" : ""}
+            ${getColor(STATUS_COLORS, row.original.status) === "green" ? "bg-green-500/15 text-green-400 ring-1 ring-green-500/30" : ""}
+            ${getColor(STATUS_COLORS, row.original.status) === "blue" ? "bg-blue-500/15 text-blue-400 ring-1 ring-blue-500/30" : ""}
+            ${getColor(STATUS_COLORS, row.original.status) === "amber" ? "bg-amber-500/15 text-amber-400 ring-1 ring-amber-500/30" : ""}
+            ${getColor(STATUS_COLORS, row.original.status) === "red" ? "bg-red-500/15 text-red-400 ring-1 ring-red-500/30" : ""}
+            ${getColor(STATUS_COLORS, row.original.status) === "purple" ? "bg-purple-500/15 text-purple-400 ring-1 ring-purple-500/30" : ""}
+            ${getColor(STATUS_COLORS, row.original.status) === "slate" ? "bg-slate-500/15 text-slate-400 ring-1 ring-slate-500/30" : ""}
           `}
         >
           {STATUS_OPTIONS.map((s) => (
@@ -568,7 +579,7 @@ export default function AsesorDigitalPage() {
       size: 140,
       enableSorting: false,
       cell: ({ row }) => row.original.estrategia
-        ? <Badge color={ESTRATEGIA_COLORS[row.original.estrategia] ?? "slate"}>{row.original.estrategia}</Badge>
+        ? <Badge color={getColor(ESTRATEGIA_COLORS, row.original.estrategia)}>{row.original.estrategia}</Badge>
         : <span className="text-sm text-slate-600">&mdash;</span>,
     },
     {
@@ -585,7 +596,7 @@ export default function AsesorDigitalPage() {
       size: 160,
       enableSorting: false,
       cell: ({ row }) => row.original.campana
-        ? <Badge color={CAMPANA_COLORS[row.original.campana] ?? "slate"}>{row.original.campana}</Badge>
+        ? <Badge color={getColor(CAMPANA_COLORS, row.original.campana)}>{row.original.campana}</Badge>
         : <span className="text-sm text-slate-600">&mdash;</span>,
     },
     {
@@ -602,7 +613,7 @@ export default function AsesorDigitalPage() {
       size: 160,
       enableSorting: false,
       cell: ({ row }) => row.original.convenio
-        ? <Badge color={CONVENIO_COLORS[row.original.convenio] ?? "slate"}>{row.original.convenio}</Badge>
+        ? <Badge color={getColor(CONVENIO_COLORS, row.original.convenio)}>{row.original.convenio}</Badge>
         : <span className="text-sm text-slate-600">&mdash;</span>,
     },
     {
@@ -619,7 +630,7 @@ export default function AsesorDigitalPage() {
       size: 160,
       enableSorting: false,
       cell: ({ row }) => row.original.etapa
-        ? <Badge color={ETAPA_COLORS[row.original.etapa] ?? "slate"}>{row.original.etapa}</Badge>
+        ? <Badge color={getColor(ETAPA_COLORS, row.original.etapa)}>{row.original.etapa}</Badge>
         : <span className="text-sm text-slate-600">&mdash;</span>,
     },
     {
@@ -750,10 +761,10 @@ export default function AsesorDigitalPage() {
           <div className="flex items-center gap-3 flex-wrap">
             <span>{viewForm.nombre_cliente || viewRecord?.nombre_cliente}</span>
             {viewForm.status && (
-              <Badge color={STATUS_COLORS[viewForm.status] ?? "slate"}>{viewForm.status}</Badge>
+              <Badge color={getColor(STATUS_COLORS, viewForm.status)}>{viewForm.status}</Badge>
             )}
             {viewForm.etapa && (
-              <Badge color={ETAPA_COLORS[viewForm.etapa] ?? "slate"}>{viewForm.etapa}</Badge>
+              <Badge color={getColor(ETAPA_COLORS, viewForm.etapa)}>{viewForm.etapa}</Badge>
             )}
           </div>
         </DialogHeader>
@@ -779,23 +790,23 @@ export default function AsesorDigitalPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   <div>
                     <Select label="Status" value={viewForm.status} onChange={(e) => updateViewField("status", e.target.value)} options={STATUS_OPTIONS.map((s) => ({ value: s, label: s }))} />
-                    {viewForm.status && <Badge color={STATUS_COLORS[viewForm.status] ?? "slate"} className="mt-2">{viewForm.status}</Badge>}
+                    {viewForm.status && <Badge color={getColor(STATUS_COLORS, viewForm.status)} className="mt-2">{viewForm.status}</Badge>}
                   </div>
                   <div>
                     <Select label="Etapa" value={viewForm.etapa} onChange={(e) => updateViewField("etapa", e.target.value)} options={ETAPA_OPTIONS.map((e) => ({ value: e, label: e }))} />
-                    {viewForm.etapa && <Badge color={ETAPA_COLORS[viewForm.etapa] ?? "slate"} className="mt-2">{viewForm.etapa}</Badge>}
+                    {viewForm.etapa && <Badge color={getColor(ETAPA_COLORS, viewForm.etapa)} className="mt-2">{viewForm.etapa}</Badge>}
                   </div>
                   <div>
                     <Select label="Estrategia" value={viewForm.estrategia} onChange={(e) => updateViewField("estrategia", e.target.value)} placeholder="Seleccionar..." options={ESTRATEGIA_OPTIONS.map((s) => ({ value: s, label: s }))} />
-                    {viewForm.estrategia && <Badge color={ESTRATEGIA_COLORS[viewForm.estrategia] ?? "slate"} className="mt-2">{viewForm.estrategia}</Badge>}
+                    {viewForm.estrategia && <Badge color={getColor(ESTRATEGIA_COLORS, viewForm.estrategia)} className="mt-2">{viewForm.estrategia}</Badge>}
                   </div>
                   <div>
                     <Select label="Campaña" value={viewForm.campana} onChange={(e) => updateViewField("campana", e.target.value)} placeholder="Seleccionar..." options={CAMPANA_OPTIONS.map((s) => ({ value: s, label: s }))} />
-                    {viewForm.campana && <Badge color={CAMPANA_COLORS[viewForm.campana] ?? "slate"} className="mt-2">{viewForm.campana}</Badge>}
+                    {viewForm.campana && <Badge color={getColor(CAMPANA_COLORS, viewForm.campana)} className="mt-2">{viewForm.campana}</Badge>}
                   </div>
                   <div>
                     <Select label="Convenio" value={viewForm.convenio} onChange={(e) => updateViewField("convenio", e.target.value)} placeholder="Seleccionar..." options={CONVENIO_OPTIONS.map((s) => ({ value: s, label: s }))} />
-                    {viewForm.convenio && <Badge color={CONVENIO_COLORS[viewForm.convenio] ?? "slate"} className="mt-2">{viewForm.convenio}</Badge>}
+                    {viewForm.convenio && <Badge color={getColor(CONVENIO_COLORS, viewForm.convenio)} className="mt-2">{viewForm.convenio}</Badge>}
                   </div>
                   <Select label="Flujo" value={viewForm.flujo} onChange={(e) => updateViewField("flujo", e.target.value)} placeholder="Seleccionar..." options={FLUJO_OPTIONS.map((s) => ({ value: s, label: s }))} />
                 </div>
