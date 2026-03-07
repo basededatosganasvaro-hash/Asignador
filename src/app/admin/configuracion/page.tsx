@@ -20,6 +20,10 @@ import {
   Hourglass,
   FlaskConical,
   X,
+  Upload,
+  FileSpreadsheet,
+  CheckCircle,
+  AlertTriangle,
 } from "lucide-react";
 
 interface Config {
@@ -163,6 +167,12 @@ export default function ConfiguracionPage() {
   const [timerValues, setTimerValues] = useState<Record<number, string>>({});
   const [timerRetorno, setTimerRetorno] = useState("30");
   const [timerSaving, setTimerSaving] = useState(false);
+
+  // Carga masiva Asesor Digital
+  const [adFile, setAdFile] = useState<File | null>(null);
+  const [adUploading, setAdUploading] = useState(false);
+  const [adResult, setAdResult] = useState<{ insertados: number; errores: number; detalles?: string[] } | null>(null);
+  const adFileRef = useRef<HTMLInputElement>(null);
 
   // Beta testers state
   const [betaActivo, setBetaActivo] = useState(false);
@@ -867,6 +877,123 @@ export default function ConfiguracionPage() {
             )}
           </div>
         )}
+      </div>
+
+      {/* Card Carga Masiva — Asesor Digital */}
+      <div className="bg-surface rounded-xl border border-slate-800/60 p-5 relative overflow-hidden">
+        <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-teal-500 to-teal-400" />
+        <div className="flex items-center gap-3 mb-2">
+          <FileSpreadsheet className="w-5 h-5 text-teal-400" />
+          <h2 className="text-lg font-semibold text-slate-100">
+            Carga Masiva — Asesor Digital
+          </h2>
+          <Tooltip content="Sube un archivo Excel (.xlsx) para importar registros masivamente al modulo de Asesor Digital">
+            <HelpCircle className="w-4 h-4 text-slate-600 cursor-help" />
+          </Tooltip>
+        </div>
+        <span className="text-sm text-slate-400 block mb-4 ml-8">
+          Importa registros desde un archivo Excel. Las columnas deben coincidir con los campos del sistema.
+        </span>
+
+        <div className="ml-8">
+          {/* Columnas esperadas */}
+          <div className="mb-4 p-3 bg-slate-800/40 rounded-lg border border-slate-700/40">
+            <p className="text-xs font-medium text-slate-400 mb-2">Columnas esperadas en el Excel (en orden):</p>
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Nombre Cliente, Fecha, Status, Estrategia, Flujo, Numero Telefono, CURP, NSS, RFC, Zona, Campaña, Capacidad, Monto de Credito, Tipo de Credito, Convenio, Etiqueta, Oferta, Motivo, ID Venta, Viabilidad, Etapa
+            </p>
+          </div>
+
+          {/* File input */}
+          <div className="flex items-center gap-3 mb-4">
+            <input
+              ref={adFileRef}
+              type="file"
+              accept=".xlsx,.xls"
+              onChange={(e) => {
+                setAdFile(e.target.files?.[0] || null);
+                setAdResult(null);
+              }}
+              className="hidden"
+            />
+            <Button
+              variant="secondary"
+              icon={<Upload className="w-4 h-4" />}
+              onClick={() => adFileRef.current?.click()}
+            >
+              Seleccionar Archivo
+            </Button>
+            {adFile && (
+              <span className="text-sm text-slate-300 truncate max-w-[200px]">
+                {adFile.name}
+              </span>
+            )}
+          </div>
+
+          {/* Upload button */}
+          <Button
+            variant="primary"
+            icon={<Upload className="w-4 h-4" />}
+            loading={adUploading}
+            disabled={!adFile || adUploading}
+            className="!bg-teal-600 hover:!bg-teal-500 !shadow-teal-600/20"
+            onClick={async () => {
+              if (!adFile) return;
+              setAdUploading(true);
+              setAdResult(null);
+              const formData = new FormData();
+              formData.append("file", adFile);
+              try {
+                const res = await fetch("/api/admin/asesor-digital/importar", {
+                  method: "POST",
+                  body: formData,
+                });
+                const data = await res.json();
+                if (res.ok) {
+                  setAdResult(data);
+                  toast(`${data.insertados} registros importados`, "success");
+                  setAdFile(null);
+                  if (adFileRef.current) adFileRef.current.value = "";
+                } else {
+                  toast(data.error || "Error al importar", "error");
+                }
+              } catch {
+                toast("Error de conexion al importar", "error");
+              }
+              setAdUploading(false);
+            }}
+          >
+            Importar Registros
+          </Button>
+
+          {/* Result feedback */}
+          {adResult && (
+            <div className="mt-4 space-y-2">
+              <div className="flex items-center gap-2">
+                <CheckCircle className="w-4 h-4 text-green-400" />
+                <span className="text-sm text-green-400">{adResult.insertados} registros importados correctamente</span>
+              </div>
+              {adResult.errores > 0 && (
+                <div>
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 text-amber-400" />
+                    <span className="text-sm text-amber-400">{adResult.errores} filas con errores</span>
+                  </div>
+                  {adResult.detalles && adResult.detalles.length > 0 && (
+                    <ul className="mt-2 ml-6 text-xs text-slate-500 space-y-1 max-h-32 overflow-y-auto">
+                      {adResult.detalles.slice(0, 20).map((d, i) => (
+                        <li key={i}>{d}</li>
+                      ))}
+                      {adResult.detalles.length > 20 && (
+                        <li className="text-slate-600">...y {adResult.detalles.length - 20} mas</li>
+                      )}
+                    </ul>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       </div>{/* end grid */}
