@@ -28,6 +28,34 @@ const COLUMN_MAP: { idx: number; field: string; required?: boolean }[] = [
   { idx: 20, field: "etapa" },
 ];
 
+// Max lengths matching schema VarChar definitions
+const FIELD_MAX_LEN: Record<string, number> = {
+  nombre_cliente: 300,
+  etapa: 30,
+  status: 30,
+  estrategia: 30,
+  flujo: 20,
+  numero_telefono: 20,
+  curp: 18,
+  nss: 15,
+  rfc: 13,
+  zona: 100,
+  campana: 30,
+  capacidad: 100,
+  tipo_credito: 30,
+  convenio: 100,
+  etiqueta: 20,
+  oferta: 5,
+  id_venta: 100,
+  viabilidad: 100,
+};
+
+function truncate(val: string | null, field: string): string | null {
+  if (!val) return null;
+  const max = FIELD_MAX_LEN[field];
+  return max && val.length > max ? val.slice(0, max) : val;
+}
+
 const ETAPAS_VALIDAS = ["Leads", "Cotizacion", "No sujeto a credito", "Ventas"];
 const STATUS_VALIDOS = ["Venta", "Interesado", "Cotizacion", "No viable", "Proceso", "Sin informacion"];
 
@@ -156,26 +184,26 @@ export async function POST(request: Request) {
     registros.push({
       usuario_id: asesor.id,
       etapa,
-      nombre_cliente: values.nombre_cliente,
+      nombre_cliente: truncate(values.nombre_cliente, "nombre_cliente")!,
       fecha: parseDate(row.getCell(2).value),
       status,
-      estrategia: values.estrategia || null,
-      flujo: values.flujo || null,
-      numero_telefono: values.numero_telefono || null,
-      curp: values.curp || null,
-      nss: values.nss || null,
-      rfc: values.rfc || null,
-      zona: values.zona || null,
-      campana: values.campana || null,
-      capacidad: values.capacidad || null,
+      estrategia: truncate(values.estrategia, "estrategia"),
+      flujo: truncate(values.flujo, "flujo"),
+      numero_telefono: truncate(values.numero_telefono, "numero_telefono"),
+      curp: truncate(values.curp, "curp"),
+      nss: truncate(values.nss, "nss"),
+      rfc: truncate(values.rfc, "rfc"),
+      zona: truncate(values.zona, "zona"),
+      campana: truncate(values.campana, "campana"),
+      capacidad: truncate(values.capacidad, "capacidad"),
       monto_credito: monto && !isNaN(monto) ? monto : null,
-      tipo_credito: values.tipo_credito || null,
-      convenio: values.convenio || null,
-      etiqueta: values.etiqueta || null,
-      oferta: values.oferta || null,
+      tipo_credito: truncate(values.tipo_credito, "tipo_credito"),
+      convenio: truncate(values.convenio, "convenio"),
+      etiqueta: truncate(values.etiqueta, "etiqueta"),
+      oferta: truncate(values.oferta, "oferta"),
       motivo: values.motivo || null,
-      id_venta: values.id_venta || null,
-      viabilidad: values.viabilidad || null,
+      id_venta: truncate(values.id_venta, "id_venta"),
+      viabilidad: truncate(values.viabilidad, "viabilidad"),
     });
   });
 
