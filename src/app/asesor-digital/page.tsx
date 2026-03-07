@@ -9,7 +9,7 @@ import { Select } from "@/components/ui/Select";
 import { useToast } from "@/components/ui/Toast";
 import { ColumnDef } from "@tanstack/react-table";
 import {
-  Plus, Pencil, Trash2, Search, Download,
+  Plus, Pencil, Trash2, Search, Download, Save,
   ShoppingCart, UserCheck, FileText, XCircle, Clock, HelpCircle,
 } from "lucide-react";
 
@@ -58,6 +58,51 @@ const STATUS_COLORS: Record<string, "green" | "blue" | "amber" | "red" | "purple
   "Sin informacion": "slate",
 };
 
+const ESTRATEGIA_COLORS: Record<string, "blue" | "purple" | "teal" | "orange" | "amber" | "green" | "slate"> = {
+  facebook: "blue",
+  VoxImplant: "purple",
+  Wasapi: "teal",
+  WasapiCNCA: "teal",
+  WasapiNuevo: "green",
+  Consunomina: "orange",
+  Organico: "amber",
+};
+
+const CAMPANA_COLORS: Record<string, "blue" | "purple" | "teal" | "orange" | "amber" | "green" | "red" | "slate" | "emerald"> = {
+  "IMSS Pensionados": "blue",
+  SNTE23: "purple",
+  SEIEM: "teal",
+  CDMX: "orange",
+  "SNTE17y36": "amber",
+  GEM: "green",
+  IMSS: "blue",
+  "Nuevo Leon": "red",
+  SNTE14: "emerald",
+};
+
+const ETAPA_COLORS: Record<string, "blue" | "amber" | "red" | "green"> = {
+  Leads: "blue",
+  Cotizacion: "amber",
+  "No sujeto a credito": "red",
+  Ventas: "green",
+};
+
+const CONVENIO_COLORS: Record<string, "blue" | "purple" | "teal" | "orange" | "amber" | "green" | "red" | "slate" | "emerald"> = {
+  "IMSS Pensionados": "blue",
+  GEM: "green",
+  CDMX: "orange",
+  "IMSS Jubilados": "blue",
+  INE: "purple",
+  SEIEM: "teal",
+  SEP: "amber",
+  SNTE23: "purple",
+  "Gob Chihuahua": "red",
+  "Gob Nuevo Leon": "red",
+  SNTE14: "emerald",
+  SEDUC: "teal",
+  SNTE21: "orange",
+};
+
 const STATUS_PIPELINE: { key: string; label: string; color: string; gradient: string; icon: typeof ShoppingCart }[] = [
   { key: "Venta", label: "Venta", color: "text-green-400", gradient: "from-green-500 to-green-600", icon: ShoppingCart },
   { key: "Interesado", label: "Interesado", color: "text-blue-400", gradient: "from-blue-500 to-blue-600", icon: UserCheck },
@@ -98,6 +143,9 @@ export default function AsesorDigitalPage() {
   const [editingRecord, setEditingRecord] = useState<Registro | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
   const [viewRecord, setViewRecord] = useState<Registro | null>(null);
+  const [viewForm, setViewForm] = useState<Record<string, string>>({});
+  const [viewDirty, setViewDirty] = useState(false);
+  const [viewSaving, setViewSaving] = useState(false);
   const [busqueda, setBusqueda] = useState("");
   const [filtroStatus, setFiltroStatus] = useState("");
   const [filtroEstrategia, setFiltroEstrategia] = useState("");
@@ -246,6 +294,82 @@ export default function AsesorDigitalPage() {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
+  const openViewRecord = (record: Registro) => {
+    setViewRecord(record);
+    setViewForm({
+      nombre_cliente: record.nombre_cliente,
+      fecha: record.fecha ? record.fecha.split("T")[0] : "",
+      status: record.status,
+      etapa: record.etapa,
+      estrategia: record.estrategia || "",
+      flujo: record.flujo || "",
+      numero_telefono: record.numero_telefono || "",
+      curp: record.curp || "",
+      nss: record.nss || "",
+      rfc: record.rfc || "",
+      zona: record.zona || "",
+      campana: record.campana || "",
+      capacidad: record.capacidad || "",
+      monto_credito: record.monto_credito ? String(record.monto_credito) : "",
+      tipo_credito: record.tipo_credito || "",
+      convenio: record.convenio || "",
+      etiqueta: record.etiqueta || "",
+      oferta: record.oferta || "",
+      motivo: record.motivo || "",
+      id_venta: record.id_venta || "",
+      viabilidad: record.viabilidad || "",
+    });
+    setViewDirty(false);
+  };
+
+  const updateViewField = (field: string, value: string) => {
+    setViewForm((prev) => ({ ...prev, [field]: value }));
+    setViewDirty(true);
+  };
+
+  const handleViewSave = async () => {
+    if (!viewRecord) return;
+    setViewSaving(true);
+
+    const body = {
+      ...viewForm,
+      monto_credito: viewForm.monto_credito ? Number(viewForm.monto_credito) : null,
+      estrategia: viewForm.estrategia || null,
+      flujo: viewForm.flujo || null,
+      numero_telefono: viewForm.numero_telefono || null,
+      curp: viewForm.curp || null,
+      nss: viewForm.nss || null,
+      rfc: viewForm.rfc || null,
+      zona: viewForm.zona || null,
+      campana: viewForm.campana || null,
+      capacidad: viewForm.capacidad || null,
+      tipo_credito: viewForm.tipo_credito || null,
+      convenio: viewForm.convenio || null,
+      etiqueta: viewForm.etiqueta || null,
+      oferta: viewForm.oferta || null,
+      motivo: viewForm.motivo || null,
+      id_venta: viewForm.id_venta || null,
+      viabilidad: viewForm.viabilidad || null,
+    };
+
+    const res = await fetch(`/api/asesor-digital/registros/${viewRecord.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+    setViewSaving(false);
+    if (res.ok) {
+      toast("Registro actualizado", "success");
+      setViewDirty(false);
+      setViewRecord(null);
+      fetchRegistros();
+    } else {
+      const data = await res.json();
+      toast(data.error || "Error al guardar", "error");
+    }
+  };
+
   const columns: ColumnDef<Registro, unknown>[] = [
     {
       accessorKey: "nombre_cliente",
@@ -253,7 +377,7 @@ export default function AsesorDigitalPage() {
       size: 180,
       cell: ({ row }) => (
         <button
-          onClick={() => setViewRecord(row.original)}
+          onClick={() => openViewRecord(row.original)}
           className="text-sm text-slate-200 hover:text-amber-400 transition-colors text-left underline decoration-slate-700 hover:decoration-amber-400"
         >
           {row.original.nombre_cliente}
@@ -284,41 +408,33 @@ export default function AsesorDigitalPage() {
       accessorKey: "estrategia",
       header: "Estrategia",
       size: 120,
-      cell: ({ row }) => (
-        <span className="text-sm text-slate-400">
-          {row.original.estrategia || "\u2014"}
-        </span>
-      ),
+      cell: ({ row }) => row.original.estrategia
+        ? <Badge color={ESTRATEGIA_COLORS[row.original.estrategia] ?? "slate"}>{row.original.estrategia}</Badge>
+        : <span className="text-sm text-slate-600">&mdash;</span>,
     },
     {
       accessorKey: "campana",
       header: "Campaña",
       size: 140,
-      cell: ({ row }) => (
-        <span className="text-sm text-slate-400">
-          {row.original.campana || "\u2014"}
-        </span>
-      ),
+      cell: ({ row }) => row.original.campana
+        ? <Badge color={CAMPANA_COLORS[row.original.campana] ?? "slate"}>{row.original.campana}</Badge>
+        : <span className="text-sm text-slate-600">&mdash;</span>,
     },
     {
       accessorKey: "convenio",
       header: "Convenio",
       size: 140,
-      cell: ({ row }) => (
-        <span className="text-sm text-slate-400">
-          {row.original.convenio || "\u2014"}
-        </span>
-      ),
+      cell: ({ row }) => row.original.convenio
+        ? <Badge color={CONVENIO_COLORS[row.original.convenio] ?? "slate"}>{row.original.convenio}</Badge>
+        : <span className="text-sm text-slate-600">&mdash;</span>,
     },
     {
       accessorKey: "etapa",
       header: "Etapa",
       size: 140,
-      cell: ({ row }) => (
-        <span className="text-sm text-slate-400">
-          {row.original.etapa || "\u2014"}
-        </span>
-      ),
+      cell: ({ row }) => row.original.etapa
+        ? <Badge color={ETAPA_COLORS[row.original.etapa] ?? "slate"}>{row.original.etapa}</Badge>
+        : <span className="text-sm text-slate-600">&mdash;</span>,
     },
     {
       accessorKey: "fecha",
@@ -455,68 +571,112 @@ export default function AsesorDigitalPage() {
         pageSizeOptions={[15, 30, 50]}
       />
 
-      {/* Dialog detalle del cliente */}
-      <Dialog open={viewRecord !== null} onClose={() => setViewRecord(null)} maxWidth="lg">
+      {/* Dialog detalle/edicion del cliente */}
+      <Dialog open={viewRecord !== null} onClose={() => setViewRecord(null)} maxWidth="2xl">
         <DialogHeader onClose={() => setViewRecord(null)}>
-          {viewRecord?.nombre_cliente}
+          <div className="flex items-center gap-3 flex-wrap">
+            <span>{viewForm.nombre_cliente || viewRecord?.nombre_cliente}</span>
+            {viewForm.status && (
+              <Badge color={STATUS_COLORS[viewForm.status] ?? "slate"}>{viewForm.status}</Badge>
+            )}
+            {viewForm.etapa && (
+              <Badge color={ETAPA_COLORS[viewForm.etapa] ?? "slate"}>{viewForm.etapa}</Badge>
+            )}
+          </div>
         </DialogHeader>
-        <DialogBody className="max-h-[70vh] overflow-y-auto">
+        <DialogBody className="max-h-[70vh] overflow-y-auto space-y-6">
           {viewRecord && (
             <>
-              <div className="flex items-center gap-3 mb-5">
-                <Badge color={STATUS_COLORS[viewRecord.status] ?? "slate"}>
-                  {viewRecord.status}
-                </Badge>
-                <span className="text-sm text-slate-500">
-                  {viewRecord.etapa}
-                </span>
-                <span className="text-sm text-slate-600 ml-auto">
-                  {viewRecord.fecha ? new Date(viewRecord.fecha).toLocaleDateString("es-MX") : ""}
-                </span>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
-                <DetailRow label="Telefono" value={viewRecord.numero_telefono} />
-                <DetailRow label="CURP" value={viewRecord.curp} />
-                <DetailRow label="NSS" value={viewRecord.nss} />
-                <DetailRow label="RFC" value={viewRecord.rfc} />
-                <DetailRow label="Estrategia" value={viewRecord.estrategia} />
-                <DetailRow label="Flujo" value={viewRecord.flujo} />
-                <DetailRow label="Zona" value={viewRecord.zona} />
-                <DetailRow label="Campaña" value={viewRecord.campana} />
-                <DetailRow label="Capacidad" value={viewRecord.capacidad} />
-                <DetailRow label="Monto de Credito" value={viewRecord.monto_credito != null ? `$${Number(viewRecord.monto_credito).toLocaleString("es-MX")}` : null} />
-                <DetailRow label="Tipo de Credito" value={viewRecord.tipo_credito} />
-                <DetailRow label="Convenio" value={viewRecord.convenio} />
-                <DetailRow label="Etiqueta" value={viewRecord.etiqueta} />
-                <DetailRow label="Oferta" value={viewRecord.oferta} />
-                <DetailRow label="ID Venta" value={viewRecord.id_venta} />
-                <DetailRow label="Viabilidad" value={viewRecord.viabilidad} />
-              </div>
-
-              {viewRecord.motivo && (
-                <div className="mt-4 pt-4 border-t border-slate-800/50">
-                  <span className="text-xs font-medium text-slate-500 uppercase tracking-wider">Motivo</span>
-                  <p className="text-sm text-slate-300 mt-1 whitespace-pre-wrap">{viewRecord.motivo}</p>
+              {/* Seccion: Datos principales */}
+              <div>
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-3">Datos del Cliente</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <Input label="Nombre del Cliente" value={viewForm.nombre_cliente} onChange={(e) => updateViewField("nombre_cliente", e.target.value)} />
+                  <Input label="Fecha" type="date" value={viewForm.fecha} onChange={(e) => updateViewField("fecha", e.target.value)} />
+                  <Input label="Telefono" value={viewForm.numero_telefono} onChange={(e) => updateViewField("numero_telefono", e.target.value)} />
+                  <Input label="CURP" value={viewForm.curp} onChange={(e) => updateViewField("curp", e.target.value)} maxLength={18} />
+                  <Input label="NSS" value={viewForm.nss} onChange={(e) => updateViewField("nss", e.target.value)} maxLength={15} />
+                  <Input label="RFC" value={viewForm.rfc} onChange={(e) => updateViewField("rfc", e.target.value)} maxLength={13} />
                 </div>
-              )}
+              </div>
+
+              {/* Seccion: Clasificacion */}
+              <div>
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-3">Clasificacion</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div>
+                    <Select label="Status" value={viewForm.status} onChange={(e) => updateViewField("status", e.target.value)} options={STATUS_OPTIONS.map((s) => ({ value: s, label: s }))} />
+                    {viewForm.status && <Badge color={STATUS_COLORS[viewForm.status] ?? "slate"} className="mt-2">{viewForm.status}</Badge>}
+                  </div>
+                  <div>
+                    <Select label="Etapa" value={viewForm.etapa} onChange={(e) => updateViewField("etapa", e.target.value)} options={ETAPA_OPTIONS.map((e) => ({ value: e, label: e }))} />
+                    {viewForm.etapa && <Badge color={ETAPA_COLORS[viewForm.etapa] ?? "slate"} className="mt-2">{viewForm.etapa}</Badge>}
+                  </div>
+                  <div>
+                    <Select label="Estrategia" value={viewForm.estrategia} onChange={(e) => updateViewField("estrategia", e.target.value)} placeholder="Seleccionar..." options={ESTRATEGIA_OPTIONS.map((s) => ({ value: s, label: s }))} />
+                    {viewForm.estrategia && <Badge color={ESTRATEGIA_COLORS[viewForm.estrategia] ?? "slate"} className="mt-2">{viewForm.estrategia}</Badge>}
+                  </div>
+                  <div>
+                    <Select label="Campaña" value={viewForm.campana} onChange={(e) => updateViewField("campana", e.target.value)} placeholder="Seleccionar..." options={CAMPANA_OPTIONS.map((s) => ({ value: s, label: s }))} />
+                    {viewForm.campana && <Badge color={CAMPANA_COLORS[viewForm.campana] ?? "slate"} className="mt-2">{viewForm.campana}</Badge>}
+                  </div>
+                  <div>
+                    <Select label="Convenio" value={viewForm.convenio} onChange={(e) => updateViewField("convenio", e.target.value)} placeholder="Seleccionar..." options={CONVENIO_OPTIONS.map((s) => ({ value: s, label: s }))} />
+                    {viewForm.convenio && <Badge color={CONVENIO_COLORS[viewForm.convenio] ?? "slate"} className="mt-2">{viewForm.convenio}</Badge>}
+                  </div>
+                  <Select label="Flujo" value={viewForm.flujo} onChange={(e) => updateViewField("flujo", e.target.value)} placeholder="Seleccionar..." options={FLUJO_OPTIONS.map((s) => ({ value: s, label: s }))} />
+                </div>
+              </div>
+
+              {/* Seccion: Credito */}
+              <div>
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-3">Credito</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <Input label="Capacidad" value={viewForm.capacidad} onChange={(e) => updateViewField("capacidad", e.target.value)} />
+                  <Input label="Monto de Credito" type="number" value={viewForm.monto_credito} onChange={(e) => updateViewField("monto_credito", e.target.value)} />
+                  <Select label="Tipo de Credito" value={viewForm.tipo_credito} onChange={(e) => updateViewField("tipo_credito", e.target.value)} placeholder="Seleccionar..." options={TIPO_CREDITO_OPTIONS.map((s) => ({ value: s, label: s }))} />
+                  <Select label="Etiqueta" value={viewForm.etiqueta} onChange={(e) => updateViewField("etiqueta", e.target.value)} placeholder="Seleccionar..." options={ETIQUETA_OPTIONS.map((s) => ({ value: s, label: s }))} />
+                  <Select label="Oferta" value={viewForm.oferta} onChange={(e) => updateViewField("oferta", e.target.value)} placeholder="Seleccionar..." options={OFERTA_OPTIONS.map((s) => ({ value: s, label: s }))} />
+                  <Input label="Zona" value={viewForm.zona} onChange={(e) => updateViewField("zona", e.target.value)} />
+                </div>
+              </div>
+
+              {/* Seccion: Venta */}
+              <div>
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-3">Venta</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <Input label="ID Venta" value={viewForm.id_venta} onChange={(e) => updateViewField("id_venta", e.target.value)} />
+                  <Input label="Viabilidad" value={viewForm.viabilidad} onChange={(e) => updateViewField("viabilidad", e.target.value)} />
+                </div>
+              </div>
+
+              {/* Motivo */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-widest mb-2">Motivo</label>
+                <textarea
+                  className="w-full rounded-lg bg-slate-900/50 border border-slate-700/60 text-slate-200 px-3 py-2 text-sm
+                    focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500/50 transition-colors
+                    placeholder:text-slate-600 min-h-[80px]"
+                  value={viewForm.motivo}
+                  onChange={(e) => updateViewField("motivo", e.target.value)}
+                  placeholder="Motivo o notas adicionales..."
+                />
+              </div>
             </>
           )}
         </DialogBody>
         <DialogFooter>
           <Button variant="ghost" onClick={() => setViewRecord(null)}>Cerrar</Button>
-          <Button
-            variant="primary"
-            icon={<Pencil className="w-4 h-4" />}
-            onClick={() => {
-              if (viewRecord) {
-                handleOpenEdit(viewRecord);
-                setViewRecord(null);
-              }
-            }}
-          >
-            Editar
-          </Button>
+          {viewDirty && (
+            <Button
+              variant="primary"
+              icon={<Save className="w-4 h-4" />}
+              loading={viewSaving}
+              onClick={handleViewSave}
+            >
+              Guardar Cambios
+            </Button>
+          )}
         </DialogFooter>
       </Dialog>
 
@@ -685,15 +845,4 @@ export default function AsesorDigitalPage() {
   );
 }
 
-function DetailRow({ label, value }: { label: string; value: string | null | undefined }) {
-  return (
-    <div className="flex items-baseline gap-2 py-1.5 border-b border-slate-800/30">
-      <span className="text-xs font-medium text-slate-500 uppercase tracking-wider w-36 flex-shrink-0">
-        {label}
-      </span>
-      <span className="text-sm text-slate-200">
-        {value || <span className="text-slate-600">&mdash;</span>}
-      </span>
-    </div>
-  );
-}
+
