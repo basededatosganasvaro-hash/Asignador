@@ -30,10 +30,26 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Archivo, origen y convenio son requeridos" }, { status: 400 });
   }
 
+  // Validate file size (5MB max)
+  if (file.size > 5 * 1024 * 1024) {
+    return NextResponse.json({ error: "El archivo excede el limite de 5MB" }, { status: 400 });
+  }
+
+  // Validate extension
+  const fileName = file.name || "";
+  if (!fileName.toLowerCase().endsWith(".xlsx")) {
+    return NextResponse.json({ error: "Solo se aceptan archivos .xlsx" }, { status: 400 });
+  }
+
   // Leer Excel
-  const arrayBuffer = await file.arrayBuffer();
-  const workbook = new ExcelJS.Workbook();
-  await workbook.xlsx.load(arrayBuffer as unknown as ExcelJS.Buffer);
+  let workbook: ExcelJS.Workbook;
+  try {
+    const arrayBuffer = await file.arrayBuffer();
+    workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(arrayBuffer as unknown as ExcelJS.Buffer);
+  } catch {
+    return NextResponse.json({ error: "No se pudo leer el archivo Excel" }, { status: 400 });
+  }
   const sheet = workbook.worksheets[0];
 
   if (!sheet || sheet.rowCount < 2) {

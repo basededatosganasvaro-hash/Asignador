@@ -27,8 +27,8 @@ export async function GET() {
       where: { usuario_id_fecha: { usuario_id: userId, fecha: today } },
     });
     totalAsignado = cupo?.total_asignado ?? 0;
-  } catch {
-    // Fallback: tabla cupo_diario no existe aún
+  } catch (err) {
+    console.warn("cupo_diario fallback:", err instanceof Error ? err.message : err);
     const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
     const lotesHoy = await prisma.lotes.findMany({
       where: { usuario_id: userId, fecha: { gte: today, lt: tomorrow } },

@@ -125,26 +125,28 @@ export default function UsuariosPage() {
     fetchUsers();
   }, [fetchUsers]);
 
-  const fetchOrgData = async () => {
+  const fetchOrgData = async (): Promise<boolean> => {
     try {
       const [r, s, e] = await Promise.all([
-        fetch("/api/admin/organizacion/regiones").then((res) => res.json()),
-        fetch("/api/admin/organizacion/sucursales").then((res) => res.json()),
-        fetch("/api/admin/organizacion/equipos").then((res) => res.json()),
+        fetch("/api/admin/organizacion/regiones").then((res) => { if (!res.ok) throw new Error(); return res.json(); }),
+        fetch("/api/admin/organizacion/sucursales").then((res) => { if (!res.ok) throw new Error(); return res.json(); }),
+        fetch("/api/admin/organizacion/equipos").then((res) => { if (!res.ok) throw new Error(); return res.json(); }),
       ]);
       setRegiones(r);
       setSucursales(s);
       setEquipos(e);
-    } catch (err) {
-      toast(err instanceof Error ? err.message : "Error de conexion", "error");
+      return true;
+    } catch {
+      toast("Error al cargar datos organizacionales", "error");
+      return false;
     }
   };
 
   const handleOpenCreate = async () => {
     setEditingUser(null);
     setFormData({ nombre: "", username: "", password: "", rol: "promotor", region_id: "", sucursal_id: "", equipo_id: "", telegram_id: "" });
-    await fetchOrgData();
-    setDialogOpen(true);
+    const ok = await fetchOrgData();
+    if (ok) setDialogOpen(true);
   };
 
   const handleOpenEdit = async (user: Usuario) => {
@@ -159,8 +161,8 @@ export default function UsuariosPage() {
       equipo_id: user.equipo?.id ? String(user.equipo.id) : "",
       telegram_id: user.telegram_id ? String(user.telegram_id) : "",
     });
-    await fetchOrgData();
-    setDialogOpen(true);
+    const ok = await fetchOrgData();
+    if (ok) setDialogOpen(true);
   };
 
   const handleSave = async () => {

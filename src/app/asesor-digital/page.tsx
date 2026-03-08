@@ -252,6 +252,7 @@ export default function AsesorDigitalPage() {
   const [editingRecord, setEditingRecord] = useState<Registro | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [updatingStatusId, setUpdatingStatusId] = useState<number | null>(null);
   const [viewRecord, setViewRecord] = useState<Registro | null>(null);
   const [viewForm, setViewForm] = useState<Record<string, string>>({});
   const [viewDirty, setViewDirty] = useState(false);
@@ -292,11 +293,13 @@ export default function AsesorDigitalPage() {
 
   // Inline status change
   const handleInlineStatusChange = async (registro: Registro, newStatus: string) => {
+    setUpdatingStatusId(registro.id);
     const res = await fetch(`/api/asesor-digital/registros/${registro.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: newStatus }),
     });
+    setUpdatingStatusId(null);
     if (res.ok) {
       setRegistros((prev) =>
         prev.map((r) => (r.id === registro.id ? { ...r, status: newStatus } : r))
@@ -528,8 +531,10 @@ export default function AsesorDigitalPage() {
           value={row.original.status}
           onChange={(e) => handleInlineStatusChange(row.original, e.target.value)}
           onClick={(e) => e.stopPropagation()}
+          disabled={updatingStatusId === row.original.id}
           className={`
             text-xs font-medium rounded-full px-2.5 py-1 border-0 cursor-pointer outline-none transition-colors
+            disabled:opacity-50 disabled:cursor-wait
             ${STATUS_SELECT_CLASSES[color] || STATUS_SELECT_CLASSES.slate}
           `}
         >

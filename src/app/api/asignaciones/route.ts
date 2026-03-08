@@ -271,6 +271,7 @@ export async function POST(request: Request) {
           `;
 
           const cupo = cupoRows[0];
+          if (!cupo) throw new Error("CUPO_AGOTADO");
           cupoFinal = cupo.limite - cupo.total_asignado;
 
           if (cupoFinal <= 0) {

@@ -11,9 +11,9 @@ export async function POST(req: Request) {
   const body = await req.json();
   const { password_actual, password_nueva } = body;
 
-  if (!password_nueva || password_nueva.length < 6) {
+  if (!password_nueva || password_nueva.length < 8) {
     return NextResponse.json(
-      { error: "La nueva contraseña debe tener al menos 6 caracteres" },
+      { error: "La nueva contraseña debe tener al menos 8 caracteres" },
       { status: 400 }
     );
   }

@@ -17,7 +17,7 @@ export async function middleware(request: NextRequest) {
 
   // Rate limiting por IP en login — antes de cualquier otra lógica
   if (pathname === "/api/auth/callback/credentials" && request.method === "POST") {
-    const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+    const ip = (request as unknown as { ip?: string }).ip || request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
     const now = Date.now();
     const attempts = (loginAttempts.get(ip) || []).filter(t => now - t < LOGIN_WINDOW_MS);
     if (attempts.length >= LOGIN_MAX_PER_IP) {

@@ -24,8 +24,8 @@ export default function CambiarPasswordPage() {
     e.preventDefault();
     setError("");
 
-    if (passwordNueva.length < 6) {
-      setError("La nueva contraseña debe tener al menos 6 caracteres");
+    if (passwordNueva.length < 8) {
+      setError("La nueva contraseña debe tener al menos 8 caracteres");
       return;
     }
 
@@ -113,7 +113,7 @@ export default function CambiarPasswordPage() {
             onChange={(e) => setPasswordNueva(e.target.value)}
             required
             autoComplete="new-password"
-            minLength={6}
+            minLength={8}
             helperText="Mínimo 6 caracteres"
           />
           <Input

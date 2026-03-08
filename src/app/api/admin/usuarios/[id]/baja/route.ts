@@ -9,7 +9,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const { id } = await params;
   const userId = Number(session!.user.id);
   const body = await req.json();
-  const receptorId = body.receptor_id ? Number(body.receptor_id) : userId;
+  if (!body.receptor_id) {
+    return NextResponse.json({ error: "receptor_id es requerido" }, { status: 400 });
+  }
+  const receptorId = Number(body.receptor_id);
+  if (isNaN(receptorId) || receptorId === Number(id)) {
+    return NextResponse.json({ error: "receptor_id invalido o igual al promotor a dar de baja" }, { status: 400 });
+  }
 
   const promotor = await prisma.usuarios.findUnique({
     where: { id: Number(id) },

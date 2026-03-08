@@ -24,12 +24,13 @@ export default function AsignacionesPage() {
   const router = useRouter();
   const [asignaciones, setAsignaciones] = useState<Asignacion[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(false);
 
   useEffect(() => {
     fetch("/api/asignaciones")
       .then((res) => { if (!res.ok) throw new Error(); return res.json(); })
       .then((data) => setAsignaciones(data))
-      .catch(() => { /* error silencioso, lista vacía */ })
+      .catch(() => setFetchError(true))
       .finally(() => setLoading(false));
   }, []);
 
@@ -158,6 +159,12 @@ export default function AsignacionesPage() {
         <StatCard title="Con Telefono" value={stats.conTelefono} icon={<Phone className="w-5 h-5" />} color="green" />
         <StatCard title="Listos para Excel" value={stats.completados} icon={<CheckCircle className="w-5 h-5" />} color="green" />
       </div>
+
+      {fetchError && (
+        <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-sm text-red-400">
+          Error al cargar asignaciones. Intenta recargar la pagina.
+        </div>
+      )}
 
       {/* DataTable */}
       <DataTable

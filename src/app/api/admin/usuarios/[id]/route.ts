@@ -65,7 +65,17 @@ export async function PUT(
   if (parsed.data.equipo_id !== undefined) data.equipo_id = parsed.data.equipo_id;
   if (parsed.data.sucursal_id !== undefined) data.sucursal_id = parsed.data.sucursal_id;
   if (parsed.data.region_id !== undefined) data.region_id = parsed.data.region_id;
-  if (parsed.data.telegram_id !== undefined) data.telegram_id = parsed.data.telegram_id ? BigInt(parsed.data.telegram_id) : null;
+  if (parsed.data.telegram_id !== undefined) {
+    if (parsed.data.telegram_id) {
+      try {
+        data.telegram_id = BigInt(parsed.data.telegram_id);
+      } catch {
+        return NextResponse.json({ error: "telegram_id debe ser un numero valido" }, { status: 400 });
+      }
+    } else {
+      data.telegram_id = null;
+    }
+  }
 
   // Auto-derivar sucursal_id y region_id desde la jerarquía del equipo
   const equipoId = parsed.data.equipo_id !== undefined ? parsed.data.equipo_id : undefined;

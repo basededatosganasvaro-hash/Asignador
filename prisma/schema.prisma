@@ -60,6 +60,7 @@ model equipos {
   supervisor usuarios?   @relation("EquipoSupervisor", fields: [supervisor_id], references: [id])
 
   @@index([sucursal_id])
+  @@index([supervisor_id])
 }
 
 // =============================================
@@ -167,6 +168,8 @@ model embudo_transiciones {
   etapa_destino embudo_etapas? @relation("TransicionDestino", fields: [etapa_destino_id], references: [id])
 
   @@index([etapa_origen_id])
+  @@index([etapa_destino_id])
+  @@index([etapa_origen_id, activo])
 }
 
 // =============================================
@@ -272,6 +275,7 @@ model historial {
   @@index([tipo])
   @@index([oportunidad_id, tipo, created_at])
   @@index([created_at, tipo])
+  @@index([usuario_id, created_at])
 }
 
 // =============================================
