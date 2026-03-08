@@ -89,6 +89,16 @@ export async function requireAsesorDigital() {
   return { session: session!, error: null };
 }
 
+export async function requirePromotorOrSupervisor() {
+  const { session, error } = await getSessionOrError();
+  if (error) return { session: null, error };
+  const rol = session!.user.rol;
+  if (rol !== "promotor" && rol !== "supervisor") {
+    return { session: null, error: NextResponse.json({ error: "Acceso denegado" }, { status: 403 }) };
+  }
+  return { session: session!, error: null };
+}
+
 export async function requireAuth() {
   const { session, error } = await getSessionOrError();
   if (error) return { session: null, error };

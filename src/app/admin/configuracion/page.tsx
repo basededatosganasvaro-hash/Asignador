@@ -24,6 +24,7 @@ import {
   FileSpreadsheet,
   CheckCircle,
   AlertTriangle,
+  Search,
 } from "lucide-react";
 
 interface Config {
@@ -158,9 +159,11 @@ export default function ConfiguracionPage() {
   const { toast } = useToast();
   const [configs, setConfigs] = useState<Config[]>([]);
   const [maxRegistros, setMaxRegistros] = useState("300");
+  const [maxBusquedas, setMaxBusquedas] = useState("50");
   const [horarioActivo, setHorarioActivo] = useState(true);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [savingBusquedas, setSavingBusquedas] = useState(false);
 
   // Tiempos de permanencia (etapas AVANCE)
   const [etapasAvance, setEtapasAvance] = useState<Etapa[]>([]);
@@ -215,6 +218,8 @@ export default function ConfiguracionPage() {
 
         const maxReg = configData.find((c: Config) => c.clave === "max_registros_por_dia");
         if (maxReg) setMaxRegistros(maxReg.valor);
+        const maxBusq = configData.find((c: Config) => c.clave === "max_busquedas_por_dia");
+        if (maxBusq) setMaxBusquedas(maxBusq.valor);
         const horario = configData.find((c: Config) => c.clave === "horario_activo");
         if (horario) setHorarioActivo(horario.valor !== "false");
 
@@ -281,6 +286,22 @@ export default function ConfiguracionPage() {
       const q = promotorQuery.toLowerCase();
       return p.nombre.toLowerCase().includes(q) || p.username.toLowerCase().includes(q);
     });
+
+  const handleSaveBusquedas = async () => {
+    const num = parseInt(maxBusquedas);
+    if (isNaN(num) || num < 1) {
+      toast("El limite debe ser al menos 1", "error");
+      return;
+    }
+    setSavingBusquedas(true);
+    const res = await fetch("/api/admin/configuracion", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ clave: "max_busquedas_por_dia", valor: String(num) }),
+    });
+    setSavingBusquedas(false);
+    toast(res.ok ? "Limite de busquedas guardado" : "Error al guardar", res.ok ? "success" : "error");
+  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -569,6 +590,47 @@ export default function ConfiguracionPage() {
             loading={saving}
             onClick={handleSave}
             className="mt-4 !bg-green-600 hover:!bg-green-500 !shadow-green-600/20"
+          >
+            Guardar Cambios
+          </Button>
+        </div>
+      </div>
+
+      {/* Card Limite de Busquedas */}
+      <div className="bg-surface rounded-xl border border-slate-800/60 p-5 relative overflow-hidden">
+        <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-cyan-500 to-cyan-600" />
+        <div className="flex items-center gap-3 mb-2">
+          <Search className="w-5 h-5 text-cyan-400" />
+          <h2 className="text-lg font-semibold text-slate-100">
+            Limite de Busquedas
+          </h2>
+          <Tooltip content="Limite diario de busquedas de clientes para promotores y supervisores">
+            <HelpCircle className="w-4 h-4 text-slate-600 cursor-help" />
+          </Tooltip>
+        </div>
+        <span className="text-sm text-slate-400 block mb-4 ml-8">
+          Define cuantas busquedas de clientes puede realizar cada usuario por dia.
+        </span>
+        <div className="ml-8">
+          <Tooltip content="Controla cuantas consultas a BD Clientes puede hacer cada promotor/supervisor por dia">
+            <div>
+              <Input
+                label="Maximo de busquedas por dia"
+                type="number"
+                value={maxBusquedas}
+                onChange={(e) => setMaxBusquedas(e.target.value)}
+                helperText="Aplica a promotores y supervisores. Base: 50"
+                min={1}
+                max={1000}
+              />
+            </div>
+          </Tooltip>
+          <Button
+            variant="primary"
+            icon={<Save className="w-4 h-4" />}
+            loading={savingBusquedas}
+            onClick={handleSaveBusquedas}
+            className="mt-4 !bg-cyan-600 hover:!bg-cyan-500 !shadow-cyan-600/20"
           >
             Guardar Cambios
           </Button>

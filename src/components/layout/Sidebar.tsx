@@ -4,7 +4,7 @@ import Link from "next/link";
 import {
   LayoutDashboard, Users, Settings, ClipboardList, Building2,
   Map, Building, UsersRound, Briefcase, Filter, TrendingUp,
-  Inbox, Scale, ArrowLeftRight, ChevronLeft, Menu, BarChart3,
+  Inbox, Scale, ArrowLeftRight, ChevronLeft, Menu, BarChart3, Search, History,
 } from "lucide-react";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { ReactNode } from "react";
@@ -135,6 +135,7 @@ function SidebarContent({
             <NavItem label="Dashboard" href="/supervisor" icon={<LayoutDashboard className="w-5 h-5" />} pathname={pathname} showLabels={showLabels} exact />
             <NavItem label="Bandeja" href="/supervisor/bandeja" icon={<Inbox className="w-5 h-5" />} pathname={pathname} showLabels={showLabels} />
             <NavItem label="Solicitar Datos" href="/supervisor/asignaciones" icon={<ClipboardList className="w-5 h-5" />} pathname={pathname} showLabels={showLabels} />
+            <NavItem label="Busqueda" href="/supervisor/busqueda" icon={<Search className="w-5 h-5" />} pathname={pathname} showLabels={showLabels} exact />
             <NavItem label="WhatsApp" href="/supervisor/whatsapp" icon={<WhatsAppIcon />} pathname={pathname} showLabels={showLabels} exact />
           </>
         ) : isAsesorDigital ? (
@@ -144,6 +145,7 @@ function SidebarContent({
         ) : isPromotor ? (
           <>
             <NavItem label="Mi Asignación" href="/promotor/oportunidades" icon={<TrendingUp className="w-5 h-5" />} pathname={pathname} showLabels={showLabels} />
+            <NavItem label="Busqueda" href="/promotor/busqueda" icon={<Search className="w-5 h-5" />} pathname={pathname} showLabels={showLabels} exact />
             <NavItem label="WhatsApp" href="/promotor/whatsapp" icon={<WhatsAppIcon />} pathname={pathname} showLabels={showLabels} exact />
             <NavItem label="Analítica WA" href="/promotor/whatsapp/analitica" icon={<BarChart3 className="w-5 h-5" />} pathname={pathname} showLabels={showLabels} exact />
             <NavItem label="Configuración" href="/promotor/configuracion" icon={<Settings className="w-5 h-5" />} pathname={pathname} showLabels={showLabels} exact />
@@ -178,6 +180,7 @@ function SidebarContent({
 
             <div className="h-px bg-slate-800/50 my-2" />
             <NavItem label="Planes de Trabajo" href="/admin/planes-trabajo" icon={<Briefcase className="w-5 h-5" />} pathname={pathname} showLabels={showLabels} exact />
+            <NavItem label="Hist. Busquedas" href="/admin/busquedas" icon={<History className="w-5 h-5" />} pathname={pathname} showLabels={showLabels} exact />
             <NavItem label="Configuración" href="/admin/configuracion" icon={<Settings className="w-5 h-5" />} pathname={pathname} showLabels={showLabels} exact />
           </>
         )}

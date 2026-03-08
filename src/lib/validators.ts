@@ -73,6 +73,31 @@ export const createEquipoSchema = z.object({
   supervisor_id: z.number().int().positive().optional().nullable(),
 });
 
+// ============ BUSQUEDAS DE CLIENTES ============
+
+export const MOTIVOS_BUSQUEDA = [
+  "calificacion",
+  "tramite",
+  "prospeccion",
+  "validacion_datos",
+  "solicitud_pantalla",
+  "solicitud_capacidad",
+] as const;
+
+export const TIPOS_BUSQUEDA = ["CURP", "RFC", "TELEFONO"] as const;
+
+export const busquedaClientesSchema = z.object({
+  tipo: z.enum(TIPOS_BUSQUEDA),
+  valor: z.string().min(3, "Debe tener al menos 3 caracteres").max(100),
+  motivo: z.enum(MOTIVOS_BUSQUEDA),
+});
+
+export const copiarBusquedaSchema = z.object({
+  busqueda_id: z.number().int().positive(),
+  cliente_id: z.number().int().positive(),
+  campo: z.string().min(1).max(50),
+});
+
 // ============ PLAN DE TRABAJO ============
 
 export const createPlanTrabajoSchema = z.object({

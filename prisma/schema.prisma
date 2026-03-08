@@ -107,6 +107,8 @@ model usuarios {
   wa_campanas             wa_campanas[]
   ia_conversaciones       ia_conversaciones[]
   ad_registros            ad_registros[]
+  busquedas_clientes      busquedas_clientes[]
+  busquedas_clientes_logs busquedas_clientes_logs[]
 
   @@index([username])
   @@index([rol])
@@ -489,6 +491,40 @@ model ia_mensajes {
   conversacion ia_conversaciones @relation(fields: [conversacion_id], references: [id], onDelete: Cascade)
 
   @@index([conversacion_id])
+}
+
+// =============================================
+// BUSQUEDAS DE CLIENTES (promotor/supervisor)
+// =============================================
+
+model busquedas_clientes {
+  id         Int      @id @default(autoincrement())
+  usuario_id Int
+  tipo       String   @db.VarChar(20)   // CURP | RFC | TELEFONO
+  valor      String   @db.VarChar(100)  // valor buscado
+  motivo     String   @db.VarChar(50)   // calificacion | tramite | prospeccion | validacion_datos | solicitud_pantalla | solicitud_capacidad
+  resultados Int      @default(0)       // cantidad de resultados encontrados
+  created_at DateTime @default(now())
+
+  usuario usuarios                @relation(fields: [usuario_id], references: [id])
+  logs    busquedas_clientes_logs[]
+
+  @@index([usuario_id, created_at])
+}
+
+model busquedas_clientes_logs {
+  id          Int      @id @default(autoincrement())
+  busqueda_id Int
+  usuario_id  Int
+  cliente_id  Int      // ID del cliente cuyos datos se copiaron
+  campo       String   @db.VarChar(50)  // campo copiado: tel_1, curp, nss, "todos", etc.
+  created_at  DateTime @default(now())
+
+  busqueda busquedas_clientes @relation(fields: [busqueda_id], references: [id])
+  usuario  usuarios           @relation(fields: [usuario_id], references: [id])
+
+  @@index([usuario_id, created_at])
+  @@index([busqueda_id])
 }
 
 // =============================================
