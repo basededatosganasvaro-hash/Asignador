@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-utils";
+import { prisma } from "@/lib/prisma";
 import OpenAI from "openai";
 
 let _openai: OpenAI | null = null;
@@ -12,6 +13,8 @@ function getOpenAI() {
   }
   return _openai;
 }
+
+const IA_MEJORAS_LIMIT = 10; // maximo por mes
 
 // Rate limiting simple: max 5 llamadas por minuto por usuario
 const rateLimitMap = new Map<number, number[]>();
@@ -27,6 +30,41 @@ function checkRateLimit(userId: number): boolean {
   return true;
 }
 
+function getMejorasKey(userId: number): string {
+  const now = new Date();
+  const month = now.toLocaleDateString("en-CA", { timeZone: "America/Mexico_City" }).slice(0, 7); // YYYY-MM
+  return `ia_mejoras_${userId}_${month}`;
+}
+
+async function getMejorasUsadas(userId: number): Promise<number> {
+  const clave = getMejorasKey(userId);
+  const config = await prisma.configuracion.findUnique({ where: { clave } });
+  return config ? parseInt(config.valor) || 0 : 0;
+}
+
+async function incrementMejoras(userId: number): Promise<void> {
+  const clave = getMejorasKey(userId);
+  await prisma.configuracion.upsert({
+    where: { clave },
+    update: { valor: String((await getMejorasUsadas(userId)) + 1) },
+    create: { clave, valor: "1" },
+  });
+}
+
+export async function GET() {
+  const { session, error } = await requireAuth();
+  if (error) return error;
+
+  const userId = Number(session!.user.id);
+  const usadas = await getMejorasUsadas(userId);
+
+  return NextResponse.json({
+    limite: IA_MEJORAS_LIMIT,
+    usadas,
+    restantes: Math.max(0, IA_MEJORAS_LIMIT - usadas),
+  });
+}
+
 export async function POST(req: Request) {
   const { session, error } = await requireAuth();
   if (error) return error;
@@ -39,6 +77,18 @@ export async function POST(req: Request) {
 
   if (!mensaje_base || typeof mensaje_base !== "string") {
     return NextResponse.json({ error: "mensaje_base requerido" }, { status: 400 });
+  }
+
+  // Validar limite mensual para modo "mejorar"
+  const userId = Number(session!.user.id);
+  if (modo === "mejorar") {
+    const usadas = await getMejorasUsadas(userId);
+    if (usadas >= IA_MEJORAS_LIMIT) {
+      return NextResponse.json(
+        { error: "Has alcanzado el limite de mejoras IA este mes", limite: IA_MEJORAS_LIMIT, usadas },
+        { status: 429 }
+      );
+    }
   }
 
   const cant = Math.min(Math.max(Number(cantidad), 1), 30);
@@ -91,6 +141,11 @@ export async function POST(req: Request) {
           { status: 500 }
         );
       }
+    }
+
+    // Incrementar conteo mensual si fue mejora exitosa
+    if (modo === "mejorar") {
+      await incrementMejoras(userId);
     }
 
     return NextResponse.json({ variaciones });

@@ -34,7 +34,7 @@ const ETAPA_DESCRIPCIONES: Record<string, string> = {
   Capacidades: "Clientes con capacidad IMSS consultada por Telegram",
 };
 
-const IA_LIMIT = 10;
+const IA_LIMIT_DEFAULT = 10;
 
 const PALABRAS_RIESGO = ["prestamo", "préstamo", "credito", "crédito"];
 
@@ -52,6 +52,7 @@ export default function ConfiguracionPage() {
   const [editingEtapa, setEditingEtapa] = useState<string | null>(null);
   const [editingMsg, setEditingMsg] = useState("");
   const [iaUsadas, setIaUsadas] = useState(0);
+  const [iaLimite, setIaLimite] = useState(IA_LIMIT_DEFAULT);
   const [iaLoading, setIaLoading] = useState(false);
 
   const { toast } = useToast();
@@ -70,7 +71,17 @@ export default function ConfiguracionPage() {
     setLoading(false);
   }, []);
 
-  useEffect(() => { fetchPlantillas(); }, [fetchPlantillas]);
+  useEffect(() => {
+    fetchPlantillas();
+    // Cargar uso mensual de mejoras IA
+    fetch("/api/whatsapp/variaciones")
+      .then((r) => r.json())
+      .then((data) => {
+        setIaUsadas(data.usadas || 0);
+        setIaLimite(data.limite || IA_LIMIT_DEFAULT);
+      })
+      .catch(() => {});
+  }, [fetchPlantillas]);
 
   const handleResetAll = () => {
     setPlantillas({ ...WA_MENSAJES_DEFAULT });
@@ -132,7 +143,7 @@ export default function ConfiguracionPage() {
   }, []);
 
   const handleMejorarIA = async () => {
-    if (iaUsadas >= IA_LIMIT || !editingMsg.trim() || !editingEtapa) return;
+    if (iaUsadas >= iaLimite || !editingMsg.trim() || !editingEtapa) return;
     setIaLoading(true);
     try {
       const res = await fetch("/api/whatsapp/variaciones", {
@@ -172,7 +183,7 @@ export default function ConfiguracionPage() {
     );
   }
 
-  const iaRestantes = IA_LIMIT - iaUsadas;
+  const iaRestantes = Math.max(0, iaLimite - iaUsadas);
 
   return (
     <div>
@@ -192,7 +203,7 @@ export default function ConfiguracionPage() {
           <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-500/10 border border-purple-500/20">
             <Sparkles className="w-3.5 h-3.5 text-purple-400" />
             <span className="text-xs font-medium text-purple-300">
-              {iaRestantes}/{IA_LIMIT} mejoras IA
+              {iaRestantes}/{iaLimite} mejoras IA /mes
             </span>
           </div>
 
@@ -339,7 +350,7 @@ export default function ConfiguracionPage() {
                 size="sm"
                 icon={<Sparkles className="w-4 h-4" />}
                 onClick={handleMejorarIA}
-                disabled={iaLoading || iaUsadas >= IA_LIMIT || !editingMsg.trim()}
+                disabled={iaLoading || iaUsadas >= iaLimite || !editingMsg.trim()}
                 loading={iaLoading}
                 className="!bg-purple-600 !text-white hover:!bg-purple-500 !shadow-lg !shadow-purple-600/20"
               >
@@ -347,8 +358,8 @@ export default function ConfiguracionPage() {
               </Button>
               <span className={`text-xs ${iaRestantes > 0 ? "text-purple-400" : "text-red-400"}`}>
                 {iaRestantes > 0
-                  ? `${iaRestantes} mejora${iaRestantes !== 1 ? "s" : ""} restante${iaRestantes !== 1 ? "s" : ""}`
-                  : "Limite de mejoras alcanzado"
+                  ? `${iaRestantes} mejora${iaRestantes !== 1 ? "s" : ""} restante${iaRestantes !== 1 ? "s" : ""} este mes`
+                  : "Limite de mejoras alcanzado este mes"
                 }
               </span>
             </div>
