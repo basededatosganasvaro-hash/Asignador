@@ -9,7 +9,7 @@ import { Select } from "@/components/ui/Select";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { useToast } from "@/components/ui/Toast";
 import { ColumnDef } from "@tanstack/react-table";
-import { Plus, Pencil, Ban, CheckCircle, Search, Copy, Download } from "lucide-react";
+import { Plus, Pencil, Ban, CheckCircle, Search, Copy, Download, Trash2 } from "lucide-react";
 
 interface Usuario {
   id: number;
@@ -213,6 +213,28 @@ export default function UsuariosPage() {
     toast(`Username "${username}" copiado`, "success");
   };
 
+  const [deleteTarget, setDeleteTarget] = useState<Usuario | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/admin/usuarios/${deleteTarget.id}`, { method: "DELETE" });
+      if (res.ok) {
+        toast("Usuario eliminado", "success");
+        setDeleteTarget(null);
+        fetchUsers();
+      } else {
+        const data = await res.json();
+        toast(data.error || "Error al eliminar", "error");
+      }
+    } catch {
+      toast("Error de conexion", "error");
+    }
+    setDeleting(false);
+  };
+
   const columns: ColumnDef<Usuario, unknown>[] = [
     {
       accessorKey: "nombre",
@@ -317,6 +339,13 @@ export default function UsuariosPage() {
           >
             {row.original.activo ? <Ban className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
           </button>
+          <button
+            onClick={() => setDeleteTarget(row.original)}
+            title="Eliminar"
+            className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
         </div>
       ),
     },
@@ -388,6 +417,22 @@ export default function UsuariosPage() {
         pageSize={10}
         pageSizeOptions={[10, 25]}
       />
+
+      <Dialog open={!!deleteTarget} onClose={() => setDeleteTarget(null)} maxWidth="sm">
+        <DialogHeader onClose={() => setDeleteTarget(null)}>Eliminar Usuario</DialogHeader>
+        <DialogBody>
+          <p className="text-sm text-slate-300">
+            ¿Estás seguro de que deseas eliminar a <strong>{deleteTarget?.nombre}</strong>?
+            Esta acción no se puede deshacer. Solo se pueden eliminar usuarios sin datos asociados.
+          </p>
+        </DialogBody>
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => setDeleteTarget(null)}>Cancelar</Button>
+          <Button variant="danger" onClick={handleDelete} disabled={deleting}>
+            {deleting ? "Eliminando..." : "Eliminar"}
+          </Button>
+        </DialogFooter>
+      </Dialog>
 
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="md">
         <DialogHeader onClose={() => setDialogOpen(false)}>

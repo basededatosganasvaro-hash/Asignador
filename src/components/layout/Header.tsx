@@ -3,13 +3,14 @@ import { signOut, useSession } from "next-auth/react";
 import { LogOut } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 
-const rolLabels: Record<string, { label: string; color: "purple" | "blue" | "green" | "amber" | "orange" | "slate" }> = {
+const rolLabels: Record<string, { label: string; color: "purple" | "blue" | "green" | "amber" | "orange" | "slate" | "teal" }> = {
   admin: { label: "Admin", color: "purple" },
   gerente_regional: { label: "Gerente Regional", color: "orange" },
   gerente_sucursal: { label: "Gerente Sucursal", color: "blue" },
   supervisor: { label: "Supervisor", color: "blue" },
   promotor: { label: "Promotor", color: "green" },
   gestor_operaciones: { label: "Operaciones", color: "amber" },
+  asesor_digital: { label: "Asesor Digital", color: "teal" },
   comercial: { label: "Comercial", color: "slate" },
   direccion: { label: "Dirección", color: "slate" },
 };

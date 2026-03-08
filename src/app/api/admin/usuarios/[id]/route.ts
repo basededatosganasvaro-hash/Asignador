@@ -129,11 +129,53 @@ export async function DELETE(
   if (error) return error;
 
   const { id } = await params;
+  const userId = parseInt(id);
 
-  await prisma.usuarios.update({
-    where: { id: parseInt(id) },
-    data: { activo: false },
+  const usuario = await prisma.usuarios.findUnique({
+    where: { id: userId },
+    include: {
+      _count: {
+        select: {
+          lotes: true,
+          oportunidades: true,
+          captaciones: true,
+          ventas: true,
+          datos_contacto_editados: true,
+          historial: true,
+          equipos_supervisados: true,
+          wa_campanas: true,
+          ad_registros: true,
+        },
+      },
+    },
   });
+
+  if (!usuario) {
+    return NextResponse.json({ error: "Usuario no encontrado" }, { status: 404 });
+  }
+
+  const counts = usuario._count;
+  const totalRelations =
+    counts.lotes + counts.oportunidades + counts.captaciones +
+    counts.ventas + counts.datos_contacto_editados + counts.historial +
+    counts.equipos_supervisados + counts.wa_campanas + counts.ad_registros;
+
+  if (totalRelations > 0) {
+    return NextResponse.json(
+      { error: "No se puede eliminar: el usuario tiene datos asociados. Desactívalo en su lugar." },
+      { status: 409 }
+    );
+  }
+
+  // Sin datos asociados — eliminar registros dependientes sin FK constraint y luego el usuario
+  await prisma.$transaction([
+    prisma.cupo_diario.deleteMany({ where: { usuario_id: userId } }),
+    prisma.plantillas_whatsapp.deleteMany({ where: { usuario_id: userId } }),
+    prisma.wa_sesiones.deleteMany({ where: { usuario_id: userId } }),
+    prisma.ia_conversaciones.deleteMany({ where: { usuario_id: userId } }),
+    prisma.planes_trabajo.deleteMany({ where: { creado_por: userId } }),
+    prisma.usuarios.delete({ where: { id: userId } }),
+  ]);
 
   return NextResponse.json({ success: true });
 }
