@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Select } from "@/components/ui/Select";
@@ -133,12 +133,20 @@ function SolicitarTab({ toast }: { toast: (m: string, t?: "success" | "error" | 
 
   useEffect(() => { fetchPromotores(); }, [fetchPromotores]);
 
-  // Fetch opciones when filters change
+  // Fetch opciones when filters change (debounced)
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+
   const fetchOpciones = useCallback(async () => {
     if (!selectedPromotor) {
       setOpciones(null);
       return;
     }
+    // Cancelar request anterior si todavia esta en vuelo
+    if (abortRef.current) abortRef.current.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     setLoadingOpciones(true);
     try {
       const params = new URLSearchParams({ promotor_id: selectedPromotor });
@@ -148,13 +156,19 @@ function SolicitarTab({ toast }: { toast: (m: string, t?: "success" | "error" | 
       if (municipio) params.set("municipio", municipio);
       if (rangoOferta) params.set("rango_oferta", rangoOferta);
       if (tieneTelefono) params.set("tiene_telefono", "true");
-      const res = await fetch(`/api/supervisor/asignaciones/opciones?${params}`);
+      const res = await fetch(`/api/supervisor/asignaciones/opciones?${params}`, { signal: controller.signal });
       if (res.ok) setOpciones(await res.json());
-    } catch { /* ignore */ }
+    } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") return;
+    }
     setLoadingOpciones(false);
   }, [selectedPromotor, tipoCliente, convenio, estado, municipio, rangoOferta, tieneTelefono]);
 
-  useEffect(() => { fetchOpciones(); }, [fetchOpciones]);
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => fetchOpciones(), 300);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [fetchOpciones]);
 
   // Reset cascading filters
   const handleTipoClienteChange = (v: string) => {

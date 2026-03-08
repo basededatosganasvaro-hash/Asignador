@@ -227,6 +227,7 @@ model oportunidades {
   @@index([lote_id])
   @@index([origen])
   @@index([usuario_id, etapa_id, activo])
+  @@index([usuario_id, created_at])
   @@index([timer_vence, etapa_id, activo])
   @@index([cliente_id, etapa_id, activo])
   @@index([escalada_supervisor, activo])

@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { prismaClientes } from "@/lib/prisma-clientes";
 import { requireSupervisor } from "@/lib/auth-utils";
 import { calcularTimerVenceConConfig } from "@/lib/horario";
-import { getConfig } from "@/lib/config-cache";
+import { getConfig, getConfigBatch } from "@/lib/config-cache";
 import { Prisma } from "@prisma/client";
 
 async function withRetry<T>(fn: () => Promise<T>, maxRetries = 3): Promise<T> {
@@ -27,32 +27,34 @@ export async function GET() {
 
   const supervisorId = parseInt(session.user.id);
 
-  const supervisor = await prisma.usuarios.findUnique({
-    where: { id: supervisorId },
-    select: { equipo_id: true },
-  });
+  // Paralelizar: supervisor data + config
+  const [supervisor, maxPerDayStr] = await Promise.all([
+    prisma.usuarios.findUnique({
+      where: { id: supervisorId },
+      select: { equipo_id: true },
+    }),
+    getConfig("max_registros_por_dia"),
+  ]);
 
   if (!supervisor?.equipo_id) {
     return NextResponse.json({ error: "No tienes equipo asignado" }, { status: 400 });
   }
 
   const equipoId = supervisor.equipo_id;
+  const maxPerDay = parseInt(maxPerDayStr || "300");
 
+  const nowMx = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Mexico_City" }));
+  const today = new Date(nowMx.getFullYear(), nowMx.getMonth(), nowMx.getDate());
+
+  // Promotores + cupos + oportunidades activas — todo en paralelo
   const promotores = await prisma.usuarios.findMany({
     where: { equipo_id: equipoId, rol: "promotor", activo: true },
     select: { id: true, nombre: true },
     orderBy: { nombre: "asc" },
   });
 
-  const nowMx = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Mexico_City" }));
-  const today = new Date(nowMx.getFullYear(), nowMx.getMonth(), nowMx.getDate());
-
-  const maxPerDayStr = await getConfig("max_registros_por_dia");
-  const maxPerDay = parseInt(maxPerDayStr || "300");
-
   const promotorIds = promotores.map((p) => p.id);
 
-  // Cupo y oportunidades activas en paralelo
   const [cupos, activasCounts] = await Promise.all([
     prisma.cupo_diario.findMany({
       where: { usuario_id: { in: promotorIds }, fecha: today },
@@ -91,17 +93,6 @@ export async function POST(request: Request) {
 
   const supervisorId = parseInt(session.user.id);
 
-  const supervisor = await prisma.usuarios.findUnique({
-    where: { id: supervisorId },
-    select: { equipo_id: true },
-  });
-
-  if (!supervisor?.equipo_id) {
-    return NextResponse.json({ error: "No tienes equipo asignado" }, { status: 400 });
-  }
-
-  const equipoId = supervisor.equipo_id;
-
   let promotor_id: number;
   let cantidad: number | undefined;
   let tipo_cliente: string | undefined;
@@ -131,11 +122,24 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Body invalido" }, { status: 400 });
   }
 
-  // Validate promotor belongs to team
-  const promotor = await prisma.usuarios.findUnique({
-    where: { id: promotor_id },
-    select: { id: true, equipo_id: true, activo: true },
-  });
+  // Paralelizar: supervisor + promotor + config (todo en 1 round trip)
+  const [supervisor, promotor, configs] = await Promise.all([
+    prisma.usuarios.findUnique({
+      where: { id: supervisorId },
+      select: { equipo_id: true },
+    }),
+    prisma.usuarios.findUnique({
+      where: { id: promotor_id },
+      select: { id: true, equipo_id: true, activo: true },
+    }),
+    getConfigBatch(["max_registros_por_dia", "cooldown_meses"]),
+  ]);
+
+  if (!supervisor?.equipo_id) {
+    return NextResponse.json({ error: "No tienes equipo asignado" }, { status: 400 });
+  }
+
+  const equipoId = supervisor.equipo_id;
 
   if (!promotor || promotor.equipo_id !== equipoId) {
     return NextResponse.json({ error: "Promotor no pertenece a tu equipo" }, { status: 403 });
@@ -151,26 +155,26 @@ export async function POST(request: Request) {
     const nowMx = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Mexico_City" }));
     const today = new Date(nowMx.getFullYear(), nowMx.getMonth(), nowMx.getDate());
 
-    const maxPerDayStr = await getConfig("max_registros_por_dia");
-    const maxPerDay = parseInt(maxPerDayStr || "300");
+    const maxPerDay = parseInt(configs["max_registros_por_dia"] || "300");
 
-    // Check cupo
-    const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
-    let yaAsignados = 0;
-    let usaCupoDiario = false;
-    try {
-      const cupoExistente = await prisma.cupo_diario.findUnique({
+    // Cupo + cooldown exclude en paralelo
+    const cooldownMeses = parseInt(configs["cooldown_meses"] || "3");
+    const cooldownDate = new Date();
+    cooldownDate.setMonth(cooldownDate.getMonth() - cooldownMeses);
+
+    const [cupoExistente, excludeRows] = await Promise.all([
+      prisma.cupo_diario.findUnique({
         where: { usuario_id_fecha: { usuario_id: promotor_id, fecha: today } },
-      });
-      yaAsignados = cupoExistente?.total_asignado ?? 0;
-      usaCupoDiario = true;
-    } catch {
-      const lotesHoy = await prisma.lotes.findMany({
-        where: { usuario_id: promotor_id, fecha: { gte: today, lt: tomorrow } },
-        select: { cantidad: true },
-      });
-      yaAsignados = lotesHoy.reduce((s, l) => s + l.cantidad, 0);
-    }
+      }).catch(() => null),
+      prisma.$queryRaw<{ cliente_id: number }[]>`
+        SELECT DISTINCT cliente_id FROM oportunidades
+        WHERE cliente_id IS NOT NULL
+          AND (activo = true OR (usuario_id = ${promotor_id} AND created_at >= ${cooldownDate}))
+      `,
+    ]);
+
+    const yaAsignados = cupoExistente?.total_asignado ?? 0;
+    const usaCupoDiario = !!cupoExistente || true;
     const cupoDisponible = maxPerDay - yaAsignados;
 
     if (cupoDisponible <= 0) {
@@ -182,17 +186,6 @@ export async function POST(request: Request) {
 
     const requested = Math.min(cantidad || cupoDisponible, cupoDisponible);
 
-    // Exclude active + cooldown
-    const cooldownStr = await getConfig("cooldown_meses");
-    const cooldownMeses = parseInt(cooldownStr || "3");
-    const cooldownDate = new Date();
-    cooldownDate.setMonth(cooldownDate.getMonth() - cooldownMeses);
-
-    const excludeRows = await prisma.$queryRaw<{ cliente_id: number }[]>`
-      SELECT DISTINCT cliente_id FROM oportunidades
-      WHERE cliente_id IS NOT NULL
-        AND (activo = true OR (usuario_id = ${promotor_id} AND created_at >= ${cooldownDate}))
-    `;
     const excludeArray = excludeRows.map((r) => r.cliente_id);
 
     // Build SQL
