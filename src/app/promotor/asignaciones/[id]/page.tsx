@@ -28,6 +28,19 @@ interface ClienteRow {
   municipio: string | null;
   convenio: string | null;
   oferta: string | null;
+  tipo_empleado: string | null;
+  tipo_nomina: string | null;
+  nivel_salarial: string | null;
+  puesto: string | null;
+  centro_educativo: string | null;
+  clave_cct: string | null;
+  oferta_neta: string | null;
+  oportunidad_total: string | null;
+  oportunidad_real: string | null;
+  dependencia: string | null;
+  antiguedad: string | null;
+  universo: string | null;
+  nomb_unidad_adm: string | null;
 }
 
 interface AsignacionDetail {
@@ -115,6 +128,18 @@ export default function AsignacionDetallePage() {
     { accessorKey: "municipio", header: "Municipio", size: 140 },
     { accessorKey: "convenio", header: "Convenio", size: 200 },
     { accessorKey: "oferta", header: "Oferta", size: 120 },
+    { accessorKey: "dependencia", header: "Dependencia", size: 140 },
+    { accessorKey: "tipo_empleado", header: "Tipo Empleado", size: 140 },
+    { accessorKey: "tipo_nomina", header: "Tipo Nomina", size: 130 },
+    { accessorKey: "nivel_salarial", header: "Nivel Salarial", size: 130 },
+    { accessorKey: "puesto", header: "Puesto", size: 150 },
+    { accessorKey: "antiguedad", header: "Antiguedad", size: 120 },
+    { accessorKey: "nomb_unidad_adm", header: "Unidad Adm.", size: 180 },
+    { accessorKey: "centro_educativo", header: "Centro Educativo", size: 200 },
+    { accessorKey: "clave_cct", header: "Clave CCT", size: 130 },
+    { accessorKey: "oferta_neta", header: "Oferta Neta", size: 130 },
+    { accessorKey: "oportunidad_total", header: "Oportunidad Total", size: 150 },
+    { accessorKey: "oportunidad_real", header: "Oportunidad Real", size: 150 },
   ];
 
   return (

@@ -271,11 +271,26 @@ function BandejaTab({ toast }: { toast: (m: string, t?: "success" | "error" | "i
             <Card>
               <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Datos del cliente</span>
               <p className="text-sm text-slate-200 mt-1">
-                {(selected.cliente as { nombres?: string }).nombres ?? "\u2014"}
+                {(selected.cliente as Record<string, string>).nombres ?? "\u2014"}
               </p>
               <span className="text-sm text-slate-400">
-                {(selected.cliente as { convenio?: string }).convenio ?? "\u2014"}
+                {(selected.cliente as Record<string, string>).convenio ?? "\u2014"}
               </span>
+              {(selected.cliente as Record<string, string>).estado && (
+                <p className="text-xs text-slate-500 mt-1">
+                  {(selected.cliente as Record<string, string>).estado} / {(selected.cliente as Record<string, string>).municipio ?? "—"}
+                </p>
+              )}
+              {(selected.cliente as Record<string, string>).tipo_empleado && (
+                <p className="text-xs text-slate-500">
+                  {(selected.cliente as Record<string, string>).tipo_empleado} · {(selected.cliente as Record<string, string>).puesto ?? ""}
+                </p>
+              )}
+              {(selected.cliente as Record<string, string>).centro_educativo && (
+                <p className="text-xs text-slate-500">
+                  {(selected.cliente as Record<string, string>).centro_educativo}
+                </p>
+              )}
             </Card>
 
             <Select
