@@ -146,6 +146,7 @@ function SidebarContent({
             <NavItem label="Dashboard" href="/supervisor" icon={<LayoutDashboard className="w-5 h-5" />} pathname={pathname} showLabels={showLabels} exact />
             <NavItem label="Bandeja" href="/supervisor/bandeja" icon={<Inbox className="w-5 h-5" />} pathname={pathname} showLabels={showLabels} />
             <NavItem label="Solicitar Datos" href="/supervisor/asignaciones" icon={<ClipboardList className="w-5 h-5" />} pathname={pathname} showLabels={showLabels} />
+            <NavItem label="Mi Plantilla" href="/supervisor/plantilla" icon={<Users className="w-5 h-5" />} pathname={pathname} showLabels={showLabels} exact />
             <NavItem label="Busqueda" href="/supervisor/busqueda" icon={<Search className="w-5 h-5" />} pathname={pathname} showLabels={showLabels} exact />
             <NavItem label="WhatsApp" href="/supervisor/whatsapp" icon={<WhatsAppIcon />} pathname={pathname} showLabels={showLabels} exact />
           </>

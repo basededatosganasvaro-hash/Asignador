@@ -19,7 +19,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   const promotor = await prisma.usuarios.findUnique({
     where: { id: Number(id) },
-    select: { id: true, nombre: true, activo: true, rol: true },
+    select: { id: true, nombre: true, activo: true, rol: true, equipo_id: true },
   });
 
   if (!promotor || !promotor.activo) {
@@ -27,6 +27,17 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   }
   if (promotor.rol !== "promotor") {
     return NextResponse.json({ error: "Solo se puede dar de baja a promotores" }, { status: 400 });
+  }
+
+  // Si es supervisor, validar que el promotor pertenezca a su equipo
+  if (session!.user.rol === "supervisor") {
+    const equipoSupervisor = await prisma.equipos.findFirst({
+      where: { supervisor_id: userId },
+      select: { id: true },
+    });
+    if (!equipoSupervisor || promotor.equipo_id !== equipoSupervisor.id) {
+      return NextResponse.json({ error: "Solo puedes dar de baja a promotores de tu equipo" }, { status: 403 });
+    }
   }
 
   // Buscar todas sus oportunidades activas
