@@ -84,7 +84,7 @@ export const MOTIVOS_BUSQUEDA = [
   "solicitud_capacidad",
 ] as const;
 
-export const TIPOS_BUSQUEDA = ["CURP", "RFC", "TELEFONO"] as const;
+export const TIPOS_BUSQUEDA = ["CURP", "RFC", "TELEFONO", "NSS"] as const;
 
 export const busquedaClientesSchema = z.object({
   tipo: z.enum(TIPOS_BUSQUEDA),

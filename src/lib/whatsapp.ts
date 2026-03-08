@@ -38,5 +38,5 @@ export function buildWhatsAppUrl(
     .replace(/\{nombre\}/g, nombre)
     .replace(/\{promotor\}/g, promotorNombre);
 
-  return `https://wa.me/${tel}?text=${encodeURIComponent(mensaje)}`;
+  return `https://api.whatsapp.com/send?phone=${tel}&text=${encodeURIComponent(mensaje)}`;
 }

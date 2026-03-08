@@ -49,6 +49,7 @@ const MOTIVOS = [
 const TIPOS = [
   { value: "CURP", label: "CURP" },
   { value: "RFC", label: "RFC" },
+  { value: "NSS", label: "NSS" },
   { value: "TELEFONO", label: "Telefono" },
 ];
 
@@ -241,7 +242,7 @@ export default function BusquedaClientesPanel() {
               label="Valor a buscar"
               value={valor}
               onChange={(e) => setValor(e.target.value)}
-              placeholder={tipo === "CURP" ? "CURP del cliente" : tipo === "RFC" ? "RFC del cliente" : "Numero de telefono"}
+              placeholder={tipo === "CURP" ? "CURP del cliente" : tipo === "RFC" ? "RFC del cliente" : tipo === "NSS" ? "NSS del cliente" : "Numero de telefono"}
               onKeyDown={(e) => e.key === "Enter" && handleSearch()}
             />
           </div>

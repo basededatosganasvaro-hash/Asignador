@@ -91,6 +91,9 @@ export async function POST(req: Request) {
         ],
       };
       break;
+    case "NSS":
+      whereClause = { nss: body.valor };
+      break;
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
