@@ -1,6 +1,7 @@
 "use client";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import {
   LayoutDashboard, Users, Settings, ClipboardList, Building2,
   Map, Building, UsersRound, Briefcase, Filter, TrendingUp,
@@ -110,18 +111,28 @@ function SidebarContent({
         {showLabels ? (
           <>
             <div className="flex items-center gap-2">
-              <div className="w-9 h-9 bg-gradient-to-br from-amber-500 to-amber-600 rounded-lg flex items-center justify-center font-bold text-sm text-slate-950 shadow-lg shadow-amber-500/20">
-                SA
-              </div>
-              <span className="text-sm font-bold text-slate-100 whitespace-nowrap">Asignaciones</span>
+              <Image
+                src="/logo-talento-morado.png"
+                alt="Talento Morado"
+                width={36}
+                height={36}
+                className="rounded-lg"
+              />
+              <span className="text-sm font-bold text-slate-100 whitespace-nowrap">Talento Morado</span>
             </div>
             <button onClick={onToggle} className="p-1.5 text-slate-500 hover:text-slate-300 transition-colors rounded-lg hover:bg-slate-800/50">
               <ChevronLeft className="w-5 h-5" />
             </button>
           </>
         ) : (
-          <button onClick={onToggle} className="p-1.5 text-slate-500 hover:text-slate-300 transition-colors rounded-lg hover:bg-slate-800/50">
-            <Menu className="w-5 h-5" />
+          <button onClick={onToggle} className="p-0.5 hover:opacity-80 transition-opacity rounded-lg">
+            <Image
+              src="/logo-talento-morado.png"
+              alt="Talento Morado"
+              width={32}
+              height={32}
+              className="rounded-lg"
+            />
           </button>
         )}
       </div>

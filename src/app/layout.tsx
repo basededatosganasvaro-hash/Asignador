@@ -26,7 +26,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Sistema de Asignacion",
+  title: "Talento Morado — Sistema de Asignacion",
   description: "Sistema de asignacion y gestion de datos de clientes",
 };
 
