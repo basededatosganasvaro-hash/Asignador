@@ -164,6 +164,35 @@ const CLIENTE_EXTRA_COLUMNS: { field: string; headerName: string; width?: number
   { field: "estatus", headerName: "Estatus", width: 120 },
   { field: "monto", headerName: "Monto", width: 120 },
   { field: "num_empleado", headerName: "Num. Empleado", width: 130 },
+  // Datos laborales / educativos (FONE/SEP)
+  { field: "nombre", headerName: "Nombre Completo", width: 200 },
+  { field: "tipo_empleado", headerName: "Tipo Empleado", width: 140 },
+  { field: "antiguedad", headerName: "Antiguedad", width: 120 },
+  { field: "tipo_nomina", headerName: "Tipo Nomina", width: 130 },
+  { field: "nivel_salarial", headerName: "Nivel Salarial", width: 130 },
+  { field: "unidad_adm", headerName: "Unidad Adm.", width: 130 },
+  { field: "nomb_unidad_adm", headerName: "Nombre Unidad Adm.", width: 180 },
+  { field: "puesto", headerName: "Puesto", width: 150 },
+  { field: "descuento", headerName: "Descuento", width: 120 },
+  { field: "oferta_neta", headerName: "Oferta Neta", width: 130 },
+  { field: "universo", headerName: "Universo", width: 120 },
+  // Centro educativo
+  { field: "clave_cct", headerName: "Clave CCT", width: 130 },
+  { field: "centro_educativo", headerName: "Centro Educativo", width: 200 },
+  { field: "localidad", headerName: "Localidad", width: 150 },
+  { field: "municipio_centro_educativo", headerName: "Municipio C.E.", width: 160 },
+  { field: "entidad_centro_educativo", headerName: "Entidad C.E.", width: 140 },
+  { field: "cp_centro_educativo", headerName: "C.P. C.E.", width: 100 },
+  // Ubicacion personal adicional
+  { field: "entidad_personal", headerName: "Entidad Personal", width: 140 },
+  { field: "municipio_personal", headerName: "Municipio Personal", width: 160 },
+  { field: "calle", headerName: "Calle", width: 180 },
+  { field: "num_ext", headerName: "Num. Ext.", width: 100 },
+  { field: "num_int", headerName: "Num. Int.", width: 100 },
+  // Oportunidad
+  { field: "oportunidad_total", headerName: "Oportunidad Total", width: 150 },
+  { field: "oportunidad_real", headerName: "Oportunidad Real", width: 150 },
+  { field: "id_origen", headerName: "ID Origen", width: 120 },
 ];
 
 const CARD_COLORS: Record<string, string> = {

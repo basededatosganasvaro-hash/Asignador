@@ -47,7 +47,7 @@ interface OportunidadDetalle {
   etapa: { id: number; nombre: string; tipo: string; color: string } | null;
   timer_vence: string | null;
   activo: boolean;
-  cliente: {
+  cliente: Record<string, string | null | undefined> & {
     nombres: string;
     tel_1?: string | null;
     tel_2?: string | null;
@@ -227,6 +227,35 @@ export default function OportunidadDetallePage({ params }: { params: Promise<{ i
             <Row label="Num. Empleado" value={data.cliente.num_empleado} />
           </div>
         </Card>
+
+        {/* Card datos laborales / educativos (solo si aplica) */}
+        {(data.cliente.tipo_empleado || data.cliente.tipo_nomina || data.cliente.centro_educativo || data.cliente.puesto || data.cliente.oferta_neta || data.cliente.oportunidad_real) && (
+          <Card>
+            <h2 className="text-lg font-semibold text-slate-100 mb-4">Datos Laborales / Educativos</h2>
+            <div className="flex flex-col gap-3">
+              <Row label="Tipo Empleado" value={data.cliente.tipo_empleado} />
+              <Row label="Tipo Nomina" value={data.cliente.tipo_nomina} />
+              <Row label="Nivel Salarial" value={data.cliente.nivel_salarial} />
+              <Row label="Puesto" value={data.cliente.puesto} />
+              <Row label="Antiguedad" value={data.cliente.antiguedad} />
+              <Row label="Unidad Adm." value={data.cliente.nomb_unidad_adm || data.cliente.unidad_adm} />
+              <Divider />
+              <Row label="Oferta Neta" value={data.cliente.oferta_neta} />
+              <Row label="Descuento" value={data.cliente.descuento} />
+              <Row label="Oportunidad Total" value={data.cliente.oportunidad_total} />
+              <Row label="Oportunidad Real" value={data.cliente.oportunidad_real} />
+              {data.cliente.centro_educativo && (
+                <>
+                  <Divider />
+                  <Row label="Centro Educativo" value={data.cliente.centro_educativo} />
+                  <Row label="Clave CCT" value={data.cliente.clave_cct} />
+                  <Row label="Entidad C.E." value={data.cliente.entidad_centro_educativo} />
+                  <Row label="Municipio C.E." value={data.cliente.municipio_centro_educativo} />
+                </>
+              )}
+            </div>
+          </Card>
+        )}
 
         {/* Card acciones del embudo */}
         <Card>

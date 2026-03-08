@@ -85,6 +85,50 @@ model clientes {
   monto                 String?
 
   num_empleado          String?
+
+  // Nombre completo (campo adicional)
+  nombre                String?
+
+  // Datos laborales / educativos (FONE/SEP)
+  id_origen             String?
+  tipo_empleado         String?
+  antiguedad            String?
+  universo              String?
+  tipo_nomina           String?
+  nivel_salarial        String?
+  unidad_adm            String?
+  nomb_unidad_adm       String?
+  puesto                String?
+  descuento             String?
+  oferta_neta           String?
+
+  // Centro educativo
+  clave_cct             String?
+  centro_educativo      String?
+  domicilio             String?
+  num_exterior_ce       String?
+  localidad             String?
+  municipio_centro_educativo  String?
+  entidad_centro_educativo    String?
+  cp_centro_educativo         String?
+
+  // Ubicacion personal adicional
+  entidad_personal      String?
+  municipio_personal    String?
+  calle                 String?
+  num_ext               String?
+  num_int               String?
+
+  // Oportunidad
+  oportunidad_total     String?
+  oportunidad_real      String?
+
+  // Columnas sin header (artefactos CSV)
+  unnamed_4             String?
+  unnamed_5             String?
+  unnamed_6             String?
+  unnamed_7             String?
+  unnamed_8             String?
 }
 
 model catalogo_estados {

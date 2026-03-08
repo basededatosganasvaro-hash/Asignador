@@ -98,7 +98,13 @@ export async function POST(req: Request) {
   if (clienteIds.length > 0) {
     const clientes = await prismaClientes.clientes.findMany({
       where: { id: { in: clienteIds } },
-      select: { id: true, nombres: true, convenio: true, estado: true, municipio: true, tipo_cliente: true, tel_1: true },
+      select: {
+        id: true, nombres: true, convenio: true, estado: true, municipio: true,
+        tipo_cliente: true, tel_1: true, tipo_empleado: true, tipo_nomina: true,
+        nivel_salarial: true, puesto: true, centro_educativo: true, clave_cct: true,
+        oferta_neta: true, oportunidad_total: true, oportunidad_real: true,
+        dependencia: true, oferta: true,
+      },
     });
     for (const c of clientes) {
       clienteMap[c.id] = c as unknown as Record<string, string | null>;
@@ -132,6 +138,17 @@ export async function POST(req: Request) {
         municipio: cliente.municipio ?? "—",
         tipo_cliente: cliente.tipo_cliente ?? "—",
         tel_1: cliente.tel_1 ?? "",
+        dependencia: cliente.dependencia ?? "",
+        oferta: cliente.oferta ?? "",
+        tipo_empleado: cliente.tipo_empleado ?? "",
+        tipo_nomina: cliente.tipo_nomina ?? "",
+        nivel_salarial: cliente.nivel_salarial ?? "",
+        puesto: cliente.puesto ?? "",
+        centro_educativo: cliente.centro_educativo ?? "",
+        clave_cct: cliente.clave_cct ?? "",
+        oferta_neta: cliente.oferta_neta ?? "",
+        oportunidad_total: cliente.oportunidad_total ?? "",
+        oportunidad_real: cliente.oportunidad_real ?? "",
         etapa: op.etapa?.nombre ?? "—",
         fecha: op.created_at,
       };
@@ -144,6 +161,17 @@ export async function POST(req: Request) {
         municipio: datos.municipio ?? "—",
         tipo_cliente: "Captado",
         tel_1: datos.tel_1 ?? "",
+        dependencia: "",
+        oferta: "",
+        tipo_empleado: "",
+        tipo_nomina: "",
+        nivel_salarial: "",
+        puesto: "",
+        centro_educativo: "",
+        clave_cct: "",
+        oferta_neta: "",
+        oportunidad_total: "",
+        oportunidad_real: "",
         etapa: op.etapa?.nombre ?? "—",
         fecha: op.created_at,
       };
@@ -180,6 +208,17 @@ export async function POST(req: Request) {
     { header: "Municipio", key: "municipio", width: 20 },
     { header: "Tipo Cliente", key: "tipo_cliente", width: 15 },
     { header: "Teléfono", key: "tel_1", width: 15 },
+    { header: "Dependencia", key: "dependencia", width: 20 },
+    { header: "Oferta", key: "oferta", width: 15 },
+    { header: "Tipo Empleado", key: "tipo_empleado", width: 18 },
+    { header: "Tipo Nómina", key: "tipo_nomina", width: 18 },
+    { header: "Nivel Salarial", key: "nivel_salarial", width: 15 },
+    { header: "Puesto", key: "puesto", width: 20 },
+    { header: "Centro Educativo", key: "centro_educativo", width: 25 },
+    { header: "Clave CCT", key: "clave_cct", width: 15 },
+    { header: "Oferta Neta", key: "oferta_neta", width: 15 },
+    { header: "Oportunidad Total", key: "oportunidad_total", width: 18 },
+    { header: "Oportunidad Real", key: "oportunidad_real", width: 18 },
     { header: "Etapa", key: "etapa", width: 15 },
     { header: "Fecha", key: "fecha", width: 15 },
   ];
