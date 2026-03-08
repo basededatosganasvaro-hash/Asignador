@@ -118,7 +118,7 @@ function SidebarContent({
                 height={36}
                 className="rounded-lg"
               />
-              <span className="text-sm font-bold text-slate-100 whitespace-nowrap">Talento Morado</span>
+              <span className="text-sm font-bold text-slate-100 whitespace-nowrap">Asignador</span>
             </div>
             <button onClick={onToggle} className="p-1.5 text-slate-500 hover:text-slate-300 transition-colors rounded-lg hover:bg-slate-800/50">
               <ChevronLeft className="w-5 h-5" />
