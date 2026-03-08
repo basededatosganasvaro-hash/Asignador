@@ -35,7 +35,7 @@ export async function GET() {
 
   if (oportunidades.length === 0) return NextResponse.json([]);
 
-  // Fetch ALL client fields from BD Clientes
+  // Fetch client fields needed for the table (excludes unnamed_*, fecha_carga, archivo_origen)
   const clienteIds = oportunidades.map((o) => o.cliente_id).filter((id): id is number => id !== null);
 
   const clienteMap: Record<number, Record<string, unknown>> = {};
@@ -46,6 +46,37 @@ export async function GET() {
     const [clientes, edits] = await Promise.all([
       prismaClientes.clientes.findMany({
         where: { id: { in: clienteIds } },
+        select: {
+          id: true,
+          tipo_cliente: true,
+          // Identificacion
+          nss: true, a_paterno: true, a_materno: true, nombres: true, curp: true, rfc: true,
+          // Datos personales
+          edad: true, genero: true, tipo_pension: true, mes_pension: true, anio_pension: true,
+          // Ubicacion
+          umf_delegacion: true, calle_num: true, colonia: true, domicilio_pensionados: true,
+          region: true, estado: true, municipio: true, cp: true,
+          // Contacto
+          tel_1: true, tipo_1: true, tel_2: true, tipo_2: true, tel_3: true, tipo_3: true,
+          tel_4: true, tipo_4: true, tel_5: true, tipo_5: true, direccion_email: true,
+          // Financieras
+          creditos_actuales: true, tipo_mercado: true, tipo_cliente_original: true,
+          tipo_cliente_csp: true, capacidad: true, plazo_oferta: true, oferta: true,
+          cotizador: true, tasa: true, cat: true, financiera: true, plazo: true,
+          monto_solicitado: true, descuento_actual: true, plazo_transcurrido: true,
+          plazo_restante: true, cat_actual: true, tasa_actual: true,
+          // Cartera
+          convenio: true, monto_comisionable: true, dependencia: true, estatus: true,
+          monto: true, num_empleado: true,
+          // Laborales / educativos (nuevos)
+          nombre: true, tipo_empleado: true, antiguedad: true, tipo_nomina: true,
+          nivel_salarial: true, unidad_adm: true, nomb_unidad_adm: true, puesto: true,
+          descuento: true, oferta_neta: true, universo: true,
+          clave_cct: true, centro_educativo: true, localidad: true,
+          municipio_centro_educativo: true, entidad_centro_educativo: true, cp_centro_educativo: true,
+          entidad_personal: true, municipio_personal: true, calle: true, num_ext: true, num_int: true,
+          oportunidad_total: true, oportunidad_real: true, id_origen: true,
+        },
       }),
       prisma.datos_contacto.findMany({
         where: { cliente_id: { in: clienteIds } },
