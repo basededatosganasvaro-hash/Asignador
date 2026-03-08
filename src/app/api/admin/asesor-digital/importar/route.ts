@@ -99,9 +99,25 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "No se envio ningun archivo" }, { status: 400 });
   }
 
-  const arrayBuf = await file.arrayBuffer();
-  const wb = new ExcelJS.Workbook();
-  await wb.xlsx.load(arrayBuf as unknown as ExcelJS.Buffer);
+  // Validate file size (5MB max)
+  if (file.size > 5 * 1024 * 1024) {
+    return NextResponse.json({ error: "El archivo excede el limite de 5MB" }, { status: 400 });
+  }
+
+  // Validate extension
+  const fileName = file.name || "";
+  if (!fileName.toLowerCase().endsWith(".xlsx")) {
+    return NextResponse.json({ error: "Solo se aceptan archivos .xlsx" }, { status: 400 });
+  }
+
+  let wb: ExcelJS.Workbook;
+  try {
+    const arrayBuf = await file.arrayBuffer();
+    wb = new ExcelJS.Workbook();
+    await wb.xlsx.load(arrayBuf as unknown as ExcelJS.Buffer);
+  } catch {
+    return NextResponse.json({ error: "No se pudo leer el archivo Excel" }, { status: 400 });
+  }
 
   const ws = wb.worksheets[0];
   if (!ws) {
@@ -179,13 +195,14 @@ export async function POST(request: Request) {
     }
 
     const montoRaw = values.monto_credito;
-    const monto = montoRaw ? Number(montoRaw.replace(/[,$]/g, "")) : null;
+    const montoClean = montoRaw ? montoRaw.replace(/[,$]/g, "").trim() : "";
+    const monto = montoClean ? Number(montoClean) : null;
 
     registros.push({
       usuario_id: asesor.id,
       etapa,
       nombre_cliente: truncate(values.nombre_cliente, "nombre_cliente")!,
-      fecha: parseDate(row.getCell(2).value),
+      fecha: parseDate(row.getCell(COLUMN_MAP[1].idx + 1).value),
       status,
       estrategia: truncate(values.estrategia, "estrategia"),
       flujo: truncate(values.flujo, "flujo"),

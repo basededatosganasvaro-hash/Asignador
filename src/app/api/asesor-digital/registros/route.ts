@@ -21,7 +21,13 @@ export async function POST(request: Request) {
   const { session, error } = await requireAsesorDigital();
   if (error) return error;
 
-  const body = await request.json();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let body: any;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "JSON invalido" }, { status: 400 });
+  }
 
   if (!body.nombre_cliente?.trim()) {
     return NextResponse.json({ error: "El nombre del cliente es obligatorio" }, { status: 400 });

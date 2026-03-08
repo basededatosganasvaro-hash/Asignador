@@ -173,8 +173,13 @@ function ColumnFilterDropdown({
         setOpen(false);
       }
     }
+    function handleScroll() { setOpen(false); }
     document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
+    window.addEventListener("scroll", handleScroll, true);
+    return () => {
+      document.removeEventListener("mousedown", handleClick);
+      window.removeEventListener("scroll", handleScroll, true);
+    };
   }, []);
 
   const handleToggle = (e: React.MouseEvent) => {
@@ -246,6 +251,7 @@ export default function AsesorDigitalPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<Registro | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
   const [viewRecord, setViewRecord] = useState<Registro | null>(null);
   const [viewForm, setViewForm] = useState<Record<string, string>>({});
   const [viewDirty, setViewDirty] = useState(false);
@@ -339,7 +345,7 @@ export default function AsesorDigitalPage() {
       }
       return true;
     });
-  }, [registros, busqueda, filtroStatus, filtroEstrategia, filtroCampana, filtroConvenio, filtroEtapa]);
+  }, [registrosPeriodo, busqueda, filtroStatus, filtroEstrategia, filtroCampana, filtroConvenio, filtroEtapa]);
 
   const handleOpenCreate = () => {
     setEditingRecord(null);
@@ -347,33 +353,26 @@ export default function AsesorDigitalPage() {
     setDialogOpen(true);
   };
 
-  const handleOpenEdit = (record: Registro) => {
-    setEditingRecord(record);
-    setFormData({
-      etapa: record.etapa,
-      nombre_cliente: record.nombre_cliente,
-      fecha: record.fecha ? record.fecha.split("T")[0] : "",
-      status: record.status,
-      estrategia: record.estrategia || "",
-      flujo: record.flujo || "",
-      numero_telefono: record.numero_telefono || "",
-      curp: record.curp || "",
-      nss: record.nss || "",
-      rfc: record.rfc || "",
-      zona: record.zona || "",
-      campana: record.campana || "",
-      capacidad: record.capacidad || "",
-      monto_credito: record.monto_credito ? String(record.monto_credito) : "",
-      tipo_credito: record.tipo_credito || "",
-      convenio: record.convenio || "",
-      etiqueta: record.etiqueta || "",
-      oferta: record.oferta || "",
-      motivo: record.motivo || "",
-      id_venta: record.id_venta || "",
-      viabilidad: record.viabilidad || "",
-    });
-    setDialogOpen(true);
-  };
+  const buildBody = (form: Record<string, string>) => ({
+    ...form,
+    monto_credito: form.monto_credito ? Number(form.monto_credito) : null,
+    estrategia: form.estrategia || null,
+    flujo: form.flujo || null,
+    numero_telefono: form.numero_telefono || null,
+    curp: form.curp || null,
+    nss: form.nss || null,
+    rfc: form.rfc || null,
+    zona: form.zona || null,
+    campana: form.campana || null,
+    capacidad: form.capacidad || null,
+    tipo_credito: form.tipo_credito || null,
+    convenio: form.convenio || null,
+    etiqueta: form.etiqueta || null,
+    oferta: form.oferta || null,
+    motivo: form.motivo || null,
+    id_venta: form.id_venta || null,
+    viabilidad: form.viabilidad || null,
+  });
 
   const handleSave = async () => {
     if (!formData.nombre_cliente.trim()) {
@@ -386,26 +385,7 @@ export default function AsesorDigitalPage() {
       : "/api/asesor-digital/registros";
     const method = editingRecord ? "PUT" : "POST";
 
-    const body = {
-      ...formData,
-      monto_credito: formData.monto_credito ? Number(formData.monto_credito) : null,
-      estrategia: formData.estrategia || null,
-      flujo: formData.flujo || null,
-      numero_telefono: formData.numero_telefono || null,
-      curp: formData.curp || null,
-      nss: formData.nss || null,
-      rfc: formData.rfc || null,
-      zona: formData.zona || null,
-      campana: formData.campana || null,
-      capacidad: formData.capacidad || null,
-      tipo_credito: formData.tipo_credito || null,
-      convenio: formData.convenio || null,
-      etiqueta: formData.etiqueta || null,
-      oferta: formData.oferta || null,
-      motivo: formData.motivo || null,
-      id_venta: formData.id_venta || null,
-      viabilidad: formData.viabilidad || null,
-    };
+    const body = buildBody(formData);
 
     const res = await fetch(url, {
       method,
@@ -424,7 +404,9 @@ export default function AsesorDigitalPage() {
   };
 
   const handleDelete = async (id: number) => {
+    setDeletingId(id);
     const res = await fetch(`/api/asesor-digital/registros/${id}`, { method: "DELETE" });
+    setDeletingId(null);
     if (res.ok) {
       toast("Registro eliminado", "success");
       setDeleteConfirmId(null);
@@ -475,26 +457,7 @@ export default function AsesorDigitalPage() {
     if (!viewRecord) return;
     setViewSaving(true);
 
-    const body = {
-      ...viewForm,
-      monto_credito: viewForm.monto_credito ? Number(viewForm.monto_credito) : null,
-      estrategia: viewForm.estrategia || null,
-      flujo: viewForm.flujo || null,
-      numero_telefono: viewForm.numero_telefono || null,
-      curp: viewForm.curp || null,
-      nss: viewForm.nss || null,
-      rfc: viewForm.rfc || null,
-      zona: viewForm.zona || null,
-      campana: viewForm.campana || null,
-      capacidad: viewForm.capacidad || null,
-      tipo_credito: viewForm.tipo_credito || null,
-      convenio: viewForm.convenio || null,
-      etiqueta: viewForm.etiqueta || null,
-      oferta: viewForm.oferta || null,
-      motivo: viewForm.motivo || null,
-      id_venta: viewForm.id_venta || null,
-      viabilidad: viewForm.viabilidad || null,
-    };
+    const body = buildBody(viewForm);
 
     const res = await fetch(`/api/asesor-digital/registros/${viewRecord.id}`, {
       method: "PUT",
@@ -550,26 +513,32 @@ export default function AsesorDigitalPage() {
       ),
       size: 170,
       enableSorting: false,
-      cell: ({ row }) => (
+      cell: ({ row }) => {
+        const STATUS_SELECT_CLASSES: Record<string, string> = {
+          green: "bg-green-500/15 text-green-400 ring-1 ring-green-500/30",
+          blue: "bg-blue-500/15 text-blue-400 ring-1 ring-blue-500/30",
+          amber: "bg-amber-500/15 text-amber-400 ring-1 ring-amber-500/30",
+          red: "bg-red-500/15 text-red-400 ring-1 ring-red-500/30",
+          purple: "bg-purple-500/15 text-purple-400 ring-1 ring-purple-500/30",
+          slate: "bg-slate-500/15 text-slate-400 ring-1 ring-slate-500/30",
+        };
+        const color = getColor(STATUS_COLORS, row.original.status);
+        return (
         <select
           value={row.original.status}
           onChange={(e) => handleInlineStatusChange(row.original, e.target.value)}
           onClick={(e) => e.stopPropagation()}
           className={`
             text-xs font-medium rounded-full px-2.5 py-1 border-0 cursor-pointer outline-none transition-colors
-            ${getColor(STATUS_COLORS, row.original.status) === "green" ? "bg-green-500/15 text-green-400 ring-1 ring-green-500/30" : ""}
-            ${getColor(STATUS_COLORS, row.original.status) === "blue" ? "bg-blue-500/15 text-blue-400 ring-1 ring-blue-500/30" : ""}
-            ${getColor(STATUS_COLORS, row.original.status) === "amber" ? "bg-amber-500/15 text-amber-400 ring-1 ring-amber-500/30" : ""}
-            ${getColor(STATUS_COLORS, row.original.status) === "red" ? "bg-red-500/15 text-red-400 ring-1 ring-red-500/30" : ""}
-            ${getColor(STATUS_COLORS, row.original.status) === "purple" ? "bg-purple-500/15 text-purple-400 ring-1 ring-purple-500/30" : ""}
-            ${getColor(STATUS_COLORS, row.original.status) === "slate" ? "bg-slate-500/15 text-slate-400 ring-1 ring-slate-500/30" : ""}
+            ${STATUS_SELECT_CLASSES[color] || STATUS_SELECT_CLASSES.slate}
           `}
         >
           {STATUS_OPTIONS.map((s) => (
             <option key={s} value={s} className="bg-slate-800 text-slate-200">{s}</option>
           ))}
         </select>
-      ),
+        );
+      },
     },
     {
       accessorKey: "numero_telefono",
@@ -757,6 +726,12 @@ export default function AsesorDigitalPage() {
         )}
       </div>
 
+      {!loading && (
+        <p className="text-xs text-slate-500 mb-2">
+          Mostrando {registrosFiltrados.length} de {registrosPeriodo.length} registros
+        </p>
+      )}
+
       <DataTable
         data={registrosFiltrados}
         columns={columns}
@@ -881,8 +856,8 @@ export default function AsesorDigitalPage() {
           <p className="text-slate-300">¿Estas seguro de que deseas eliminar este registro? Esta accion no se puede deshacer.</p>
         </DialogBody>
         <DialogFooter>
-          <Button variant="ghost" onClick={() => setDeleteConfirmId(null)}>Cancelar</Button>
-          <Button variant="danger" onClick={() => deleteConfirmId && handleDelete(deleteConfirmId)}>Eliminar</Button>
+          <Button variant="ghost" onClick={() => setDeleteConfirmId(null)} disabled={deletingId !== null}>Cancelar</Button>
+          <Button variant="danger" onClick={() => deleteConfirmId && handleDelete(deleteConfirmId)} loading={deletingId !== null}>Eliminar</Button>
         </DialogFooter>
       </Dialog>
 
