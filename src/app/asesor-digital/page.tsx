@@ -102,8 +102,8 @@ const STATUS_PIPELINE: {
     gradient: "from-green-500 to-green-600",
     hover: "hover:border-green-500/50 hover:bg-green-500/5",
     active: "border-green-500/60 ring-1 ring-green-500/30 bg-green-500/5",
-    border: "border-green-500/30", bgLight: "bg-green-500/[0.03]",
-    headerBg: "bg-gradient-to-r from-green-500/10 to-green-500/[0.02]",
+    border: "border-green-500/40", bgLight: "bg-green-500/[0.07]",
+    headerBg: "bg-gradient-to-r from-green-500/15 to-green-500/[0.03]",
     icon: ShoppingCart,
   },
   {
@@ -111,8 +111,8 @@ const STATUS_PIPELINE: {
     gradient: "from-blue-500 to-blue-600",
     hover: "hover:border-blue-500/50 hover:bg-blue-500/5",
     active: "border-blue-500/60 ring-1 ring-blue-500/30 bg-blue-500/5",
-    border: "border-blue-500/30", bgLight: "bg-blue-500/[0.03]",
-    headerBg: "bg-gradient-to-r from-blue-500/10 to-blue-500/[0.02]",
+    border: "border-blue-500/40", bgLight: "bg-blue-500/[0.07]",
+    headerBg: "bg-gradient-to-r from-blue-500/15 to-blue-500/[0.03]",
     icon: UserCheck,
   },
   {
@@ -120,8 +120,8 @@ const STATUS_PIPELINE: {
     gradient: "from-amber-500 to-amber-600",
     hover: "hover:border-amber-500/50 hover:bg-amber-500/5",
     active: "border-amber-500/60 ring-1 ring-amber-500/30 bg-amber-500/5",
-    border: "border-amber-500/30", bgLight: "bg-amber-500/[0.03]",
-    headerBg: "bg-gradient-to-r from-amber-500/10 to-amber-500/[0.02]",
+    border: "border-amber-500/40", bgLight: "bg-amber-500/[0.07]",
+    headerBg: "bg-gradient-to-r from-amber-500/15 to-amber-500/[0.03]",
     icon: FileText,
   },
   {
@@ -129,8 +129,8 @@ const STATUS_PIPELINE: {
     gradient: "from-red-500 to-red-600",
     hover: "hover:border-red-500/50 hover:bg-red-500/5",
     active: "border-red-500/60 ring-1 ring-red-500/30 bg-red-500/5",
-    border: "border-red-500/30", bgLight: "bg-red-500/[0.03]",
-    headerBg: "bg-gradient-to-r from-red-500/10 to-red-500/[0.02]",
+    border: "border-red-500/40", bgLight: "bg-red-500/[0.07]",
+    headerBg: "bg-gradient-to-r from-red-500/15 to-red-500/[0.03]",
     icon: XCircle,
   },
   {
@@ -138,8 +138,8 @@ const STATUS_PIPELINE: {
     gradient: "from-purple-500 to-purple-600",
     hover: "hover:border-purple-500/50 hover:bg-purple-500/5",
     active: "border-purple-500/60 ring-1 ring-purple-500/30 bg-purple-500/5",
-    border: "border-purple-500/30", bgLight: "bg-purple-500/[0.03]",
-    headerBg: "bg-gradient-to-r from-purple-500/10 to-purple-500/[0.02]",
+    border: "border-purple-500/40", bgLight: "bg-purple-500/[0.07]",
+    headerBg: "bg-gradient-to-r from-purple-500/15 to-purple-500/[0.03]",
     icon: Clock,
   },
   {
@@ -147,8 +147,8 @@ const STATUS_PIPELINE: {
     gradient: "from-slate-500 to-slate-600",
     hover: "hover:border-slate-500/50 hover:bg-slate-500/5",
     active: "border-slate-500/60 ring-1 ring-slate-500/30 bg-slate-500/5",
-    border: "border-slate-500/30", bgLight: "bg-slate-500/[0.03]",
-    headerBg: "bg-gradient-to-r from-slate-500/10 to-slate-500/[0.02]",
+    border: "border-slate-500/40", bgLight: "bg-slate-500/[0.07]",
+    headerBg: "bg-gradient-to-r from-slate-500/15 to-slate-500/[0.03]",
     icon: HelpCircle,
   },
 ];
@@ -456,35 +456,6 @@ export default function AsesorDigitalPage() {
         </Button>
       </div>
 
-      {/* Pipeline summary cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-        {STATUS_PIPELINE.map((s) => {
-          const Icon = s.icon;
-          const isExpanded = expandedSections.has(s.key);
-          const count = conteos[s.key] ?? 0;
-          return (
-            <button
-              key={s.key}
-              onClick={() => toggleSection(s.key)}
-              className={`
-                bg-surface rounded-xl border p-4 relative overflow-hidden text-left transition-all
-                ${isExpanded
-                  ? s.active
-                  : `border-slate-800/60 ${s.hover}`
-                }
-              `}
-            >
-              <div className={`absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r ${s.gradient}`} />
-              <div className="flex items-center justify-between mb-2">
-                <Icon className={`w-5 h-5 ${s.color}`} />
-                <span className="font-display text-2xl font-extrabold text-slate-100">{count}</span>
-              </div>
-              <span className="text-xs font-medium text-slate-500 uppercase tracking-wider">{s.label}</span>
-            </button>
-          );
-        })}
-      </div>
-
       {/* Search + period */}
       <div className="flex flex-wrap items-end gap-3">
         <div className="w-full sm:w-72">
@@ -581,24 +552,24 @@ export default function AsesorDigitalPage() {
                         <p className="text-sm text-slate-600">Sin registros en este status</p>
                       </div>
                     ) : (
-                      <div className="rounded-xl border border-slate-800/40 overflow-hidden">
+                      <div className="rounded-xl border border-slate-800/40 overflow-hidden max-h-[420px] overflow-y-auto">
                         <div className="overflow-x-auto">
                           <table className="w-full text-sm">
-                            <thead>
-                              <tr className="bg-slate-900/60">
+                            <thead className="sticky top-0 z-20">
+                              <tr className="bg-slate-900">
                                 {/* Sticky: Cliente */}
-                                <th className="sticky left-0 z-10 bg-slate-900/95 backdrop-blur-sm text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider min-w-[180px] border-b border-slate-800/40">
+                                <th className="sticky left-0 z-30 bg-slate-900 text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider min-w-[180px] border-b border-slate-800/40">
                                   Cliente
                                 </th>
                                 {TABLE_COLS.filter((c) => c.key !== "nombre_cliente").map((col) => (
                                   <th
                                     key={col.key}
-                                    className={`text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider ${col.width} border-b border-slate-800/40 whitespace-nowrap`}
+                                    className={`text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider ${col.width} border-b border-slate-800/40 whitespace-nowrap bg-slate-900`}
                                   >
                                     {col.label}
                                   </th>
                                 ))}
-                                <th className="text-center px-3 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider min-w-[90px] border-b border-slate-800/40">
+                                <th className="text-center px-3 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider min-w-[90px] border-b border-slate-800/40 bg-slate-900">
                                   Acciones
                                 </th>
                               </tr>
