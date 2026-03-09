@@ -415,7 +415,7 @@ export default function AsesorDigitalPage() {
           />
         </div>
         <div className="flex items-center gap-2">
-          <Calendar className="w-4 h-4 text-slate-500" />
+          <Calendar className="w-4 h-4 text-slate-300" />
           <input
             type="month"
             value={filtroPeriodo}

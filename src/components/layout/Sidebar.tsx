@@ -5,7 +5,7 @@ import Image from "next/image";
 import {
   LayoutDashboard, Users, Settings, ClipboardList, Building2,
   Map, Building, UsersRound, Briefcase, Filter, TrendingUp,
-  Inbox, Scale, ArrowLeftRight, ChevronLeft, Menu, BarChart3, Search, History,
+  Inbox, Scale, ArrowLeftRight, ChevronLeft, Menu, BarChart3, Search, History, Share2,
 } from "lucide-react";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { ReactNode } from "react";
@@ -152,7 +152,8 @@ function SidebarContent({
           </>
         ) : isAsesorDigital ? (
           <>
-            <NavItem label="Mis Registros" href="/asesor-digital" icon={<TrendingUp className="w-5 h-5" />} pathname={pathname} showLabels={showLabels} />
+            <NavItem label="Mis Registros" href="/asesor-digital" icon={<TrendingUp className="w-5 h-5" />} pathname={pathname} showLabels={showLabels} exact />
+            <NavItem label="Redes Sociales" href="/asesor-digital/redes-sociales" icon={<Share2 className="w-5 h-5" />} pathname={pathname} showLabels={showLabels} exact />
           </>
         ) : isPromotor ? (
           <>

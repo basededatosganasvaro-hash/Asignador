@@ -107,6 +107,7 @@ model usuarios {
   wa_campanas             wa_campanas[]
   ia_conversaciones       ia_conversaciones[]
   ad_registros            ad_registros[]
+  ad_redes_sociales       ad_redes_sociales[]
   busquedas_clientes      busquedas_clientes[]
   busquedas_clientes_logs busquedas_clientes_logs[]
 
@@ -744,4 +745,33 @@ model ad_registros {
   @@index([fecha])
   @@index([campana])
   @@index([convenio])
+}
+
+// =============================================
+// ASESOR DIGITAL — REDES SOCIALES
+// =============================================
+
+model ad_redes_sociales {
+  id              Int       @id @default(autoincrement())
+  usuario_id      Int
+  nombre_cliente  String    @db.VarChar(300)
+  fecha           DateTime  @default(now()) @db.Date
+  estrategia      String    @db.VarChar(30)
+  // Facebook | Wasapi | Vox implant | Organico | Consunomina
+  numero_telefono String?   @db.VarChar(20)
+  curp            String?   @db.VarChar(18)
+  status          String    @db.VarChar(30)
+  // Venta | Interesado | No interesado | Cotizacion | No localizado | Sin capacidad | En proceso | Sin informacion | No apto | Analisis | Declinó
+  viabilidad      String?   @db.VarChar(20)
+  // Viable | No viable
+  motivo          String?
+
+  activo          Boolean   @default(true)
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @default(now()) @updatedAt
+
+  usuario usuarios @relation(fields: [usuario_id], references: [id])
+
+  @@index([usuario_id, activo, fecha])
+  @@index([usuario_id, status])
 }
