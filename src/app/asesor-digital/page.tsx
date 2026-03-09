@@ -624,6 +624,21 @@ export default function AsesorDigitalPage() {
         : <span className="text-sm text-slate-600">&mdash;</span>,
     },
     {
+      accessorKey: "monto_credito",
+      header: "Monto Credito",
+      size: 140,
+      cell: ({ row }) => {
+        const monto = row.original.monto_credito;
+        return (
+          <span className="text-sm text-slate-300">
+            {monto != null
+              ? monto.toLocaleString("es-MX", { style: "currency", currency: "MXN" })
+              : "\u2014"}
+          </span>
+        );
+      },
+    },
+    {
       accessorKey: "fecha",
       header: "Fecha",
       size: 110,
