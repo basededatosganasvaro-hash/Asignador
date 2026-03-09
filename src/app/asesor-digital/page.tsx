@@ -100,55 +100,55 @@ const STATUS_PIPELINE: {
   {
     key: "Venta", label: "Venta", color: "text-green-400", textColor: "text-green-300",
     gradient: "from-green-500 to-green-600",
-    hover: "hover:border-green-500/50 hover:bg-green-500/5",
-    active: "border-green-500/60 ring-1 ring-green-500/30 bg-green-500/5",
-    border: "border-green-500/40", bgLight: "bg-green-500/[0.07]",
-    headerBg: "bg-gradient-to-r from-green-500/15 to-green-500/[0.03]",
+    hover: "hover:border-green-500/50 hover:bg-green-950/30",
+    active: "border-green-500/60 ring-1 ring-green-500/30 bg-green-950/30",
+    border: "border-green-500/40", bgLight: "bg-green-950/40",
+    headerBg: "bg-green-950/50",
     icon: ShoppingCart,
   },
   {
     key: "Interesado", label: "Interesado", color: "text-blue-400", textColor: "text-blue-300",
     gradient: "from-blue-500 to-blue-600",
-    hover: "hover:border-blue-500/50 hover:bg-blue-500/5",
-    active: "border-blue-500/60 ring-1 ring-blue-500/30 bg-blue-500/5",
-    border: "border-blue-500/40", bgLight: "bg-blue-500/[0.07]",
-    headerBg: "bg-gradient-to-r from-blue-500/15 to-blue-500/[0.03]",
+    hover: "hover:border-blue-500/50 hover:bg-blue-950/30",
+    active: "border-blue-500/60 ring-1 ring-blue-500/30 bg-blue-950/30",
+    border: "border-blue-500/40", bgLight: "bg-blue-950/40",
+    headerBg: "bg-blue-950/50",
     icon: UserCheck,
   },
   {
     key: "Cotizacion", label: "Cotizacion", color: "text-amber-400", textColor: "text-amber-300",
     gradient: "from-amber-500 to-amber-600",
-    hover: "hover:border-amber-500/50 hover:bg-amber-500/5",
-    active: "border-amber-500/60 ring-1 ring-amber-500/30 bg-amber-500/5",
-    border: "border-amber-500/40", bgLight: "bg-amber-500/[0.07]",
-    headerBg: "bg-gradient-to-r from-amber-500/15 to-amber-500/[0.03]",
+    hover: "hover:border-amber-500/50 hover:bg-amber-950/30",
+    active: "border-amber-500/60 ring-1 ring-amber-500/30 bg-amber-950/30",
+    border: "border-amber-500/40", bgLight: "bg-amber-950/40",
+    headerBg: "bg-amber-950/50",
     icon: FileText,
   },
   {
     key: "No viable", label: "No viable", color: "text-red-400", textColor: "text-red-300",
     gradient: "from-red-500 to-red-600",
-    hover: "hover:border-red-500/50 hover:bg-red-500/5",
-    active: "border-red-500/60 ring-1 ring-red-500/30 bg-red-500/5",
-    border: "border-red-500/40", bgLight: "bg-red-500/[0.07]",
-    headerBg: "bg-gradient-to-r from-red-500/15 to-red-500/[0.03]",
+    hover: "hover:border-red-500/50 hover:bg-red-950/30",
+    active: "border-red-500/60 ring-1 ring-red-500/30 bg-red-950/30",
+    border: "border-red-500/40", bgLight: "bg-red-950/40",
+    headerBg: "bg-red-950/50",
     icon: XCircle,
   },
   {
     key: "Proceso", label: "Proceso", color: "text-purple-400", textColor: "text-purple-300",
     gradient: "from-purple-500 to-purple-600",
-    hover: "hover:border-purple-500/50 hover:bg-purple-500/5",
-    active: "border-purple-500/60 ring-1 ring-purple-500/30 bg-purple-500/5",
-    border: "border-purple-500/40", bgLight: "bg-purple-500/[0.07]",
-    headerBg: "bg-gradient-to-r from-purple-500/15 to-purple-500/[0.03]",
+    hover: "hover:border-purple-500/50 hover:bg-purple-950/30",
+    active: "border-purple-500/60 ring-1 ring-purple-500/30 bg-purple-950/30",
+    border: "border-purple-500/40", bgLight: "bg-purple-950/40",
+    headerBg: "bg-purple-950/50",
     icon: Clock,
   },
   {
     key: "Sin informacion", label: "Sin info", color: "text-slate-400", textColor: "text-slate-300",
     gradient: "from-slate-500 to-slate-600",
-    hover: "hover:border-slate-500/50 hover:bg-slate-500/5",
-    active: "border-slate-500/60 ring-1 ring-slate-500/30 bg-slate-500/5",
-    border: "border-slate-500/40", bgLight: "bg-slate-500/[0.07]",
-    headerBg: "bg-gradient-to-r from-slate-500/15 to-slate-500/[0.03]",
+    hover: "hover:border-slate-500/50 hover:bg-slate-950/30",
+    active: "border-slate-500/60 ring-1 ring-slate-500/30 bg-slate-950/30",
+    border: "border-slate-500/40", bgLight: "bg-slate-900/60",
+    headerBg: "bg-slate-900/70",
     icon: HelpCircle,
   },
 ];
@@ -284,7 +284,7 @@ export default function AsesorDigitalPage() {
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   });
 
-  const [expandedSections, setExpandedSections] = useState<Set<string>>(() => new Set(["Venta", "Interesado", "Proceso"]));
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(() => new Set());
 
   const [formData, setFormData] = useState(EMPTY_FORM);
 
@@ -503,7 +503,7 @@ export default function AsesorDigitalPage() {
               <div
                 key={s.key}
                 className={`
-                  rounded-2xl border overflow-hidden transition-all duration-200
+                  rounded-2xl border overflow-hidden transition-all duration-200 min-w-0
                   ${isExpanded ? `${s.border} ${s.bgLight}` : "border-slate-800/50 bg-surface"}
                 `}
               >
@@ -552,9 +552,8 @@ export default function AsesorDigitalPage() {
                         <p className="text-sm text-slate-600">Sin registros en este status</p>
                       </div>
                     ) : (
-                      <div className="rounded-xl border border-slate-800/40 overflow-hidden max-h-[420px] overflow-y-auto">
-                        <div className="overflow-x-auto">
-                          <table className="w-full text-sm">
+                      <div className="rounded-xl border border-slate-800/40 overflow-auto max-h-[420px]">
+                          <table className="min-w-[1800px] w-full text-sm">
                             <thead className="sticky top-0 z-20">
                               <tr className="bg-slate-900">
                                 {/* Sticky: Cliente */}
@@ -620,7 +619,6 @@ export default function AsesorDigitalPage() {
                               ))}
                             </tbody>
                           </table>
-                        </div>
                       </div>
                     )}
                   </div>
