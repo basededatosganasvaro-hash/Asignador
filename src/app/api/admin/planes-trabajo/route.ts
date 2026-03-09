@@ -9,7 +9,7 @@ export async function GET() {
 
   const planes = await prisma.planes_trabajo.findMany({
     include: {
-      sucursal: { select: { id: true, nombre: true } },
+      zona: { select: { id: true, nombre: true } },
       creador: { select: { id: true, nombre: true } },
     },
     orderBy: { created_at: "desc" },
@@ -33,12 +33,12 @@ export async function POST(request: Request) {
 
   const plan = await prisma.planes_trabajo.create({
     data: {
-      sucursal_id: parsed.data.sucursal_id,
+      zona_id: parsed.data.zona_id,
       convenio: parsed.data.convenio,
       creado_por: parseInt(session!.user.id),
     },
     include: {
-      sucursal: { select: { id: true, nombre: true } },
+      zona: { select: { id: true, nombre: true } },
       creador: { select: { id: true, nombre: true } },
     },
   });

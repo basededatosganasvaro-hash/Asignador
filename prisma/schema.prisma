@@ -27,8 +27,9 @@ model zonas {
   nombre    String  @db.VarChar(200)
   activo    Boolean @default(true)
 
-  region     regiones     @relation(fields: [region_id], references: [id])
-  sucursales sucursales[]
+  region         regiones         @relation(fields: [region_id], references: [id])
+  sucursales     sucursales[]
+  planes_trabajo planes_trabajo[]
 
   @@index([region_id])
 }
@@ -40,10 +41,9 @@ model sucursales {
   direccion String?
   activo    Boolean @default(true)
 
-  zona           zonas            @relation(fields: [zona_id], references: [id])
-  equipos        equipos[]
-  usuarios       usuarios[]
-  planes_trabajo planes_trabajo[]
+  zona     zonas      @relation(fields: [zona_id], references: [id])
+  equipos  equipos[]
+  usuarios usuarios[]
 
   @@index([zona_id])
 }
@@ -119,17 +119,17 @@ model usuarios {
 // =============================================
 
 model planes_trabajo {
-  id          Int      @id @default(autoincrement())
-  sucursal_id Int
-  convenio    String   @db.VarChar(300)
-  creado_por  Int
-  activo      Boolean  @default(true)
-  created_at  DateTime @default(now())
+  id         Int      @id @default(autoincrement())
+  zona_id    Int
+  convenio   String   @db.VarChar(300)
+  creado_por Int
+  activo     Boolean  @default(true)
+  created_at DateTime @default(now())
 
-  sucursal sucursales @relation(fields: [sucursal_id], references: [id])
-  creador  usuarios   @relation(fields: [creado_por], references: [id])
+  zona    zonas    @relation(fields: [zona_id], references: [id])
+  creador usuarios @relation(fields: [creado_por], references: [id])
 
-  @@index([sucursal_id, activo])
+  @@index([zona_id, activo])
 }
 
 // =============================================

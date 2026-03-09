@@ -101,6 +101,6 @@ export const copiarBusquedaSchema = z.object({
 // ============ PLAN DE TRABAJO ============
 
 export const createPlanTrabajoSchema = z.object({
-  sucursal_id: z.number().int().positive(),
+  zona_id: z.number().int().positive(),
   convenio: z.string().min(1).max(300),
 });

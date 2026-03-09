@@ -14,31 +14,31 @@ interface PlanTrabajo {
   convenio: string;
   activo: boolean;
   created_at: string;
-  sucursal: { id: number; nombre: string };
+  zona: { id: number; nombre: string };
   creador: { id: number; nombre: string };
 }
 
-interface Sucursal {
+interface Zona {
   id: number;
   nombre: string;
 }
 
 export default function PlanesTrabajoPage() {
   const [rows, setRows] = useState<PlanTrabajo[]>([]);
-  const [sucursales, setSucursales] = useState<Sucursal[]>([]);
+  const [zonas, setZonas] = useState<Zona[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [form, setForm] = useState({ sucursal_id: "", convenio: "" });
+  const [form, setForm] = useState({ zona_id: "", convenio: "" });
   const { toast } = useToast();
 
   const fetchData = useCallback(async () => {
     try {
-      const [p, s] = await Promise.all([
+      const [p, z] = await Promise.all([
         fetch("/api/admin/planes-trabajo").then((res) => res.json()),
-        fetch("/api/admin/organizacion/sucursales").then((res) => res.json()),
+        fetch("/api/admin/organizacion/zonas").then((res) => res.json()),
       ]);
       setRows(p);
-      setSucursales(s);
+      setZonas(z);
     } catch (err) {
       toast(err instanceof Error ? err.message : "Error de conexion", "error");
     }
@@ -53,11 +53,11 @@ export default function PlanesTrabajoPage() {
     const res = await fetch("/api/admin/planes-trabajo", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ sucursal_id: Number(form.sucursal_id), convenio: form.convenio }),
+      body: JSON.stringify({ zona_id: Number(form.zona_id), convenio: form.convenio }),
     });
     if (res.ok) {
       setDialogOpen(false);
-      setForm({ sucursal_id: "", convenio: "" });
+      setForm({ zona_id: "", convenio: "" });
       toast("Plan de trabajo creado", "success");
       fetchData();
     } else {
@@ -86,9 +86,9 @@ export default function PlanesTrabajoPage() {
         header: "Convenio",
       },
       {
-        id: "sucursal",
-        header: "Sucursal",
-        accessorFn: (row) => row.sucursal?.nombre ?? "\u2014",
+        id: "zona",
+        header: "Zona",
+        accessorFn: (row) => row.zona?.nombre ?? "\u2014",
       },
       {
         id: "creador",
@@ -121,7 +121,7 @@ export default function PlanesTrabajoPage() {
     []
   );
 
-  const sucursalOptions = sucursales.map((s) => ({ value: String(s.id), label: s.nombre }));
+  const zonaOptions = zonas.map((z) => ({ value: String(z.id), label: z.nombre }));
 
   return (
     <div>
@@ -151,11 +151,11 @@ export default function PlanesTrabajoPage() {
         </DialogHeader>
         <DialogBody className="flex flex-col gap-4">
           <Select
-            label="Sucursal"
-            value={form.sucursal_id}
-            onChange={(e) => setForm({ ...form, sucursal_id: e.target.value })}
-            options={sucursalOptions}
-            placeholder="Seleccionar sucursal..."
+            label="Zona"
+            value={form.zona_id}
+            onChange={(e) => setForm({ ...form, zona_id: e.target.value })}
+            options={zonaOptions}
+            placeholder="Seleccionar zona..."
           />
           <Input
             label="Convenio"
@@ -167,7 +167,7 @@ export default function PlanesTrabajoPage() {
         </DialogBody>
         <DialogFooter>
           <Button variant="danger" onClick={() => setDialogOpen(false)}>Cancelar</Button>
-          <Button variant="primary" onClick={handleSave} disabled={!form.sucursal_id || !form.convenio}>
+          <Button variant="primary" onClick={handleSave} disabled={!form.zona_id || !form.convenio}>
             Crear
           </Button>
         </DialogFooter>
