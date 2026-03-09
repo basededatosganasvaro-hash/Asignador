@@ -375,14 +375,21 @@ function OportunidadesContent() {
       const res = await fetch("/api/promotor/capacidades/sync", { method: "POST" });
       const data = await res.json();
       if (res.ok) {
-        let msg = data.sincronizados > 0
-          ? `${data.sincronizados} capacidad${data.sincronizados !== 1 ? "es" : ""} sincronizada${data.sincronizados !== 1 ? "s" : ""}`
-          : "Todo al dia, sin capacidades nuevas";
+        const partes: string[] = [];
+        if (data.sincronizados > 0) {
+          partes.push(`${data.sincronizados} nueva${data.sincronizados !== 1 ? "s" : ""}`);
+        }
+        if (data.actualizados > 0) {
+          partes.push(`${data.actualizados} actualizada${data.actualizados !== 1 ? "s" : ""}`);
+        }
+        let msg = partes.length > 0
+          ? partes.join(", ")
+          : "Todo al dia, sin cambios";
         if (data.errores) {
           msg += ` (${data.errores} con error)`;
         }
         toast(msg, data.errores ? "warning" : "success");
-        if (data.sincronizados > 0) fetchData();
+        if (data.sincronizados > 0 || data.actualizados > 0) fetchData();
       } else {
         toast(data.error || "Error al sincronizar", "error");
       }
