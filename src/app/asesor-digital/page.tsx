@@ -90,67 +90,18 @@ function getColor(map: Record<string, BadgeColor>, value: string | null | undefi
   return "slate";
 }
 
-// ─── Status pipeline config ─────────────────────────────────────────
+// ─── Status pipeline config (inline styles to avoid Tailwind purge) ──
 const STATUS_PIPELINE: {
-  key: string; label: string; color: string; textColor: string;
-  gradient: string; hover: string; active: string;
-  border: string; bgLight: string; headerBg: string;
+  key: string; label: string;
+  rgb: string; // base color as rgb for inline styles
   icon: typeof ShoppingCart;
 }[] = [
-  {
-    key: "Venta", label: "Venta", color: "text-green-400", textColor: "text-green-300",
-    gradient: "from-green-500 to-green-600",
-    hover: "hover:border-green-500/50 hover:bg-green-950/30",
-    active: "border-green-500/60 ring-1 ring-green-500/30 bg-green-950/30",
-    border: "border-green-500/40", bgLight: "bg-green-950/40",
-    headerBg: "bg-green-950/50",
-    icon: ShoppingCart,
-  },
-  {
-    key: "Interesado", label: "Interesado", color: "text-blue-400", textColor: "text-blue-300",
-    gradient: "from-blue-500 to-blue-600",
-    hover: "hover:border-blue-500/50 hover:bg-blue-950/30",
-    active: "border-blue-500/60 ring-1 ring-blue-500/30 bg-blue-950/30",
-    border: "border-blue-500/40", bgLight: "bg-blue-950/40",
-    headerBg: "bg-blue-950/50",
-    icon: UserCheck,
-  },
-  {
-    key: "Cotizacion", label: "Cotizacion", color: "text-amber-400", textColor: "text-amber-300",
-    gradient: "from-amber-500 to-amber-600",
-    hover: "hover:border-amber-500/50 hover:bg-amber-950/30",
-    active: "border-amber-500/60 ring-1 ring-amber-500/30 bg-amber-950/30",
-    border: "border-amber-500/40", bgLight: "bg-amber-950/40",
-    headerBg: "bg-amber-950/50",
-    icon: FileText,
-  },
-  {
-    key: "No viable", label: "No viable", color: "text-red-400", textColor: "text-red-300",
-    gradient: "from-red-500 to-red-600",
-    hover: "hover:border-red-500/50 hover:bg-red-950/30",
-    active: "border-red-500/60 ring-1 ring-red-500/30 bg-red-950/30",
-    border: "border-red-500/40", bgLight: "bg-red-950/40",
-    headerBg: "bg-red-950/50",
-    icon: XCircle,
-  },
-  {
-    key: "Proceso", label: "Proceso", color: "text-purple-400", textColor: "text-purple-300",
-    gradient: "from-purple-500 to-purple-600",
-    hover: "hover:border-purple-500/50 hover:bg-purple-950/30",
-    active: "border-purple-500/60 ring-1 ring-purple-500/30 bg-purple-950/30",
-    border: "border-purple-500/40", bgLight: "bg-purple-950/40",
-    headerBg: "bg-purple-950/50",
-    icon: Clock,
-  },
-  {
-    key: "Sin informacion", label: "Sin info", color: "text-slate-400", textColor: "text-slate-300",
-    gradient: "from-slate-500 to-slate-600",
-    hover: "hover:border-slate-500/50 hover:bg-slate-950/30",
-    active: "border-slate-500/60 ring-1 ring-slate-500/30 bg-slate-950/30",
-    border: "border-slate-500/40", bgLight: "bg-slate-900/60",
-    headerBg: "bg-slate-900/70",
-    icon: HelpCircle,
-  },
+  { key: "Venta", label: "Venta", rgb: "34,197,94", icon: ShoppingCart },
+  { key: "Interesado", label: "Interesado", rgb: "59,130,246", icon: UserCheck },
+  { key: "Cotizacion", label: "Cotizacion", rgb: "245,158,11", icon: FileText },
+  { key: "No viable", label: "No viable", rgb: "239,68,68", icon: XCircle },
+  { key: "Proceso", label: "Proceso", rgb: "168,85,247", icon: Clock },
+  { key: "Sin informacion", label: "Sin info", rgb: "148,163,184", icon: HelpCircle },
 ];
 
 const EMPTY_FORM = {
@@ -447,7 +398,7 @@ export default function AsesorDigitalPage() {
 
   // ─── Render ───────────────────────────────────────────────────────
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 overflow-hidden">
       {/* Header */}
       <div className="flex justify-between items-center">
         <h1 className="font-display text-xl font-bold text-slate-100">Mis Registros</h1>
@@ -492,52 +443,43 @@ export default function AsesorDigitalPage() {
 
       {/* Accordion cards by status */}
       {!loading && (
-        <div className="space-y-4">
+        <div className="space-y-4 w-full">
           {STATUS_PIPELINE.map((s) => {
             const Icon = s.icon;
             const items = registrosPorStatus[s.key] || [];
             const isExpanded = expandedSections.has(s.key);
             const count = items.length;
+            const c = s.rgb;
 
             return (
               <div
                 key={s.key}
-                className={`
-                  rounded-2xl border overflow-hidden transition-all duration-200 min-w-0
-                  ${isExpanded ? `${s.border} ${s.bgLight}` : "border-slate-800/50 bg-surface"}
-                `}
+                className="rounded-2xl overflow-hidden transition-all duration-200 w-full"
+                style={{
+                  border: `1px solid rgba(${c}, ${isExpanded ? 0.4 : 0.15})`,
+                  backgroundColor: isExpanded ? `rgba(${c}, 0.06)` : "rgb(15,23,42)",
+                }}
               >
                 {/* Gradient accent top */}
-                <div className={`h-[2px] bg-gradient-to-r ${s.gradient}`} />
+                <div className="h-[2px]" style={{ background: `linear-gradient(to right, rgba(${c},0.8), rgba(${c},0.3))` }} />
 
                 {/* Card header */}
                 <button
                   onClick={() => toggleSection(s.key)}
-                  className={`
-                    w-full flex items-center gap-4 px-5 py-4 transition-colors text-left
-                    ${isExpanded ? s.headerBg : "hover:bg-slate-800/30"}
-                  `}
+                  className="w-full flex items-center gap-4 px-5 py-4 transition-colors text-left"
+                  style={{ backgroundColor: isExpanded ? `rgba(${c}, 0.08)` : undefined }}
                 >
-                  {/* Chevron */}
                   <div className={`transition-transform duration-200 ${isExpanded ? "rotate-0" : "-rotate-90"}`}>
-                    <ChevronDown className={`w-5 h-5 ${s.color}`} />
+                    <ChevronDown className="w-5 h-5" style={{ color: `rgb(${c})` }} />
                   </div>
-
-                  {/* Icon + label */}
-                  <Icon className={`w-5 h-5 ${s.color}`} />
-                  <span className={`font-display font-bold text-base ${s.textColor}`}>
+                  <Icon className="w-5 h-5" style={{ color: `rgb(${c})` }} />
+                  <span className="font-display font-bold text-base" style={{ color: `rgb(${c})` }}>
                     {s.label}
                   </span>
-
-                  {/* Count badge */}
                   <Badge color={getColor(STATUS_COLORS, s.key)}>
                     {count} {count === 1 ? "registro" : "registros"}
                   </Badge>
-
-                  {/* Spacer */}
                   <div className="flex-1" />
-
-                  {/* Expand hint */}
                   {!isExpanded && count > 0 && (
                     <span className="text-xs text-slate-600">Clic para expandir</span>
                   )}
@@ -545,80 +487,74 @@ export default function AsesorDigitalPage() {
 
                 {/* Expanded content: table */}
                 {isExpanded && (
-                  <div className="px-3 pb-4">
+                  <div className="px-3 pb-4 w-full overflow-hidden">
                     {count === 0 ? (
                       <div className="text-center py-8">
-                        <Icon className={`w-8 h-8 mx-auto mb-2 ${s.color} opacity-30`} />
+                        <Icon className="w-8 h-8 mx-auto mb-2 opacity-30" style={{ color: `rgb(${c})` }} />
                         <p className="text-sm text-slate-600">Sin registros en este status</p>
                       </div>
                     ) : (
-                      <div className="rounded-xl border border-slate-800/40 overflow-auto max-h-[420px]">
-                          <table className="min-w-[1800px] w-full text-sm">
-                            <thead className="sticky top-0 z-20">
-                              <tr className="bg-slate-900">
-                                {/* Sticky: Cliente */}
-                                <th className="sticky left-0 z-30 bg-slate-900 text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider min-w-[180px] border-b border-slate-800/40">
-                                  Cliente
-                                </th>
-                                {TABLE_COLS.filter((c) => c.key !== "nombre_cliente").map((col) => (
-                                  <th
-                                    key={col.key}
-                                    className={`text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider ${col.width} border-b border-slate-800/40 whitespace-nowrap bg-slate-900`}
-                                  >
-                                    {col.label}
-                                  </th>
-                                ))}
-                                <th className="text-center px-3 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider min-w-[90px] border-b border-slate-800/40 bg-slate-900">
-                                  Acciones
-                                </th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-800/30">
-                              {items.map((r, idx) => (
-                                <tr
-                                  key={r.id}
-                                  className={`
-                                    transition-colors group
-                                    ${idx % 2 === 0 ? "bg-transparent" : "bg-slate-900/20"}
-                                    hover:bg-slate-800/30
-                                  `}
+                      <div className="rounded-xl border border-slate-800/40 overflow-auto max-h-[420px] w-full">
+                        <table style={{ minWidth: 1800 }} className="w-full text-sm">
+                          <thead className="sticky top-0 z-20">
+                            <tr className="bg-slate-900">
+                              <th className="sticky left-0 z-30 bg-slate-900 text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-800/40" style={{ minWidth: 180 }}>
+                                Cliente
+                              </th>
+                              {TABLE_COLS.filter((col) => col.key !== "nombre_cliente").map((col) => (
+                                <th
+                                  key={col.key}
+                                  className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-800/40 whitespace-nowrap bg-slate-900"
                                 >
-                                  {/* Sticky: Cliente */}
-                                  <td className="sticky left-0 z-10 backdrop-blur-sm px-4 py-3 border-r border-slate-800/20 bg-inherit group-hover:bg-slate-800/30 transition-colors">
+                                  {col.label}
+                                </th>
+                              ))}
+                              <th className="text-center px-3 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-800/40 bg-slate-900" style={{ minWidth: 90 }}>
+                                Acciones
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-800/30">
+                            {items.map((r, idx) => (
+                              <tr
+                                key={r.id}
+                                className={`transition-colors group ${idx % 2 === 0 ? "bg-transparent" : "bg-slate-900/20"} hover:bg-slate-800/30`}
+                              >
+                                <td className="sticky left-0 z-10 bg-slate-950 px-4 py-3 border-r border-slate-800/20 group-hover:bg-slate-800/30 transition-colors" style={{ minWidth: 180 }}>
+                                  <button
+                                    onClick={() => openViewRecord(r)}
+                                    className="text-sm font-medium text-slate-200 hover:text-amber-400 transition-colors text-left"
+                                  >
+                                    {r.nombre_cliente}
+                                  </button>
+                                </td>
+                                {TABLE_COLS.filter((col) => col.key !== "nombre_cliente").map((col) => (
+                                  <td key={col.key} className="px-4 py-3 text-sm whitespace-nowrap">
+                                    {col.render(r)}
+                                  </td>
+                                ))}
+                                <td className="px-3 py-3 text-center">
+                                  <div className="flex items-center justify-center gap-1">
                                     <button
                                       onClick={() => openViewRecord(r)}
-                                      className="text-sm font-medium text-slate-200 hover:text-amber-400 transition-colors text-left"
+                                      title="Ver detalle"
+                                      className="p-1.5 text-slate-500 hover:text-amber-400 hover:bg-amber-500/10 rounded-lg transition-colors"
                                     >
-                                      {r.nombre_cliente}
+                                      <Eye className="w-4 h-4" />
                                     </button>
-                                  </td>
-                                  {TABLE_COLS.filter((c) => c.key !== "nombre_cliente").map((col) => (
-                                    <td key={col.key} className="px-4 py-3 text-sm whitespace-nowrap">
-                                      {col.render(r)}
-                                    </td>
-                                  ))}
-                                  <td className="px-3 py-3 text-center">
-                                    <div className="flex items-center justify-center gap-1">
-                                      <button
-                                        onClick={() => openViewRecord(r)}
-                                        title="Ver detalle"
-                                        className="p-1.5 text-slate-500 hover:text-amber-400 hover:bg-amber-500/10 rounded-lg transition-colors"
-                                      >
-                                        <Eye className="w-4 h-4" />
-                                      </button>
-                                      <button
-                                        onClick={() => setDeleteConfirmId(r.id)}
-                                        title="Eliminar"
-                                        className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
-                                      >
-                                        <Trash2 className="w-4 h-4" />
-                                      </button>
-                                    </div>
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
+                                    <button
+                                      onClick={() => setDeleteConfirmId(r.id)}
+                                      title="Eliminar"
+                                      className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
                       </div>
                     )}
                   </div>
