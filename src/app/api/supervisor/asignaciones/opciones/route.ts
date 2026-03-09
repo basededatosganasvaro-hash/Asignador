@@ -4,8 +4,32 @@ import { prismaClientes } from "@/lib/prisma-clientes";
 import { requireSupervisor } from "@/lib/auth-utils";
 import { getConfigBatch } from "@/lib/config-cache";
 
-// Cache de exclusion en memoria — TTL 60s para evitar query pesada en cada cambio de filtro
+// ─── Caches ──────────────────────────────────────────────────────────────────
+
+// Exclusion IDs cache (60s)
 let excludeCache: { ids: number[]; expiry: number; key: string } | null = null;
+
+// DISTINCT filter values cache (5 min) — dropdown options barely change
+const filterCache = new Map<string, { data: string[]; expiry: number }>();
+const FILTER_TTL = 300_000; // 5 min
+
+function getCachedFilter(key: string): string[] | null {
+  const entry = filterCache.get(key);
+  if (entry && Date.now() < entry.expiry) return entry.data;
+  filterCache.delete(key);
+  return null;
+}
+
+function setCachedFilter(key: string, data: string[]) {
+  filterCache.set(key, { data, expiry: Date.now() + FILTER_TTL });
+  // Evict expired entries when cache grows large
+  if (filterCache.size > 200) {
+    const now = Date.now();
+    for (const [k, v] of filterCache) {
+      if (now > v.expiry) filterCache.delete(k);
+    }
+  }
+}
 
 function parseRangoOferta(rango: string | undefined): { min: number; max: number | null } | null {
   if (!rango) return null;
@@ -33,7 +57,7 @@ export async function GET(req: Request) {
   const tiene_telefono = searchParams.get("tiene_telefono") === "true" || searchParams.get("tiene_telefono") === "1";
   const rango_oferta = searchParams.get("rango_oferta") || undefined;
 
-  // Queries paralelas: supervisor + promotor + config (batch)
+  // ─── Auth + validation (parallel) ──────────────────────────────────────────
   const [supervisor, promotorData, configs] = await Promise.all([
     prisma.usuarios.findUnique({
       where: { id: supervisorId },
@@ -60,10 +84,10 @@ export async function GET(req: Request) {
   const cooldownMeses = parseInt(configs["cooldown_meses"] || "3");
   const maxPerDay = parseInt(configs["max_registros_por_dia"] || "300");
 
+  // ─── Exclusion IDs (cached 60s) ────────────────────────────────────────────
   const cooldownDate = new Date();
   cooldownDate.setMonth(cooldownDate.getMonth() - cooldownMeses);
 
-  // Cache de IDs excluidos — reutilizar si es el mismo usuario y no expiro
   const cacheKey = `${targetUserId}_${cooldownMeses}`;
   let excludeArray: number[];
 
@@ -79,11 +103,83 @@ export async function GET(req: Request) {
     excludeCache = { ids: excludeArray, expiry: Date.now() + 60_000, key: cacheKey };
   }
 
-  // Cupo — en paralelo con las queries de BD Clientes
+  // ─── DISTINCT filter values (cached 5 min, SIN exclusion para velocidad) ───
+  // Los dropdowns no necesitan filtrar por exclusion — el COUNT muestra el total exacto
+  type FilterRow = { value: string | null }[];
+  const filterPromises: Promise<void>[] = [];
+
+  const tiposKey = "tipos";
+  const convKey = `conv_${tipo_cliente || "*"}`;
+  const estKey = `est_${tipo_cliente || "*"}_${convenio || "*"}`;
+  const munKey = `mun_${tipo_cliente || "*"}_${convenio || "*"}_${estado || "*"}`;
+
+  let tipos: string[] = getCachedFilter(tiposKey) || [];
+  let convs: string[] = getCachedFilter(convKey) || [];
+  let ests: string[] = getCachedFilter(estKey) || [];
+  let muns: string[] = (estado ? getCachedFilter(munKey) : null) || [];
+
+  if (!getCachedFilter(tiposKey)) {
+    filterPromises.push(
+      prismaClientes.$queryRaw<FilterRow>`
+        SELECT DISTINCT tipo_cliente AS value FROM clientes
+        WHERE tipo_cliente IS NOT NULL ORDER BY 1
+      `.then((rows) => {
+        tipos = rows.map((r) => r.value).filter(Boolean) as string[];
+        setCachedFilter(tiposKey, tipos);
+      })
+    );
+  }
+
+  if (!getCachedFilter(convKey)) {
+    const q = tipo_cliente
+      ? prismaClientes.$queryRawUnsafe<FilterRow>(
+          `SELECT DISTINCT convenio AS value FROM clientes WHERE convenio IS NOT NULL AND tipo_cliente = $1 ORDER BY 1`,
+          tipo_cliente
+        )
+      : prismaClientes.$queryRaw<FilterRow>`
+          SELECT DISTINCT convenio AS value FROM clientes WHERE convenio IS NOT NULL ORDER BY 1
+        `;
+    filterPromises.push(
+      q.then((rows) => {
+        convs = rows.map((r) => r.value).filter(Boolean) as string[];
+        setCachedFilter(convKey, convs);
+      })
+    );
+  }
+
+  if (!getCachedFilter(estKey)) {
+    const clauses: string[] = ["estado IS NOT NULL"];
+    const params: unknown[] = [];
+    if (tipo_cliente) { params.push(tipo_cliente); clauses.push(`tipo_cliente = $${params.length}`); }
+    if (convenio) { params.push(convenio); clauses.push(`convenio = $${params.length}`); }
+    const sql = `SELECT DISTINCT estado AS value FROM clientes WHERE ${clauses.join(" AND ")} ORDER BY 1`;
+    filterPromises.push(
+      prismaClientes.$queryRawUnsafe<FilterRow>(sql, ...params).then((rows) => {
+        ests = rows.map((r) => r.value).filter(Boolean) as string[];
+        setCachedFilter(estKey, ests);
+      })
+    );
+  }
+
+  if (estado && !getCachedFilter(munKey)) {
+    const clauses: string[] = ["municipio IS NOT NULL"];
+    const params: unknown[] = [];
+    if (tipo_cliente) { params.push(tipo_cliente); clauses.push(`tipo_cliente = $${params.length}`); }
+    if (convenio) { params.push(convenio); clauses.push(`convenio = $${params.length}`); }
+    params.push(estado); clauses.push(`estado = $${params.length}`);
+    const sql = `SELECT DISTINCT municipio AS value FROM clientes WHERE ${clauses.join(" AND ")} ORDER BY 1`;
+    filterPromises.push(
+      prismaClientes.$queryRawUnsafe<FilterRow>(sql, ...params).then((rows) => {
+        muns = rows.map((r) => r.value).filter(Boolean) as string[];
+        setCachedFilter(munKey, muns);
+      })
+    );
+  }
+
+  // ─── COUNT (siempre fresco, con exclusion) + Cupo ──────────────────────────
   const nowMx = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Mexico_City" }));
   const today = new Date(nowMx.getFullYear(), nowMx.getMonth(), nowMx.getDate());
 
-  // Construir SQL para conteo
   const rangoOferta = parseRangoOferta(rango_oferta);
   const OFERTA_NUM = `CAST(NULLIF(regexp_replace(COALESCE(oferta, ''), '[^0-9]', '', 'g'), '') AS NUMERIC)`;
   const countParams: unknown[] = [];
@@ -110,48 +206,9 @@ export async function GET(req: Request) {
   const countWhere = countClauses.length > 0 ? `WHERE ${countClauses.join(" AND ")}` : "";
   const countSql = `SELECT COUNT(*)::int as count FROM clientes ${countWhere}`;
 
-  const baseExclude = excludeArray.length > 0 ? { id: { notIn: excludeArray } } : {};
-
-  // Todas las queries en paralelo: 4 DISTINCT + 1 COUNT + 1 cupo
-  const [tiposRaw, conveniosRaw, estadosRaw, municipiosRaw, disponibles, cupoData] = await Promise.all([
-    prismaClientes.clientes.findMany({
-      select: { tipo_cliente: true },
-      distinct: ["tipo_cliente"],
-      where: { ...baseExclude },
-      orderBy: { tipo_cliente: "asc" },
-    }),
-    prismaClientes.clientes.findMany({
-      select: { convenio: true },
-      distinct: ["convenio"],
-      where: {
-        ...baseExclude,
-        ...(tipo_cliente ? { tipo_cliente } : {}),
-      },
-      orderBy: { convenio: "asc" },
-    }),
-    prismaClientes.clientes.findMany({
-      select: { estado: true },
-      distinct: ["estado"],
-      where: {
-        ...baseExclude,
-        ...(tipo_cliente ? { tipo_cliente } : {}),
-        ...(convenio ? { convenio } : {}),
-      },
-      orderBy: { estado: "asc" },
-    }),
-    estado
-      ? prismaClientes.clientes.findMany({
-          select: { municipio: true },
-          distinct: ["municipio"],
-          where: {
-            ...baseExclude,
-            ...(tipo_cliente ? { tipo_cliente } : {}),
-            ...(convenio ? { convenio } : {}),
-            estado,
-          },
-          orderBy: { municipio: "asc" },
-        })
-      : Promise.resolve([]),
+  // ─── Todo en paralelo: filtros pendientes + COUNT + cupo ───────────────────
+  const [, disponibles, cupoData] = await Promise.all([
+    Promise.all(filterPromises),
     prismaClientes.$queryRawUnsafe<{ count: number }[]>(countSql, ...countParams)
       .then((r) => r[0]?.count ?? 0),
     prisma.cupo_diario.findUnique({
@@ -162,10 +219,10 @@ export async function GET(req: Request) {
   const cupoRestante = Math.max(0, maxPerDay - (cupoData?.total_asignado ?? 0));
 
   return NextResponse.json({
-    tiposCliente: tiposRaw.map((r) => r.tipo_cliente).filter(Boolean),
-    convenios: conveniosRaw.map((r) => r.convenio).filter(Boolean),
-    estados: estadosRaw.map((r) => r.estado).filter(Boolean),
-    municipios: municipiosRaw.map((r) => (r as { municipio?: string | null }).municipio).filter(Boolean),
+    tiposCliente: tipos,
+    convenios: convs,
+    estados: ests,
+    municipios: muns,
     disponibles,
     cupoRestante,
     cupoMaximo: maxPerDay,

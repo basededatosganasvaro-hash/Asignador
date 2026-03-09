@@ -109,6 +109,7 @@ function SolicitarTab({ toast }: { toast: (m: string, t?: "success" | "error" | 
   const [loadingPromotores, setLoadingPromotores] = useState(true);
   const [selectedPromotor, setSelectedPromotor] = useState("");
   const [opciones, setOpciones] = useState<Opciones | null>(null);
+  const [baseOpciones, setBaseOpciones] = useState<Opciones | null>(null);
   const [loadingOpciones, setLoadingOpciones] = useState(false);
   const [tipoCliente, setTipoCliente] = useState("");
   const [convenio, setConvenio] = useState("");
@@ -119,13 +120,19 @@ function SolicitarTab({ toast }: { toast: (m: string, t?: "success" | "error" | 
   const [cantidad, setCantidad] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  // Fetch promotores
+  // Fetch promotores + prefetch filter options (warms server cache)
   const fetchPromotores = useCallback(async () => {
     try {
-      const res = await fetch("/api/supervisor/asignaciones");
-      if (res.ok) {
-        const data = await res.json();
+      const [promRes, opRes] = await Promise.all([
+        fetch("/api/supervisor/asignaciones"),
+        fetch("/api/supervisor/asignaciones/opciones"),
+      ]);
+      if (promRes.ok) {
+        const data = await promRes.json();
         setPromotores(data.promotores);
+      }
+      if (opRes.ok) {
+        setBaseOpciones(await opRes.json());
       }
     } catch { /* ignore */ }
     setLoadingPromotores(false);
@@ -270,108 +277,113 @@ function SolicitarTab({ toast }: { toast: (m: string, t?: "success" | "error" | 
       </div>
 
       {/* Filtros cascada */}
-      {selectedPromotor && (
+      {selectedPromotor && (() => {
+        // Usar opciones reales si existen, sino baseOpciones prefetched
+        const displayOpciones = opciones || baseOpciones;
+        return (
         <div className="bg-surface rounded-xl border border-slate-800/60 p-5">
-          <h2 className="text-sm font-semibold text-slate-100 mb-4">Filtros del Pool</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-semibold text-slate-100">Filtros del Pool</h2>
+            {loadingOpciones && (
+              <span className="text-[11px] text-amber-400/70 animate-pulse">Actualizando...</span>
+            )}
+          </div>
 
-          {loadingOpciones && !opciones ? (
-            <div className="flex justify-center py-4"><Spinner /></div>
-          ) : (
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-                <Select
-                  label="Tipo Cliente"
-                  value={tipoCliente}
-                  onChange={(e) => handleTipoClienteChange(e.target.value)}
-                  placeholder="Todos"
-                  options={(opciones?.tiposCliente || []).map((t) => ({ value: t, label: t }))}
-                />
-                <Select
-                  label="Convenio"
-                  value={convenio}
-                  onChange={(e) => handleConvenioChange(e.target.value)}
-                  placeholder="Todos"
-                  options={(opciones?.convenios || []).map((c) => ({ value: c, label: c }))}
-                />
-                <Select
-                  label="Estado"
-                  value={estado}
-                  onChange={(e) => handleEstadoChange(e.target.value)}
-                  placeholder="Todos"
-                  options={(opciones?.estados || []).map((e) => ({ value: e, label: e }))}
-                />
-                <Select
-                  label="Municipio"
-                  value={municipio}
-                  onChange={(e) => setMunicipio(e.target.value)}
-                  placeholder="Todos"
-                  options={(opciones?.municipios || []).map((m) => ({ value: m, label: m }))}
-                  disabled={!estado}
-                />
-                <Select
-                  label="Rango de oferta"
-                  value={rangoOferta}
-                  onChange={(e) => setRangoOferta(e.target.value)}
-                  placeholder="Todos"
-                  options={[
-                    { value: "0-50000", label: "$0 - $50,000" },
-                    { value: "50000-100000", label: "$50,000 - $100,000" },
-                    { value: "100000-500000", label: "$100,000 - $500,000" },
-                    { value: "500000+", label: "$500,000+" },
-                  ]}
-                />
-              </div>
-
-              <div className="flex items-center gap-4">
-                <label className="flex items-center gap-2 text-sm text-slate-300 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={tieneTelefono}
-                    onChange={(e) => setTieneTelefono(e.target.checked)}
-                    className="rounded border-slate-600 bg-slate-800 text-amber-500 focus:ring-amber-500/40"
-                  />
-                  Solo con telefono
-                </label>
-              </div>
-
-              <div className="h-px bg-slate-800/60" />
-
-              <div className="flex items-end gap-4">
-                <div className="w-[140px]">
-                  <Input
-                    label="Cantidad"
-                    type="number"
-                    value={cantidad}
-                    onChange={(e) => setCantidad(e.target.value)}
-                    placeholder={opciones ? String(opciones.asignables) : ""}
-                    min={1}
-                    max={opciones?.asignables}
-                  />
-                </div>
-
-                <div className="flex items-center gap-3">
-                  {opciones && (
-                    <span className="text-xs text-slate-400">
-                      Disponibles: <span className="font-bold text-slate-200">{opciones.disponibles.toLocaleString()}</span>
-                      {" | "}Asignables: <span className="font-bold text-green-400">{opciones.asignables.toLocaleString()}</span>
-                    </span>
-                  )}
-                </div>
-
-                <Button
-                  variant="primary"
-                  icon={<Download className="w-4 h-4" />}
-                  loading={submitting}
-                  disabled={!selectedPromotor || submitting || (opciones?.asignables ?? 0) === 0}
-                  onClick={handleAsignar}
-                >
-                  Asignar
-                </Button>
-              </div>
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+              <Select
+                label="Tipo Cliente"
+                value={tipoCliente}
+                onChange={(e) => handleTipoClienteChange(e.target.value)}
+                placeholder="Todos"
+                options={(displayOpciones?.tiposCliente || []).map((t) => ({ value: t, label: t }))}
+              />
+              <Select
+                label="Convenio"
+                value={convenio}
+                onChange={(e) => handleConvenioChange(e.target.value)}
+                placeholder="Todos"
+                options={(displayOpciones?.convenios || []).map((c) => ({ value: c, label: c }))}
+              />
+              <Select
+                label="Estado"
+                value={estado}
+                onChange={(e) => handleEstadoChange(e.target.value)}
+                placeholder="Todos"
+                options={(displayOpciones?.estados || []).map((e) => ({ value: e, label: e }))}
+              />
+              <Select
+                label="Municipio"
+                value={municipio}
+                onChange={(e) => setMunicipio(e.target.value)}
+                placeholder="Todos"
+                options={(displayOpciones?.municipios || []).map((m) => ({ value: m, label: m }))}
+                disabled={!estado}
+              />
+              <Select
+                label="Rango de oferta"
+                value={rangoOferta}
+                onChange={(e) => setRangoOferta(e.target.value)}
+                placeholder="Todos"
+                options={[
+                  { value: "0-50000", label: "$0 - $50,000" },
+                  { value: "50000-100000", label: "$50,000 - $100,000" },
+                  { value: "100000-500000", label: "$100,000 - $500,000" },
+                  { value: "500000+", label: "$500,000+" },
+                ]}
+              />
             </div>
-          )}
+
+            <div className="flex items-center gap-4">
+              <label className="flex items-center gap-2 text-sm text-slate-300 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={tieneTelefono}
+                  onChange={(e) => setTieneTelefono(e.target.checked)}
+                  className="rounded border-slate-600 bg-slate-800 text-amber-500 focus:ring-amber-500/40"
+                />
+                Solo con telefono
+              </label>
+            </div>
+
+            <div className="h-px bg-slate-800/60" />
+
+            <div className="flex items-end gap-4">
+              <div className="w-[140px]">
+                <Input
+                  label="Cantidad"
+                  type="number"
+                  value={cantidad}
+                  onChange={(e) => setCantidad(e.target.value)}
+                  placeholder={displayOpciones ? String(displayOpciones.asignables) : ""}
+                  min={1}
+                  max={displayOpciones?.asignables}
+                />
+              </div>
+
+              <div className="flex items-center gap-3">
+                {displayOpciones && (
+                  <span className={`text-xs text-slate-400 ${loadingOpciones ? "opacity-50" : ""}`}>
+                    Disponibles: <span className="font-bold text-slate-200">{displayOpciones.disponibles.toLocaleString()}</span>
+                    {" | "}Asignables: <span className="font-bold text-green-400">{displayOpciones.asignables.toLocaleString()}</span>
+                  </span>
+                )}
+              </div>
+
+              <Button
+                variant="primary"
+                icon={<Download className="w-4 h-4" />}
+                loading={submitting}
+                disabled={!selectedPromotor || submitting || (opciones?.asignables ?? 0) === 0}
+                onClick={handleAsignar}
+              >
+                Asignar
+              </Button>
+            </div>
+          </div>
         </div>
-      )}
+        );
+      })()}
     </div>
   );
 }
