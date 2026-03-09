@@ -239,10 +239,12 @@ export default function AsesorDigitalPage() {
 
   const [formData, setFormData] = useState(EMPTY_FORM);
 
-  // ─── Data fetching ────────────────────────────────────────────────
-  const fetchRegistros = useCallback(async () => {
+  // ─── Data fetching (server-side period filter) ───────────────────
+  const fetchRegistros = useCallback(async (periodo?: string) => {
+    setLoading(true);
     try {
-      const res = await fetch("/api/asesor-digital/registros");
+      const params = periodo ? `?periodo=${periodo}` : "";
+      const res = await fetch(`/api/asesor-digital/registros${params}`);
       if (!res.ok) throw new Error("Error al cargar registros");
       const data = await res.json();
       setRegistros(data);
@@ -252,24 +254,19 @@ export default function AsesorDigitalPage() {
     setLoading(false);
   }, [toast]);
 
-  useEffect(() => { fetchRegistros(); }, [fetchRegistros]);
+  useEffect(() => { fetchRegistros(filtroPeriodo); }, [fetchRegistros, filtroPeriodo]);
 
   // ─── Filtered & grouped data ──────────────────────────────────────
-  const registrosPeriodo = useMemo(() => {
-    if (!filtroPeriodo) return registros;
-    return registros.filter((r) => r.fecha && r.fecha.slice(0, 7) === filtroPeriodo);
-  }, [registros, filtroPeriodo]);
-
   const registrosFiltrados = useMemo(() => {
-    if (!busqueda.trim()) return registrosPeriodo;
+    if (!busqueda.trim()) return registros;
     const term = busqueda.toLowerCase();
-    return registrosPeriodo.filter((r) =>
+    return registros.filter((r) =>
       r.nombre_cliente.toLowerCase().includes(term) ||
       (r.numero_telefono && r.numero_telefono.includes(term)) ||
       (r.nss && r.nss.includes(term)) ||
       (r.curp && r.curp.toLowerCase().includes(term))
     );
-  }, [registrosPeriodo, busqueda]);
+  }, [registros, busqueda]);
 
   const conteos = useMemo(() => {
     const c: Record<string, number> = {};
@@ -330,7 +327,7 @@ export default function AsesorDigitalPage() {
     if (res.ok) {
       setDialogOpen(false);
       toast(editingRecord ? "Registro actualizado" : "Registro creado", "success");
-      fetchRegistros();
+      fetchRegistros(filtroPeriodo);
     } else {
       const data = await res.json();
       toast(data.error || "Error al guardar", "error");
@@ -344,7 +341,7 @@ export default function AsesorDigitalPage() {
     if (res.ok) {
       toast("Registro eliminado", "success");
       setDeleteConfirmId(null);
-      fetchRegistros();
+      fetchRegistros(filtroPeriodo);
     } else {
       toast("Error al eliminar", "error");
     }
@@ -389,7 +386,7 @@ export default function AsesorDigitalPage() {
       toast("Registro actualizado", "success");
       setViewDirty(false);
       setViewRecord(null);
-      fetchRegistros();
+      fetchRegistros(filtroPeriodo);
     } else {
       const data = await res.json();
       toast(data.error || "Error al guardar", "error");

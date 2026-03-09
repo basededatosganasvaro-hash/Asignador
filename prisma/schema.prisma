@@ -737,7 +737,7 @@ model ad_registros {
 
   usuario usuarios @relation(fields: [usuario_id], references: [id])
 
-  @@index([usuario_id])
+  @@index([usuario_id, activo, fecha])
   @@index([usuario_id, etapa])
   @@index([usuario_id, status])
   @@index([etapa])

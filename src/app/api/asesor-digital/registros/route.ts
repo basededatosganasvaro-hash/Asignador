@@ -1,17 +1,41 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAsesorDigital } from "@/lib/auth-utils";
 
 const ETAPAS_VALIDAS = ["Leads", "Cotizacion", "No sujeto a credito", "Ventas"];
 const STATUS_VALIDOS = ["Venta", "Interesado", "Cotizacion", "No viable", "Proceso", "Sin informacion"];
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const { session, error } = await requireAsesorDigital();
   if (error) return error;
 
+  const periodo = request.nextUrl.searchParams.get("periodo"); // "YYYY-MM"
+
+  // Filtro de fecha por periodo (server-side)
+  let fechaFilter: { gte?: Date; lt?: Date } | undefined;
+  if (periodo && /^\d{4}-\d{2}$/.test(periodo)) {
+    const [year, month] = periodo.split("-").map(Number);
+    fechaFilter = {
+      gte: new Date(year, month - 1, 1),
+      lt: new Date(year, month, 1),
+    };
+  }
+
   const registros = await prisma.ad_registros.findMany({
-    where: { usuario_id: Number(session.user.id), activo: true },
-    orderBy: { created_at: "desc" },
+    where: {
+      usuario_id: Number(session.user.id),
+      activo: true,
+      ...(fechaFilter && { fecha: fechaFilter }),
+    },
+    select: {
+      id: true, etapa: true, nombre_cliente: true, fecha: true, status: true,
+      estrategia: true, flujo: true, numero_telefono: true, curp: true,
+      nss: true, rfc: true, zona: true, campana: true, capacidad: true,
+      monto_credito: true, tipo_credito: true, convenio: true, etiqueta: true,
+      oferta: true, motivo: true, id_venta: true, viabilidad: true,
+      created_at: true,
+    },
+    orderBy: { fecha: "desc" },
   });
 
   return NextResponse.json(registros);
