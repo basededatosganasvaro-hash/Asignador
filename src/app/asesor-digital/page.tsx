@@ -1,18 +1,19 @@
 "use client";
-import { useEffect, useState, useCallback, useMemo, useRef } from "react";
-import { DataTable } from "@/components/ui/DataTable";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/Button";
 import { Badge, BadgeColor } from "@/components/ui/Badge";
 import { Dialog, DialogHeader, DialogBody, DialogFooter } from "@/components/ui/Dialog";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { useToast } from "@/components/ui/Toast";
-import { ColumnDef } from "@tanstack/react-table";
+import { Spinner } from "@/components/ui/Spinner";
 import {
-  Plus, Trash2, Search, Save, Filter, Calendar,
+  Plus, Trash2, Search, Save, Calendar,
   ShoppingCart, UserCheck, FileText, XCircle, Clock, HelpCircle,
+  ChevronDown, Eye,
 } from "lucide-react";
 
+// ─── Types ───────────────────────────────────────────────────────────
 interface Registro {
   id: number;
   etapa: string;
@@ -39,6 +40,7 @@ interface Registro {
   created_at: string;
 }
 
+// ─── Constants ───────────────────────────────────────────────────────
 const STATUS_OPTIONS = ["Venta", "Interesado", "Cotizacion", "No viable", "Proceso", "Sin informacion"];
 const ETAPA_OPTIONS = ["Leads", "Cotizacion", "No sujeto a credito", "Ventas"];
 const ESTRATEGIA_OPTIONS = ["facebook", "VoxImplant", "Wasapi", "WasapiCNCA", "WasapiNuevo", "Consunomina", "Organico"];
@@ -59,16 +61,25 @@ const STATUS_COLORS: Record<string, BadgeColor> = {
 };
 
 const ESTRATEGIA_COLORS: Record<string, BadgeColor> = {
-  facebook: "blue",
-  VoxImplant: "purple",
-  Wasapi: "emerald",
-  WasapiCNCA: "teal",
-  WasapiNuevo: "green",
-  Consunomina: "red",
-  Organico: "orange",
+  facebook: "blue", VoxImplant: "purple", Wasapi: "emerald", WasapiCNCA: "teal",
+  WasapiNuevo: "green", Consunomina: "red", Organico: "orange",
 };
 
-// Case-insensitive color lookup — matches DB values regardless of casing/spacing
+const CAMPANA_COLORS: Record<string, BadgeColor> = {
+  "IMSS Pensionados": "blue", SNTE23: "purple", SEIEM: "teal", CDMX: "orange",
+  "SNTE17y36": "amber", GEM: "green", IMSS: "emerald", "Nuevo Leon": "red", SNTE14: "yellow",
+};
+
+const ETAPA_COLORS: Record<string, BadgeColor> = {
+  Leads: "blue", Cotizacion: "amber", "No sujeto a credito": "red", Ventas: "green",
+};
+
+const CONVENIO_COLORS: Record<string, BadgeColor> = {
+  "IMSS Pensionados": "blue", GEM: "green", CDMX: "orange", "IMSS Jubilados": "teal",
+  INE: "purple", SEIEM: "emerald", SEP: "amber", SNTE23: "purple",
+  "Gob Chihuahua": "red", "Gob Nuevo Leon": "red", SNTE14: "yellow", SEDUC: "teal", SNTE21: "orange",
+};
+
 function getColor(map: Record<string, BadgeColor>, value: string | null | undefined): BadgeColor {
   if (!value) return "slate";
   if (map[value]) return map[value];
@@ -79,172 +90,181 @@ function getColor(map: Record<string, BadgeColor>, value: string | null | undefi
   return "slate";
 }
 
-const CAMPANA_COLORS: Record<string, BadgeColor> = {
-  "IMSS Pensionados": "blue",
-  SNTE23: "purple",
-  SEIEM: "teal",
-  CDMX: "orange",
-  "SNTE17y36": "amber",
-  GEM: "green",
-  IMSS: "emerald",
-  "Nuevo Leon": "red",
-  SNTE14: "yellow",
-};
-
-const ETAPA_COLORS: Record<string, BadgeColor> = {
-  Leads: "blue",
-  Cotizacion: "amber",
-  "No sujeto a credito": "red",
-  Ventas: "green",
-};
-
-const CONVENIO_COLORS: Record<string, BadgeColor> = {
-  "IMSS Pensionados": "blue",
-  GEM: "green",
-  CDMX: "orange",
-  "IMSS Jubilados": "teal",
-  INE: "purple",
-  SEIEM: "emerald",
-  SEP: "amber",
-  SNTE23: "purple",
-  "Gob Chihuahua": "red",
-  "Gob Nuevo Leon": "red",
-  SNTE14: "yellow",
-  SEDUC: "teal",
-  SNTE21: "orange",
-};
-
-const STATUS_PIPELINE: { key: string; label: string; color: string; gradient: string; hover: string; active: string; icon: typeof ShoppingCart }[] = [
-  { key: "Venta", label: "Venta", color: "text-green-400", gradient: "from-green-500 to-green-600", hover: "hover:border-green-500/50 hover:bg-green-500/5", active: "border-green-500/60 ring-1 ring-green-500/30 bg-green-500/5", icon: ShoppingCart },
-  { key: "Interesado", label: "Interesado", color: "text-blue-400", gradient: "from-blue-500 to-blue-600", hover: "hover:border-blue-500/50 hover:bg-blue-500/5", active: "border-blue-500/60 ring-1 ring-blue-500/30 bg-blue-500/5", icon: UserCheck },
-  { key: "Cotizacion", label: "Cotizacion", color: "text-amber-400", gradient: "from-amber-500 to-amber-600", hover: "hover:border-amber-500/50 hover:bg-amber-500/5", active: "border-amber-500/60 ring-1 ring-amber-500/30 bg-amber-500/5", icon: FileText },
-  { key: "No viable", label: "No viable", color: "text-red-400", gradient: "from-red-500 to-red-600", hover: "hover:border-red-500/50 hover:bg-red-500/5", active: "border-red-500/60 ring-1 ring-red-500/30 bg-red-500/5", icon: XCircle },
-  { key: "Proceso", label: "Proceso", color: "text-purple-400", gradient: "from-purple-500 to-purple-600", hover: "hover:border-purple-500/50 hover:bg-purple-500/5", active: "border-purple-500/60 ring-1 ring-purple-500/30 bg-purple-500/5", icon: Clock },
-  { key: "Sin informacion", label: "Sin info", color: "text-slate-400", gradient: "from-slate-500 to-slate-600", hover: "hover:border-slate-500/50 hover:bg-slate-500/5", active: "border-slate-500/60 ring-1 ring-slate-500/30 bg-slate-500/5", icon: HelpCircle },
+// ─── Status pipeline config ─────────────────────────────────────────
+const STATUS_PIPELINE: {
+  key: string; label: string; color: string; textColor: string;
+  gradient: string; hover: string; active: string;
+  border: string; bgLight: string; headerBg: string;
+  icon: typeof ShoppingCart;
+}[] = [
+  {
+    key: "Venta", label: "Venta", color: "text-green-400", textColor: "text-green-300",
+    gradient: "from-green-500 to-green-600",
+    hover: "hover:border-green-500/50 hover:bg-green-500/5",
+    active: "border-green-500/60 ring-1 ring-green-500/30 bg-green-500/5",
+    border: "border-green-500/30", bgLight: "bg-green-500/[0.03]",
+    headerBg: "bg-gradient-to-r from-green-500/10 to-green-500/[0.02]",
+    icon: ShoppingCart,
+  },
+  {
+    key: "Interesado", label: "Interesado", color: "text-blue-400", textColor: "text-blue-300",
+    gradient: "from-blue-500 to-blue-600",
+    hover: "hover:border-blue-500/50 hover:bg-blue-500/5",
+    active: "border-blue-500/60 ring-1 ring-blue-500/30 bg-blue-500/5",
+    border: "border-blue-500/30", bgLight: "bg-blue-500/[0.03]",
+    headerBg: "bg-gradient-to-r from-blue-500/10 to-blue-500/[0.02]",
+    icon: UserCheck,
+  },
+  {
+    key: "Cotizacion", label: "Cotizacion", color: "text-amber-400", textColor: "text-amber-300",
+    gradient: "from-amber-500 to-amber-600",
+    hover: "hover:border-amber-500/50 hover:bg-amber-500/5",
+    active: "border-amber-500/60 ring-1 ring-amber-500/30 bg-amber-500/5",
+    border: "border-amber-500/30", bgLight: "bg-amber-500/[0.03]",
+    headerBg: "bg-gradient-to-r from-amber-500/10 to-amber-500/[0.02]",
+    icon: FileText,
+  },
+  {
+    key: "No viable", label: "No viable", color: "text-red-400", textColor: "text-red-300",
+    gradient: "from-red-500 to-red-600",
+    hover: "hover:border-red-500/50 hover:bg-red-500/5",
+    active: "border-red-500/60 ring-1 ring-red-500/30 bg-red-500/5",
+    border: "border-red-500/30", bgLight: "bg-red-500/[0.03]",
+    headerBg: "bg-gradient-to-r from-red-500/10 to-red-500/[0.02]",
+    icon: XCircle,
+  },
+  {
+    key: "Proceso", label: "Proceso", color: "text-purple-400", textColor: "text-purple-300",
+    gradient: "from-purple-500 to-purple-600",
+    hover: "hover:border-purple-500/50 hover:bg-purple-500/5",
+    active: "border-purple-500/60 ring-1 ring-purple-500/30 bg-purple-500/5",
+    border: "border-purple-500/30", bgLight: "bg-purple-500/[0.03]",
+    headerBg: "bg-gradient-to-r from-purple-500/10 to-purple-500/[0.02]",
+    icon: Clock,
+  },
+  {
+    key: "Sin informacion", label: "Sin info", color: "text-slate-400", textColor: "text-slate-300",
+    gradient: "from-slate-500 to-slate-600",
+    hover: "hover:border-slate-500/50 hover:bg-slate-500/5",
+    active: "border-slate-500/60 ring-1 ring-slate-500/30 bg-slate-500/5",
+    border: "border-slate-500/30", bgLight: "bg-slate-500/[0.03]",
+    headerBg: "bg-gradient-to-r from-slate-500/10 to-slate-500/[0.02]",
+    icon: HelpCircle,
+  },
 ];
 
 const EMPTY_FORM = {
-  etapa: "Leads",
-  nombre_cliente: "",
-  fecha: new Date().toISOString().split("T")[0],
-  status: "Sin informacion",
-  estrategia: "",
-  flujo: "",
-  numero_telefono: "",
-  curp: "",
-  nss: "",
-  rfc: "",
-  zona: "",
-  campana: "",
-  capacidad: "",
-  monto_credito: "",
-  tipo_credito: "",
-  convenio: "",
-  etiqueta: "",
-  oferta: "",
-  motivo: "",
-  id_venta: "",
-  viabilidad: "",
+  etapa: "Leads", nombre_cliente: "", fecha: new Date().toISOString().split("T")[0],
+  status: "Sin informacion", estrategia: "", flujo: "", numero_telefono: "",
+  curp: "", nss: "", rfc: "", zona: "", campana: "", capacidad: "",
+  monto_credito: "", tipo_credito: "", convenio: "", etiqueta: "", oferta: "",
+  motivo: "", id_venta: "", viabilidad: "",
 };
 
-// ─── Column filter dropdown (Excel-style) ───────────────────────────
-function ColumnFilterDropdown({
-  label,
-  options,
-  value,
-  onChange,
-  colorMap,
-}: {
+// ─── Helpers ─────────────────────────────────────────────────────────
+const fmtCurrency = (v: number | null) =>
+  v != null ? v.toLocaleString("es-MX", { style: "currency", currency: "MXN" }) : "\u2014";
+
+const fmtDate = (v: string | null) =>
+  v ? new Date(v).toLocaleDateString("es-MX") : "\u2014";
+
+const cell = (v: string | null | undefined) => v || "\u2014";
+
+// ─── Table columns definition ────────────────────────────────────────
+const TABLE_COLS: {
+  key: string;
   label: string;
-  options: string[];
-  value: string;
-  onChange: (val: string) => void;
-  colorMap?: Record<string, BadgeColor>;
-}) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  const btnRef = useRef<HTMLButtonElement>(null);
-  const [pos, setPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
+  width: string;
+  sticky?: boolean;
+  render: (r: Registro) => React.ReactNode;
+}[] = [
+  {
+    key: "nombre_cliente", label: "Cliente", width: "min-w-[180px]", sticky: true,
+    render: () => null, // handled separately for click
+  },
+  {
+    key: "numero_telefono", label: "Telefono", width: "min-w-[130px]",
+    render: (r) => <span className="text-slate-400">{cell(r.numero_telefono)}</span>,
+  },
+  {
+    key: "fecha", label: "Fecha", width: "min-w-[100px]",
+    render: (r) => <span className="text-slate-400">{fmtDate(r.fecha)}</span>,
+  },
+  {
+    key: "etapa", label: "Etapa", width: "min-w-[140px]",
+    render: (r) => r.etapa ? <Badge color={getColor(ETAPA_COLORS, r.etapa)}>{r.etapa}</Badge> : <span className="text-slate-600">&mdash;</span>,
+  },
+  {
+    key: "estrategia", label: "Estrategia", width: "min-w-[130px]",
+    render: (r) => r.estrategia ? <Badge color={getColor(ESTRATEGIA_COLORS, r.estrategia)}>{r.estrategia}</Badge> : <span className="text-slate-600">&mdash;</span>,
+  },
+  {
+    key: "campana", label: "Campana", width: "min-w-[150px]",
+    render: (r) => r.campana ? <Badge color={getColor(CAMPANA_COLORS, r.campana)}>{r.campana}</Badge> : <span className="text-slate-600">&mdash;</span>,
+  },
+  {
+    key: "convenio", label: "Convenio", width: "min-w-[150px]",
+    render: (r) => r.convenio ? <Badge color={getColor(CONVENIO_COLORS, r.convenio)}>{r.convenio}</Badge> : <span className="text-slate-600">&mdash;</span>,
+  },
+  {
+    key: "monto_credito", label: "Monto Credito", width: "min-w-[140px]",
+    render: (r) => <span className="text-slate-300 font-medium tabular-nums">{fmtCurrency(r.monto_credito)}</span>,
+  },
+  {
+    key: "tipo_credito", label: "Tipo Credito", width: "min-w-[130px]",
+    render: (r) => <span className="text-slate-400">{cell(r.tipo_credito)}</span>,
+  },
+  {
+    key: "capacidad", label: "Capacidad", width: "min-w-[120px]",
+    render: (r) => <span className="text-slate-400">{cell(r.capacidad)}</span>,
+  },
+  {
+    key: "flujo", label: "Flujo", width: "min-w-[120px]",
+    render: (r) => <span className="text-slate-400">{cell(r.flujo)}</span>,
+  },
+  {
+    key: "etiqueta", label: "Etiqueta", width: "min-w-[110px]",
+    render: (r) => <span className="text-slate-400">{cell(r.etiqueta)}</span>,
+  },
+  {
+    key: "oferta", label: "Oferta", width: "min-w-[90px]",
+    render: (r) => <span className="text-slate-400">{cell(r.oferta)}</span>,
+  },
+  {
+    key: "zona", label: "Zona", width: "min-w-[100px]",
+    render: (r) => <span className="text-slate-400">{cell(r.zona)}</span>,
+  },
+  {
+    key: "curp", label: "CURP", width: "min-w-[170px]",
+    render: (r) => <span className="text-slate-500 font-mono text-[11px]">{cell(r.curp)}</span>,
+  },
+  {
+    key: "nss", label: "NSS", width: "min-w-[130px]",
+    render: (r) => <span className="text-slate-500 font-mono text-[11px]">{cell(r.nss)}</span>,
+  },
+  {
+    key: "rfc", label: "RFC", width: "min-w-[140px]",
+    render: (r) => <span className="text-slate-500 font-mono text-[11px]">{cell(r.rfc)}</span>,
+  },
+  {
+    key: "id_venta", label: "ID Venta", width: "min-w-[120px]",
+    render: (r) => <span className="text-slate-400">{cell(r.id_venta)}</span>,
+  },
+  {
+    key: "viabilidad", label: "Viabilidad", width: "min-w-[110px]",
+    render: (r) => <span className="text-slate-400">{cell(r.viabilidad)}</span>,
+  },
+  {
+    key: "motivo", label: "Motivo", width: "min-w-[180px]",
+    render: (r) => (
+      <span className="text-slate-500 text-xs truncate block max-w-[180px]" title={r.motivo || ""}>
+        {cell(r.motivo)}
+      </span>
+    ),
+  },
+];
 
-  useEffect(() => {
-    function handleClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node) &&
-          btnRef.current && !btnRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    }
-    function handleScroll() { setOpen(false); }
-    document.addEventListener("mousedown", handleClick);
-    window.addEventListener("scroll", handleScroll, true);
-    return () => {
-      document.removeEventListener("mousedown", handleClick);
-      window.removeEventListener("scroll", handleScroll, true);
-    };
-  }, []);
-
-  const handleToggle = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!open && btnRef.current) {
-      const rect = btnRef.current.getBoundingClientRect();
-      setPos({ top: rect.bottom + 4, left: rect.left });
-    }
-    setOpen(!open);
-  };
-
-  const isFiltered = value !== "";
-  const hasOptions = options.length > 0;
-
-  return (
-    <div className="inline-flex items-center">
-      <span className="mr-1">{label}</span>
-      <button
-        ref={btnRef}
-        onClick={handleToggle}
-        className={`p-0.5 rounded transition-colors ${
-          isFiltered ? "text-amber-400" : "text-slate-600 hover:text-slate-400"
-        }`}
-      >
-        <Filter className="w-3 h-3" />
-      </button>
-      {open && hasOptions && (
-        <div
-          ref={ref}
-          style={{ position: "fixed", top: pos.top, left: pos.left }}
-          className="z-[100] min-w-[200px] max-h-64 overflow-y-auto
-            bg-slate-800 border border-slate-700 rounded-lg shadow-2xl py-1"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <button
-            onClick={() => { onChange(""); setOpen(false); }}
-            className={`w-full text-left px-3 py-2 text-xs transition-colors ${
-              value === "" ? "bg-amber-500/15 text-amber-400" : "text-slate-400 hover:bg-slate-700"
-            }`}
-          >
-            Todos
-          </button>
-          <div className="h-px bg-slate-700/50 my-0.5" />
-          {options.map((opt) => (
-            <button
-              key={opt}
-              onClick={() => { onChange(value === opt ? "" : opt); setOpen(false); }}
-              className={`w-full text-left px-3 py-2 text-xs transition-colors flex items-center gap-2 ${
-                value === opt ? "bg-amber-500/15 text-amber-400" : "text-slate-300 hover:bg-slate-700"
-              }`}
-            >
-              {colorMap ? (
-                <Badge color={getColor(colorMap, opt)}>{opt}</Badge>
-              ) : (
-                opt
-              )}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─── Main Page ──────────────────────────────────────────────────────
+// ─── Main Page ───────────────────────────────────────────────────────
 export default function AsesorDigitalPage() {
   const [registros, setRegistros] = useState<Registro[]>([]);
   const [loading, setLoading] = useState(true);
@@ -252,7 +272,6 @@ export default function AsesorDigitalPage() {
   const [editingRecord, setEditingRecord] = useState<Registro | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
-  const [updatingStatusId, setUpdatingStatusId] = useState<number | null>(null);
   const [viewRecord, setViewRecord] = useState<Registro | null>(null);
   const [viewForm, setViewForm] = useState<Record<string, string>>({});
   const [viewDirty, setViewDirty] = useState(false);
@@ -260,21 +279,16 @@ export default function AsesorDigitalPage() {
   const [busqueda, setBusqueda] = useState("");
   const { toast } = useToast();
 
-  // Period filter — default current month (YYYY-MM)
   const [filtroPeriodo, setFiltroPeriodo] = useState(() => {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   });
 
-  // Column filters — default all statuses
-  const [filtroStatus, setFiltroStatus] = useState("");
-  const [filtroEstrategia, setFiltroEstrategia] = useState("");
-  const [filtroCampana, setFiltroCampana] = useState("");
-  const [filtroConvenio, setFiltroConvenio] = useState("");
-  const [filtroEtapa, setFiltroEtapa] = useState("");
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(() => new Set(["Venta", "Interesado", "Proceso"]));
 
   const [formData, setFormData] = useState(EMPTY_FORM);
 
+  // ─── Data fetching ────────────────────────────────────────────────
   const fetchRegistros = useCallback(async () => {
     try {
       const res = await fetch("/api/asesor-digital/registros");
@@ -287,69 +301,54 @@ export default function AsesorDigitalPage() {
     setLoading(false);
   }, [toast]);
 
-  useEffect(() => {
-    fetchRegistros();
-  }, [fetchRegistros]);
+  useEffect(() => { fetchRegistros(); }, [fetchRegistros]);
 
-  // Inline status change
-  const handleInlineStatusChange = async (registro: Registro, newStatus: string) => {
-    setUpdatingStatusId(registro.id);
-    const res = await fetch(`/api/asesor-digital/registros/${registro.id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: newStatus }),
-    });
-    setUpdatingStatusId(null);
-    if (res.ok) {
-      setRegistros((prev) =>
-        prev.map((r) => (r.id === registro.id ? { ...r, status: newStatus } : r))
-      );
-    } else {
-      toast("Error al cambiar status", "error");
-    }
-  };
-
-  // Registros filtrados por periodo (base para conteos y tabla)
+  // ─── Filtered & grouped data ──────────────────────────────────────
   const registrosPeriodo = useMemo(() => {
     if (!filtroPeriodo) return registros;
-    return registros.filter((r) => {
-      if (!r.fecha) return false;
-      const fecha = r.fecha.slice(0, 7); // "YYYY-MM"
-      return fecha === filtroPeriodo;
-    });
+    return registros.filter((r) => r.fecha && r.fecha.slice(0, 7) === filtroPeriodo);
   }, [registros, filtroPeriodo]);
 
-  // Conteos por status (filtrados por periodo, sin otros filtros)
+  const registrosFiltrados = useMemo(() => {
+    if (!busqueda.trim()) return registrosPeriodo;
+    const term = busqueda.toLowerCase();
+    return registrosPeriodo.filter((r) =>
+      r.nombre_cliente.toLowerCase().includes(term) ||
+      (r.numero_telefono && r.numero_telefono.includes(term)) ||
+      (r.nss && r.nss.includes(term)) ||
+      (r.curp && r.curp.toLowerCase().includes(term))
+    );
+  }, [registrosPeriodo, busqueda]);
+
   const conteos = useMemo(() => {
     const c: Record<string, number> = {};
     STATUS_PIPELINE.forEach((s) => (c[s.key] = 0));
-    registrosPeriodo.forEach((r) => {
+    registrosFiltrados.forEach((r) => {
       if (c[r.status] !== undefined) c[r.status]++;
     });
     return c;
-  }, [registrosPeriodo]);
+  }, [registrosFiltrados]);
 
-  const registrosFiltrados = useMemo(() => {
-    return registrosPeriodo.filter((r) => {
-      if (filtroStatus && r.status !== filtroStatus) return false;
-      if (filtroEstrategia && r.estrategia !== filtroEstrategia) return false;
-      if (filtroCampana && r.campana !== filtroCampana) return false;
-      if (filtroConvenio && r.convenio !== filtroConvenio) return false;
-      if (filtroEtapa && r.etapa !== filtroEtapa) return false;
-      if (busqueda.trim()) {
-        const term = busqueda.toLowerCase();
-        if (
-          !r.nombre_cliente.toLowerCase().includes(term) &&
-          !(r.numero_telefono && r.numero_telefono.includes(term)) &&
-          !(r.nss && r.nss.includes(term)) &&
-          !(r.curp && r.curp.toLowerCase().includes(term))
-        )
-          return false;
-      }
-      return true;
+  const registrosPorStatus = useMemo(() => {
+    const map: Record<string, Registro[]> = {};
+    STATUS_PIPELINE.forEach((s) => (map[s.key] = []));
+    registrosFiltrados.forEach((r) => {
+      if (map[r.status]) map[r.status].push(r);
     });
-  }, [registrosPeriodo, busqueda, filtroStatus, filtroEstrategia, filtroCampana, filtroConvenio, filtroEtapa]);
+    return map;
+  }, [registrosFiltrados]);
 
+  // ─── Accordion toggle ─────────────────────────────────────────────
+  const toggleSection = (key: string) => {
+    setExpandedSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
+  // ─── Handlers ─────────────────────────────────────────────────────
   const handleOpenCreate = () => {
     setEditingRecord(null);
     setFormData({ ...EMPTY_FORM, fecha: new Date().toISOString().split("T")[0] });
@@ -359,21 +358,13 @@ export default function AsesorDigitalPage() {
   const buildBody = (form: Record<string, string>) => ({
     ...form,
     monto_credito: form.monto_credito ? Number(form.monto_credito) : null,
-    estrategia: form.estrategia || null,
-    flujo: form.flujo || null,
-    numero_telefono: form.numero_telefono || null,
-    curp: form.curp || null,
-    nss: form.nss || null,
-    rfc: form.rfc || null,
-    zona: form.zona || null,
-    campana: form.campana || null,
-    capacidad: form.capacidad || null,
-    tipo_credito: form.tipo_credito || null,
-    convenio: form.convenio || null,
-    etiqueta: form.etiqueta || null,
-    oferta: form.oferta || null,
-    motivo: form.motivo || null,
-    id_venta: form.id_venta || null,
+    estrategia: form.estrategia || null, flujo: form.flujo || null,
+    numero_telefono: form.numero_telefono || null, curp: form.curp || null,
+    nss: form.nss || null, rfc: form.rfc || null, zona: form.zona || null,
+    campana: form.campana || null, capacidad: form.capacidad || null,
+    tipo_credito: form.tipo_credito || null, convenio: form.convenio || null,
+    etiqueta: form.etiqueta || null, oferta: form.oferta || null,
+    motivo: form.motivo || null, id_venta: form.id_venta || null,
     viabilidad: form.viabilidad || null,
   });
 
@@ -382,20 +373,9 @@ export default function AsesorDigitalPage() {
       toast("El nombre del cliente es obligatorio", "error");
       return;
     }
-
-    const url = editingRecord
-      ? `/api/asesor-digital/registros/${editingRecord.id}`
-      : "/api/asesor-digital/registros";
+    const url = editingRecord ? `/api/asesor-digital/registros/${editingRecord.id}` : "/api/asesor-digital/registros";
     const method = editingRecord ? "PUT" : "POST";
-
-    const body = buildBody(formData);
-
-    const res = await fetch(url, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-
+    const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(buildBody(formData)) });
     if (res.ok) {
       setDialogOpen(false);
       toast(editingRecord ? "Registro actualizado" : "Registro creado", "success");
@@ -419,33 +399,23 @@ export default function AsesorDigitalPage() {
     }
   };
 
-  const updateField = (field: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-  };
+  const updateField = (field: string, value: string) => setFormData((prev) => ({ ...prev, [field]: value }));
 
   const openViewRecord = (record: Registro) => {
     setViewRecord(record);
     setViewForm({
       nombre_cliente: record.nombre_cliente,
       fecha: record.fecha ? record.fecha.split("T")[0] : "",
-      status: record.status,
-      etapa: record.etapa,
-      estrategia: record.estrategia || "",
-      flujo: record.flujo || "",
+      status: record.status, etapa: record.etapa,
+      estrategia: record.estrategia || "", flujo: record.flujo || "",
       numero_telefono: record.numero_telefono || "",
-      curp: record.curp || "",
-      nss: record.nss || "",
-      rfc: record.rfc || "",
-      zona: record.zona || "",
-      campana: record.campana || "",
+      curp: record.curp || "", nss: record.nss || "", rfc: record.rfc || "",
+      zona: record.zona || "", campana: record.campana || "",
       capacidad: record.capacidad || "",
       monto_credito: record.monto_credito ? String(record.monto_credito) : "",
-      tipo_credito: record.tipo_credito || "",
-      convenio: record.convenio || "",
-      etiqueta: record.etiqueta || "",
-      oferta: record.oferta || "",
-      motivo: record.motivo || "",
-      id_venta: record.id_venta || "",
+      tipo_credito: record.tipo_credito || "", convenio: record.convenio || "",
+      etiqueta: record.etiqueta || "", oferta: record.oferta || "",
+      motivo: record.motivo || "", id_venta: record.id_venta || "",
       viabilidad: record.viabilidad || "",
     });
     setViewDirty(false);
@@ -459,15 +429,10 @@ export default function AsesorDigitalPage() {
   const handleViewSave = async () => {
     if (!viewRecord) return;
     setViewSaving(true);
-
-    const body = buildBody(viewForm);
-
     const res = await fetch(`/api/asesor-digital/registros/${viewRecord.id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
+      method: "PUT", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(buildBody(viewForm)),
     });
-
     setViewSaving(false);
     if (res.ok) {
       toast("Registro actualizado", "success");
@@ -480,217 +445,30 @@ export default function AsesorDigitalPage() {
     }
   };
 
-  // Unique values for column filter dropdowns (from period-filtered data)
-  const uniqueEstrategias = useMemo(() => [...new Set(registrosPeriodo.map((r) => r.estrategia).filter(Boolean) as string[])].sort(), [registrosPeriodo]);
-  const uniqueCampanas = useMemo(() => [...new Set(registrosPeriodo.map((r) => r.campana).filter(Boolean) as string[])].sort(), [registrosPeriodo]);
-  const uniqueConvenios = useMemo(() => [...new Set(registrosPeriodo.map((r) => r.convenio).filter(Boolean) as string[])].sort(), [registrosPeriodo]);
-  const uniqueEtapas = useMemo(() => [...new Set(registrosPeriodo.map((r) => r.etapa).filter(Boolean) as string[])].sort(), [registrosPeriodo]);
-
-  // Active filters count
-  const activeFilters = [filtroStatus, filtroEstrategia, filtroCampana, filtroConvenio, filtroEtapa].filter(Boolean).length;
-
-  const columns: ColumnDef<Registro, unknown>[] = [
-    {
-      accessorKey: "nombre_cliente",
-      header: "Cliente",
-      size: 180,
-      cell: ({ row }) => (
-        <button
-          onClick={() => openViewRecord(row.original)}
-          className="text-sm text-slate-200 hover:text-amber-400 transition-colors text-left underline decoration-slate-700 hover:decoration-amber-400"
-        >
-          {row.original.nombre_cliente}
-        </button>
-      ),
-    },
-    {
-      accessorKey: "status",
-      header: () => (
-        <ColumnFilterDropdown
-          label="Status"
-          options={STATUS_OPTIONS}
-          value={filtroStatus}
-          onChange={setFiltroStatus}
-          colorMap={STATUS_COLORS}
-        />
-      ),
-      size: 170,
-      enableSorting: false,
-      cell: ({ row }) => {
-        const STATUS_SELECT_CLASSES: Record<string, string> = {
-          green: "bg-green-500/15 text-green-400 ring-1 ring-green-500/30",
-          blue: "bg-blue-500/15 text-blue-400 ring-1 ring-blue-500/30",
-          amber: "bg-amber-500/15 text-amber-400 ring-1 ring-amber-500/30",
-          red: "bg-red-500/15 text-red-400 ring-1 ring-red-500/30",
-          purple: "bg-purple-500/15 text-purple-400 ring-1 ring-purple-500/30",
-          slate: "bg-slate-500/15 text-slate-400 ring-1 ring-slate-500/30",
-        };
-        const color = getColor(STATUS_COLORS, row.original.status);
-        return (
-        <select
-          value={row.original.status}
-          onChange={(e) => handleInlineStatusChange(row.original, e.target.value)}
-          onClick={(e) => e.stopPropagation()}
-          disabled={updatingStatusId === row.original.id}
-          className={`
-            text-xs font-medium rounded-full px-2.5 py-1 border-0 cursor-pointer outline-none transition-colors
-            disabled:opacity-50 disabled:cursor-wait
-            ${STATUS_SELECT_CLASSES[color] || STATUS_SELECT_CLASSES.slate}
-          `}
-        >
-          {STATUS_OPTIONS.map((s) => (
-            <option key={s} value={s} className="bg-slate-800 text-slate-200">{s}</option>
-          ))}
-        </select>
-        );
-      },
-    },
-    {
-      accessorKey: "numero_telefono",
-      header: "Telefono",
-      size: 130,
-      cell: ({ row }) => (
-        <span className="text-sm text-slate-400">
-          {row.original.numero_telefono || "\u2014"}
-        </span>
-      ),
-    },
-    {
-      accessorKey: "estrategia",
-      header: () => (
-        <ColumnFilterDropdown
-          label="Estrategia"
-          options={uniqueEstrategias}
-          value={filtroEstrategia}
-          onChange={setFiltroEstrategia}
-          colorMap={ESTRATEGIA_COLORS}
-        />
-      ),
-      size: 140,
-      enableSorting: false,
-      cell: ({ row }) => row.original.estrategia
-        ? <Badge color={getColor(ESTRATEGIA_COLORS, row.original.estrategia)}>{row.original.estrategia}</Badge>
-        : <span className="text-sm text-slate-600">&mdash;</span>,
-    },
-    {
-      accessorKey: "campana",
-      header: () => (
-        <ColumnFilterDropdown
-          label="Campaña"
-          options={uniqueCampanas}
-          value={filtroCampana}
-          onChange={setFiltroCampana}
-          colorMap={CAMPANA_COLORS}
-        />
-      ),
-      size: 160,
-      enableSorting: false,
-      cell: ({ row }) => row.original.campana
-        ? <Badge color={getColor(CAMPANA_COLORS, row.original.campana)}>{row.original.campana}</Badge>
-        : <span className="text-sm text-slate-600">&mdash;</span>,
-    },
-    {
-      accessorKey: "convenio",
-      header: () => (
-        <ColumnFilterDropdown
-          label="Convenio"
-          options={uniqueConvenios}
-          value={filtroConvenio}
-          onChange={setFiltroConvenio}
-          colorMap={CONVENIO_COLORS}
-        />
-      ),
-      size: 160,
-      enableSorting: false,
-      cell: ({ row }) => row.original.convenio
-        ? <Badge color={getColor(CONVENIO_COLORS, row.original.convenio)}>{row.original.convenio}</Badge>
-        : <span className="text-sm text-slate-600">&mdash;</span>,
-    },
-    {
-      accessorKey: "etapa",
-      header: () => (
-        <ColumnFilterDropdown
-          label="Etapa"
-          options={uniqueEtapas}
-          value={filtroEtapa}
-          onChange={setFiltroEtapa}
-          colorMap={ETAPA_COLORS}
-        />
-      ),
-      size: 160,
-      enableSorting: false,
-      cell: ({ row }) => row.original.etapa
-        ? <Badge color={getColor(ETAPA_COLORS, row.original.etapa)}>{row.original.etapa}</Badge>
-        : <span className="text-sm text-slate-600">&mdash;</span>,
-    },
-    {
-      accessorKey: "monto_credito",
-      header: "Monto Credito",
-      size: 140,
-      cell: ({ row }) => {
-        const monto = row.original.monto_credito;
-        return (
-          <span className="text-sm text-slate-300">
-            {monto != null
-              ? monto.toLocaleString("es-MX", { style: "currency", currency: "MXN" })
-              : "\u2014"}
-          </span>
-        );
-      },
-    },
-    {
-      accessorKey: "fecha",
-      header: "Fecha",
-      size: 110,
-      cell: ({ row }) => {
-        const f = row.original.fecha;
-        return (
-          <span className="text-sm text-slate-400">
-            {f ? new Date(f).toLocaleDateString("es-MX") : "\u2014"}
-          </span>
-        );
-      },
-    },
-    {
-      id: "actions",
-      header: "Acciones",
-      size: 100,
-      enableSorting: false,
-      cell: ({ row }) => (
-        <div className="flex items-center gap-1">
-          <button
-            onClick={() => setDeleteConfirmId(row.original.id)}
-            title="Eliminar"
-            className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
-        </div>
-      ),
-    },
-  ];
-
+  // ─── Render ───────────────────────────────────────────────────────
   return (
-    <div>
-      <div className="flex justify-between items-center mb-6">
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex justify-between items-center">
         <h1 className="font-display text-xl font-bold text-slate-100">Mis Registros</h1>
         <Button variant="primary" icon={<Plus className="w-4 h-4" />} onClick={handleOpenCreate}>
           Nuevo Registro
         </Button>
       </div>
 
-      {/* Pipeline cards por Status — clicables */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
+      {/* Pipeline summary cards */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
         {STATUS_PIPELINE.map((s) => {
           const Icon = s.icon;
-          const isActive = filtroStatus === s.key;
+          const isExpanded = expandedSections.has(s.key);
+          const count = conteos[s.key] ?? 0;
           return (
             <button
               key={s.key}
-              onClick={() => setFiltroStatus(isActive ? "" : s.key)}
+              onClick={() => toggleSection(s.key)}
               className={`
                 bg-surface rounded-xl border p-4 relative overflow-hidden text-left transition-all
-                ${isActive
+                ${isExpanded
                   ? s.active
                   : `border-slate-800/60 ${s.hover}`
                 }
@@ -699,20 +477,16 @@ export default function AsesorDigitalPage() {
               <div className={`absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r ${s.gradient}`} />
               <div className="flex items-center justify-between mb-2">
                 <Icon className={`w-5 h-5 ${s.color}`} />
-                <span className="font-display text-2xl font-extrabold text-slate-100">
-                  {conteos[s.key] ?? 0}
-                </span>
+                <span className="font-display text-2xl font-extrabold text-slate-100">{count}</span>
               </div>
-              <span className="text-xs font-medium text-slate-500 uppercase tracking-wider">
-                {s.label}
-              </span>
+              <span className="text-xs font-medium text-slate-500 uppercase tracking-wider">{s.label}</span>
             </button>
           );
         })}
       </div>
 
-      {/* Barra de busqueda + periodo + info filtros activos */}
-      <div className="mb-4 flex flex-wrap items-end gap-3">
+      {/* Search + period */}
+      <div className="flex flex-wrap items-end gap-3">
         <div className="w-full sm:w-72">
           <Input
             placeholder="Buscar por nombre, telefono, NSS, CURP..."
@@ -731,52 +505,173 @@ export default function AsesorDigitalPage() {
               focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500/50 transition-colors"
           />
         </div>
-        {activeFilters > 0 && (
-          <div className="flex items-center gap-2 pb-1">
-            <span className="text-xs text-slate-500">
-              {activeFilters} filtro{activeFilters > 1 ? "s" : ""} activo{activeFilters > 1 ? "s" : ""}
-            </span>
-            <button
-              onClick={() => { setFiltroStatus(""); setFiltroEstrategia(""); setFiltroCampana(""); setFiltroConvenio(""); setFiltroEtapa(""); }}
-              className="text-xs text-amber-400 hover:text-amber-300 transition-colors"
-            >
-              Limpiar todos
-            </button>
-          </div>
+        {!loading && (
+          <p className="text-xs text-slate-500 pb-2">
+            {registrosFiltrados.length} registro{registrosFiltrados.length !== 1 ? "s" : ""}
+          </p>
         )}
       </div>
 
-      {!loading && (
-        <p className="text-xs text-slate-500 mb-2">
-          Mostrando {registrosFiltrados.length} de {registrosPeriodo.length} registros
-        </p>
+      {/* Loading */}
+      {loading && (
+        <div className="flex items-center justify-center py-20">
+          <Spinner className="w-8 h-8 text-amber-500" />
+        </div>
       )}
 
-      <DataTable
-        data={registrosFiltrados}
-        columns={columns}
-        loading={loading}
-        pageSize={15}
-        pageSizeOptions={[15, 30, 50]}
-      />
+      {/* Accordion cards by status */}
+      {!loading && (
+        <div className="space-y-4">
+          {STATUS_PIPELINE.map((s) => {
+            const Icon = s.icon;
+            const items = registrosPorStatus[s.key] || [];
+            const isExpanded = expandedSections.has(s.key);
+            const count = items.length;
 
-      {/* Dialog detalle/edicion del cliente */}
+            return (
+              <div
+                key={s.key}
+                className={`
+                  rounded-2xl border overflow-hidden transition-all duration-200
+                  ${isExpanded ? `${s.border} ${s.bgLight}` : "border-slate-800/50 bg-surface"}
+                `}
+              >
+                {/* Gradient accent top */}
+                <div className={`h-[2px] bg-gradient-to-r ${s.gradient}`} />
+
+                {/* Card header */}
+                <button
+                  onClick={() => toggleSection(s.key)}
+                  className={`
+                    w-full flex items-center gap-4 px-5 py-4 transition-colors text-left
+                    ${isExpanded ? s.headerBg : "hover:bg-slate-800/30"}
+                  `}
+                >
+                  {/* Chevron */}
+                  <div className={`transition-transform duration-200 ${isExpanded ? "rotate-0" : "-rotate-90"}`}>
+                    <ChevronDown className={`w-5 h-5 ${s.color}`} />
+                  </div>
+
+                  {/* Icon + label */}
+                  <Icon className={`w-5 h-5 ${s.color}`} />
+                  <span className={`font-display font-bold text-base ${s.textColor}`}>
+                    {s.label}
+                  </span>
+
+                  {/* Count badge */}
+                  <Badge color={getColor(STATUS_COLORS, s.key)}>
+                    {count} {count === 1 ? "registro" : "registros"}
+                  </Badge>
+
+                  {/* Spacer */}
+                  <div className="flex-1" />
+
+                  {/* Expand hint */}
+                  {!isExpanded && count > 0 && (
+                    <span className="text-xs text-slate-600">Clic para expandir</span>
+                  )}
+                </button>
+
+                {/* Expanded content: table */}
+                {isExpanded && (
+                  <div className="px-3 pb-4">
+                    {count === 0 ? (
+                      <div className="text-center py-8">
+                        <Icon className={`w-8 h-8 mx-auto mb-2 ${s.color} opacity-30`} />
+                        <p className="text-sm text-slate-600">Sin registros en este status</p>
+                      </div>
+                    ) : (
+                      <div className="rounded-xl border border-slate-800/40 overflow-hidden">
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-sm">
+                            <thead>
+                              <tr className="bg-slate-900/60">
+                                {/* Sticky: Cliente */}
+                                <th className="sticky left-0 z-10 bg-slate-900/95 backdrop-blur-sm text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider min-w-[180px] border-b border-slate-800/40">
+                                  Cliente
+                                </th>
+                                {TABLE_COLS.filter((c) => c.key !== "nombre_cliente").map((col) => (
+                                  <th
+                                    key={col.key}
+                                    className={`text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider ${col.width} border-b border-slate-800/40 whitespace-nowrap`}
+                                  >
+                                    {col.label}
+                                  </th>
+                                ))}
+                                <th className="text-center px-3 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider min-w-[90px] border-b border-slate-800/40">
+                                  Acciones
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-800/30">
+                              {items.map((r, idx) => (
+                                <tr
+                                  key={r.id}
+                                  className={`
+                                    transition-colors group
+                                    ${idx % 2 === 0 ? "bg-transparent" : "bg-slate-900/20"}
+                                    hover:bg-slate-800/30
+                                  `}
+                                >
+                                  {/* Sticky: Cliente */}
+                                  <td className="sticky left-0 z-10 backdrop-blur-sm px-4 py-3 border-r border-slate-800/20 bg-inherit group-hover:bg-slate-800/30 transition-colors">
+                                    <button
+                                      onClick={() => openViewRecord(r)}
+                                      className="text-sm font-medium text-slate-200 hover:text-amber-400 transition-colors text-left"
+                                    >
+                                      {r.nombre_cliente}
+                                    </button>
+                                  </td>
+                                  {TABLE_COLS.filter((c) => c.key !== "nombre_cliente").map((col) => (
+                                    <td key={col.key} className="px-4 py-3 text-sm whitespace-nowrap">
+                                      {col.render(r)}
+                                    </td>
+                                  ))}
+                                  <td className="px-3 py-3 text-center">
+                                    <div className="flex items-center justify-center gap-1">
+                                      <button
+                                        onClick={() => openViewRecord(r)}
+                                        title="Ver detalle"
+                                        className="p-1.5 text-slate-500 hover:text-amber-400 hover:bg-amber-500/10 rounded-lg transition-colors"
+                                      >
+                                        <Eye className="w-4 h-4" />
+                                      </button>
+                                      <button
+                                        onClick={() => setDeleteConfirmId(r.id)}
+                                        title="Eliminar"
+                                        className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+                                      >
+                                        <Trash2 className="w-4 h-4" />
+                                      </button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ─── Dialog detalle/edicion ─────────────────────────────────── */}
       <Dialog open={viewRecord !== null} onClose={() => setViewRecord(null)} maxWidth="2xl">
         <DialogHeader onClose={() => setViewRecord(null)}>
           <div className="flex items-center gap-3 flex-wrap">
             <span>{viewForm.nombre_cliente || viewRecord?.nombre_cliente}</span>
-            {viewForm.status && (
-              <Badge color={getColor(STATUS_COLORS, viewForm.status)}>{viewForm.status}</Badge>
-            )}
-            {viewForm.etapa && (
-              <Badge color={getColor(ETAPA_COLORS, viewForm.etapa)}>{viewForm.etapa}</Badge>
-            )}
+            {viewForm.status && <Badge color={getColor(STATUS_COLORS, viewForm.status)}>{viewForm.status}</Badge>}
+            {viewForm.etapa && <Badge color={getColor(ETAPA_COLORS, viewForm.etapa)}>{viewForm.etapa}</Badge>}
           </div>
         </DialogHeader>
         <DialogBody className="max-h-[70vh] overflow-y-auto space-y-6">
           {viewRecord && (
             <>
-              {/* Seccion: Datos principales */}
               <div>
                 <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-3">Datos del Cliente</p>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -788,8 +683,6 @@ export default function AsesorDigitalPage() {
                   <Input label="RFC" value={viewForm.rfc} onChange={(e) => updateViewField("rfc", e.target.value)} maxLength={13} />
                 </div>
               </div>
-
-              {/* Seccion: Clasificacion */}
               <div>
                 <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-3">Clasificacion</p>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -806,7 +699,7 @@ export default function AsesorDigitalPage() {
                     {viewForm.estrategia && <Badge color={getColor(ESTRATEGIA_COLORS, viewForm.estrategia)} className="mt-2">{viewForm.estrategia}</Badge>}
                   </div>
                   <div>
-                    <Select label="Campaña" value={viewForm.campana} onChange={(e) => updateViewField("campana", e.target.value)} placeholder="Seleccionar..." options={CAMPANA_OPTIONS.map((s) => ({ value: s, label: s }))} />
+                    <Select label="Campana" value={viewForm.campana} onChange={(e) => updateViewField("campana", e.target.value)} placeholder="Seleccionar..." options={CAMPANA_OPTIONS.map((s) => ({ value: s, label: s }))} />
                     {viewForm.campana && <Badge color={getColor(CAMPANA_COLORS, viewForm.campana)} className="mt-2">{viewForm.campana}</Badge>}
                   </div>
                   <div>
@@ -816,8 +709,6 @@ export default function AsesorDigitalPage() {
                   <Select label="Flujo" value={viewForm.flujo} onChange={(e) => updateViewField("flujo", e.target.value)} placeholder="Seleccionar..." options={FLUJO_OPTIONS.map((s) => ({ value: s, label: s }))} />
                 </div>
               </div>
-
-              {/* Seccion: Credito */}
               <div>
                 <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-3">Credito</p>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -829,8 +720,6 @@ export default function AsesorDigitalPage() {
                   <Input label="Zona" value={viewForm.zona} onChange={(e) => updateViewField("zona", e.target.value)} />
                 </div>
               </div>
-
-              {/* Seccion: Venta */}
               <div>
                 <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-3">Venta</p>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -838,8 +727,6 @@ export default function AsesorDigitalPage() {
                   <Input label="Viabilidad" value={viewForm.viabilidad} onChange={(e) => updateViewField("viabilidad", e.target.value)} />
                 </div>
               </div>
-
-              {/* Motivo */}
               <div>
                 <label className="block text-xs font-semibold text-slate-500 uppercase tracking-widest mb-2">Motivo</label>
                 <textarea
@@ -857,19 +744,14 @@ export default function AsesorDigitalPage() {
         <DialogFooter>
           <Button variant="ghost" onClick={() => setViewRecord(null)}>Cerrar</Button>
           {viewDirty && (
-            <Button
-              variant="primary"
-              icon={<Save className="w-4 h-4" />}
-              loading={viewSaving}
-              onClick={handleViewSave}
-            >
+            <Button variant="primary" icon={<Save className="w-4 h-4" />} loading={viewSaving} onClick={handleViewSave}>
               Guardar Cambios
             </Button>
           )}
         </DialogFooter>
       </Dialog>
 
-      {/* Dialog confirmar eliminacion */}
+      {/* ─── Dialog confirmar eliminacion ────────────────────────────── */}
       <Dialog open={deleteConfirmId !== null} onClose={() => setDeleteConfirmId(null)} maxWidth="sm">
         <DialogHeader onClose={() => setDeleteConfirmId(null)}>Confirmar Eliminacion</DialogHeader>
         <DialogBody>
@@ -881,7 +763,7 @@ export default function AsesorDigitalPage() {
         </DialogFooter>
       </Dialog>
 
-      {/* Dialog crear/editar */}
+      {/* ─── Dialog crear/editar ─────────────────────────────────────── */}
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="lg">
         <DialogHeader onClose={() => setDialogOpen(false)}>
           {editingRecord ? "Editar Registro" : "Nuevo Registro"}
@@ -899,7 +781,7 @@ export default function AsesorDigitalPage() {
             <Input label="NSS" value={formData.nss} onChange={(e) => updateField("nss", e.target.value)} maxLength={15} />
             <Input label="RFC" value={formData.rfc} onChange={(e) => updateField("rfc", e.target.value)} maxLength={13} />
             <Input label="Zona" value={formData.zona} onChange={(e) => updateField("zona", e.target.value)} />
-            <Select label="Campaña" value={formData.campana} onChange={(e) => updateField("campana", e.target.value)} placeholder="Seleccionar..." options={CAMPANA_OPTIONS.map((s) => ({ value: s, label: s }))} />
+            <Select label="Campana" value={formData.campana} onChange={(e) => updateField("campana", e.target.value)} placeholder="Seleccionar..." options={CAMPANA_OPTIONS.map((s) => ({ value: s, label: s }))} />
             <Input label="Capacidad" value={formData.capacidad} onChange={(e) => updateField("capacidad", e.target.value)} />
             <Input label="Monto de Credito" type="number" value={formData.monto_credito} onChange={(e) => updateField("monto_credito", e.target.value)} />
             <Select label="Tipo de Credito" value={formData.tipo_credito} onChange={(e) => updateField("tipo_credito", e.target.value)} placeholder="Seleccionar..." options={TIPO_CREDITO_OPTIONS.map((s) => ({ value: s, label: s }))} />
