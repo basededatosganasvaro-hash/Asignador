@@ -101,9 +101,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     ((transicion.etapa_destino?.tipo === "SALIDA") ||
      (transicion.etapa_destino?.tipo === "FINAL" && transicion.etapa_destino?.nombre !== "Venta"));
 
-  // Calcular nuevo timer_vence (no aplicar timer a items de bandeja)
+  // Calcular nuevo timer_vence (no aplicar timer a items de bandeja ni a capacidades)
   let timerVence: Date | null = null;
-  if (!enviarABandeja && transicion.etapa_destino?.timer_dias) {
+  const esCapacidad = op.origen === "CAPACIDADES";
+  if (!enviarABandeja && !esCapacidad && transicion.etapa_destino?.timer_dias) {
     timerVence = await calcularTimerVenceConConfig(transicion.etapa_destino.timer_dias);
   }
 

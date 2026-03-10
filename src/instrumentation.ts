@@ -149,6 +149,7 @@ async function checkTimers() {
         where: {
           activo: true,
           timer_vence: { lt: ahora },
+          origen: { not: "CAPACIDADES" },
         },
         select: { id: true, etapa_id: true, usuario_id: true, etapa: { select: { nombre: true } } },
         take: BATCH_SIZE,

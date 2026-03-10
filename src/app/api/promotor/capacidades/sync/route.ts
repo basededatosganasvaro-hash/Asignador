@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-utils";
 import { prisma } from "@/lib/prisma";
 import { prismaCapacidades } from "@/lib/prisma-capacidades";
-import { calcularTimerVenceConConfig } from "@/lib/horario";
 
 export async function POST() {
   const { session, error } = await requireAuth();
@@ -152,17 +151,9 @@ export async function POST() {
       );
     }
 
-    // Obtener timer config (con validación)
-    const timerConfig = await prisma.configuracion.findUnique({
-      where: { clave: "timer_captacion_horas" },
-    });
-    const timerHorasRaw = timerConfig ? Number(timerConfig.valor) : NaN;
-    const timerHoras = !isNaN(timerHorasRaw) && timerHorasRaw > 0 ? timerHorasRaw : 168;
-
+    // Capacidades son permanentes: no llevan timer_vence
     for (const sol of nuevas) {
       try {
-        const timerVence = await calcularTimerVenceConConfig(timerHoras);
-
         await prisma.$transaction(async (tx) => {
           const op = await tx.oportunidades.create({
             data: {
@@ -170,7 +161,7 @@ export async function POST() {
               usuario_id: userId,
               etapa_id: etapaAsignado.id,
               origen: "CAPACIDADES",
-              timer_vence: timerVence,
+              timer_vence: null,
               activo: true,
             },
           });
