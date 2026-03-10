@@ -2,10 +2,12 @@
  * Next.js Instrumentation — se ejecuta UNA vez al iniciar el servidor.
  * Sincroniza las etapas y transiciones del embudo desde la definición en código.
  * Si cambias las reglas en este archivo → deploy → la BD se actualiza sola.
+ * También inicia el cron interno de check-timers (cada 10 min).
  */
 export async function register() {
   if (process.env.NEXT_RUNTIME === "nodejs") {
     await syncEmbudo();
+    startTimerCron();
   }
 }
 
@@ -106,6 +108,112 @@ async function syncEmbudo() {
     console.log("[embudo] Sincronización completada.");
   } catch (err) {
     console.error("[embudo] Error (no bloqueante):", err instanceof Error ? err.message : err);
+  } finally {
+    await prisma.$disconnect();
+  }
+}
+
+// =============================================
+// CRON INTERNO: CHECK-TIMERS (cada 10 min)
+// =============================================
+const TIMER_INTERVAL_MS = 10 * 60 * 1000; // 10 minutos
+const BATCH_SIZE = 200;
+
+function startTimerCron() {
+  console.log("[cron] Timer check programado cada 10 minutos.");
+
+  // Primera ejecución tras 60s (dar tiempo a que el servidor arranque)
+  setTimeout(() => {
+    checkTimers();
+    setInterval(checkTimers, TIMER_INTERVAL_MS);
+  }, 60_000);
+}
+
+async function checkTimers() {
+  const { PrismaClient } = await import("@prisma/client");
+  const prisma = new PrismaClient();
+
+  try {
+    const ahora = new Date();
+
+    // System user for historial
+    const admin = await prisma.usuarios.findFirst({ where: { rol: "admin" } });
+    const sistemaUserId = admin?.id ?? 1;
+
+    let totalPool = 0;
+    let totalSupervisor = 0;
+
+    let hasMore = true;
+    while (hasMore) {
+      const vencidas = await prisma.oportunidades.findMany({
+        where: {
+          activo: true,
+          timer_vence: { lt: ahora },
+        },
+        select: { id: true, etapa_id: true, usuario_id: true, etapa: { select: { nombre: true } } },
+        take: BATCH_SIZE,
+      });
+
+      if (vencidas.length === 0) {
+        hasMore = false;
+        break;
+      }
+
+      const alPool = vencidas.filter((op) => op.etapa?.nombre === "Asignado");
+      const alSupervisor = vencidas.filter((op) => op.etapa?.nombre !== "Asignado");
+
+      if (alPool.length > 0) {
+        const poolIds = alPool.map((op) => op.id);
+        await prisma.$transaction([
+          prisma.oportunidades.updateMany({
+            where: { id: { in: poolIds } },
+            data: { activo: false, etapa_id: null, timer_vence: null },
+          }),
+          prisma.historial.createMany({
+            data: alPool.map((op) => ({
+              oportunidad_id: op.id,
+              usuario_id: sistemaUserId,
+              tipo: "TIMER_VENCIDO",
+              etapa_anterior_id: op.etapa_id,
+              etapa_nueva_id: null,
+              nota: "Timer vencido — oportunidad devuelta al pool automaticamente",
+            })),
+          }),
+        ]);
+        totalPool += alPool.length;
+      }
+
+      if (alSupervisor.length > 0) {
+        const supIds = alSupervisor.map((op) => op.id);
+        await prisma.$transaction([
+          prisma.oportunidades.updateMany({
+            where: { id: { in: supIds } },
+            data: { escalada_supervisor: true, timer_vence: null },
+          }),
+          prisma.historial.createMany({
+            data: alSupervisor.map((op) => ({
+              oportunidad_id: op.id,
+              usuario_id: sistemaUserId,
+              tipo: "TIMER_VENCIDO",
+              etapa_anterior_id: op.etapa_id,
+              etapa_nueva_id: op.etapa_id,
+              nota: "Timer vencido — escalada al supervisor para reasignacion",
+            })),
+          }),
+        ]);
+        totalSupervisor += alSupervisor.length;
+      }
+
+      if (vencidas.length < BATCH_SIZE) {
+        hasMore = false;
+      }
+    }
+
+    if (totalPool > 0 || totalSupervisor > 0) {
+      console.log(`[cron] Timers procesados: ${totalPool} al pool, ${totalSupervisor} escaladas.`);
+    }
+  } catch (err) {
+    console.error("[cron] Error en check-timers:", err instanceof Error ? err.message : err);
   } finally {
     await prisma.$disconnect();
   }

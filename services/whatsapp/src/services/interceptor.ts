@@ -35,8 +35,11 @@ export function attachInterceptor(userId: number, sock: WASocket) {
 
         if (!nuevoEstado) continue;
 
-        // Solo actualizar si el estado realmente cambia (evita contadores duplicados)
-        if (msg.estado === nuevoEstado) continue;
+        // Solo actualizar si el estado realmente avanza (evita contadores duplicados)
+        const estadoOrden: Record<string, number> = {
+          PENDIENTE: 0, ENVIANDO: 1, ENVIADO: 2, ENTREGADO: 3, LEIDO: 4, FALLIDO: -1,
+        };
+        if ((estadoOrden[nuevoEstado] ?? 0) <= (estadoOrden[msg.estado] ?? 0)) continue;
 
         updateData.estado = nuevoEstado;
 
@@ -46,12 +49,15 @@ export function attachInterceptor(userId: number, sock: WASocket) {
         });
 
         // Actualizar contadores de la campaña
-        if (nuevoEstado === "ENTREGADO") {
+        // Si salta de ENVIADO directo a LEIDO, incrementar ambos contadores
+        const skippedEntregado = nuevoEstado === "LEIDO" && msg.estado !== "ENTREGADO";
+        if (nuevoEstado === "ENTREGADO" || skippedEntregado) {
           await prisma.wa_campanas.update({
             where: { id: msg.campana_id },
             data: { entregados: { increment: 1 } },
           });
-        } else if (nuevoEstado === "LEIDO") {
+        }
+        if (nuevoEstado === "LEIDO") {
           await prisma.wa_campanas.update({
             where: { id: msg.campana_id },
             data: { leidos: { increment: 1 } },

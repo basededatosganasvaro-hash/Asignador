@@ -27,9 +27,9 @@ export async function POST(
     return NextResponse.json({ error: "Oportunidad no encontrada" }, { status: 404 });
   }
 
-  // Actualizar wa_manual_at y crear historial en paralelo
+  // Actualizar wa_manual_at y crear historial atómicamente
   const now = new Date();
-  await Promise.all([
+  await prisma.$transaction([
     prisma.oportunidades.update({
       where: { id: oportunidadId },
       data: { wa_manual_at: now },

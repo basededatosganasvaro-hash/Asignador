@@ -120,20 +120,21 @@ class SessionManager {
         this.sessions.delete(userId);
         this.interceptedUsers.delete(userId);
 
-        // Reconectar en errores de red (statusCode undefined) o errores de servidor (>= 500)
-        // NO reconectar en logout, QR timeout, conflict, etc.
+        // Reconectar en la mayoría de errores EXCEPTO los definitivos
+        // NO reconectar en: logout (401), QR timeout (408), conflict/replaced (409)
         const noReconnectCodes = [
-          DisconnectReason.loggedOut,     // 401
-          DisconnectReason.timedOut,      // 408 (QR expiró)
-          405,                            // Method not allowed
-          409,                            // Conflict (replaced)
+          DisconnectReason.loggedOut,     // 401 — sesión cerrada intencionalmente
+          DisconnectReason.timedOut,      // 408 — QR expiró, necesita re-escanear
+          409,                            // Conflict — replaced by another device
         ];
         const shouldReconnect = statusCode === undefined
-          || (!noReconnectCodes.includes(statusCode) && statusCode >= 500);
+          || !noReconnectCodes.includes(statusCode);
 
         if (shouldReconnect) {
           await this.upsertSession(userId, "CONECTANDO");
-          setTimeout(() => this.connect(userId), 5000);
+          // Delay escalonado para evitar 60 reconexiones simultáneas
+          const jitter = Math.floor(Math.random() * 5000);
+          setTimeout(() => this.connect(userId), 5000 + jitter);
         } else {
           await this.upsertSession(userId, "DESCONECTADO");
           if (statusCode === DisconnectReason.loggedOut) {

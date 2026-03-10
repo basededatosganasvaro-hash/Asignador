@@ -21,6 +21,22 @@ router.post("/", async (req: Request, res: Response) => {
     return;
   }
 
+  // Limitar destinatarios por campaña (protección contra abuso)
+  const MAX_DESTINATARIOS = 500;
+  if (destinatarios.length > MAX_DESTINATARIOS) {
+    res.status(400).json({ error: `Máximo ${MAX_DESTINATARIOS} destinatarios por campaña` });
+    return;
+  }
+
+  // Validar formato de números de destino
+  const invalidNumbers = destinatarios.filter(
+    (d: { numero_destino?: string }) => !d.numero_destino || !/^\d{10,15}$/.test(d.numero_destino)
+  );
+  if (invalidNumbers.length > 0) {
+    res.status(400).json({ error: `${invalidNumbers.length} número(s) con formato inválido. Deben ser 10-15 dígitos.` });
+    return;
+  }
+
   // Verificar sesión activa
   if (!sessionManager.isConnected(usuario_id)) {
     res.status(400).json({ error: "WhatsApp no conectado" });

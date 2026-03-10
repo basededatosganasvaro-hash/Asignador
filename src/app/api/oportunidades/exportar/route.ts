@@ -111,18 +111,25 @@ export async function POST(req: Request) {
     }
   }
 
-  // Merge con datos_contacto
+  // Merge con datos_contacto (ediciones sobreescriben datos originales del cliente)
   if (clienteIds.length > 0) {
     const ediciones = await prisma.datos_contacto.findMany({
       where: { cliente_id: { in: clienteIds } },
       orderBy: { created_at: "desc" },
     });
+    // Build edit map: solo la edición más reciente por campo (ya ordenado DESC)
+    const editMap: Record<number, Record<string, string>> = {};
     for (const edit of ediciones) {
-      if (clienteMap[edit.cliente_id]) {
-        const existing = clienteMap[edit.cliente_id][edit.campo];
-        if (!existing || existing === null) {
-          clienteMap[edit.cliente_id][edit.campo] = edit.valor;
-        }
+      if (!editMap[edit.cliente_id]) editMap[edit.cliente_id] = {};
+      if (!editMap[edit.cliente_id][edit.campo]) {
+        editMap[edit.cliente_id][edit.campo] = edit.valor;
+      }
+    }
+    // Aplicar ediciones sobre datos originales
+    for (const [cidStr, edits] of Object.entries(editMap)) {
+      const cid = Number(cidStr);
+      if (clienteMap[cid]) {
+        Object.assign(clienteMap[cid], edits);
       }
     }
   }

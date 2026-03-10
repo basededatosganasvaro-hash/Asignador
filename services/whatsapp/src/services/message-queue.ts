@@ -9,9 +9,13 @@ interface QueueItem {
   userId: number;
 }
 
+// Límite global de campañas enviando simultáneamente (para 60 promotores)
+const MAX_CONCURRENT_CAMPAIGNS = 30;
+
 class MessageQueue {
   private queues: Map<number, QueueItem[]> = new Map(); // userId → queue
   private processing: Set<number> = new Set(); // userIds currently processing
+  private activeCampaigns = 0; // global counter of campaigns currently sending
 
   /** Encolar una campaña para envío */
   async enqueue(campanaId: number, userId: number): Promise<void> {
@@ -66,14 +70,95 @@ class MessageQueue {
     });
   }
 
+  /**
+   * Recuperar campañas huérfanas al iniciar el servicio.
+   * Campañas en estado ENVIANDO o EN_COLA que quedaron sin procesar
+   * cuando el servicio se reinició.
+   */
+  async recoverOrphanedCampaigns(): Promise<void> {
+    try {
+      // Campañas ENVIANDO → marcar como pausadas (ya no se están enviando)
+      const enviando = await prisma.wa_campanas.findMany({
+        where: { estado: "ENVIANDO" },
+        select: { id: true, usuario_id: true },
+      });
+
+      if (enviando.length > 0) {
+        const enviandoIds = enviando.map((c: { id: number }) => c.id);
+        await prisma.wa_campanas.updateMany({
+          where: { id: { in: enviandoIds } },
+          data: { estado: "PAUSADA" },
+        });
+
+        // Revertir mensajes que quedaron en ENVIANDO a PENDIENTE
+        await prisma.wa_mensajes.updateMany({
+          where: {
+            campana_id: { in: enviandoIds },
+            estado: "ENVIANDO",
+          },
+          data: { estado: "PENDIENTE" },
+        });
+
+        console.log(`[MessageQueue] Recovered ${enviando.length} orphaned ENVIANDO campaigns → PAUSADA`);
+      }
+
+      // Campañas EN_COLA → intentar re-encolar si el usuario tiene sesión activa
+      const enCola = await prisma.wa_campanas.findMany({
+        where: { estado: "EN_COLA" },
+        select: { id: true, usuario_id: true },
+      });
+
+      let reEnqueued = 0;
+      for (const campana of enCola) {
+        if (sessionManager.isConnected(campana.usuario_id)) {
+          await this.enqueue(campana.id, campana.usuario_id);
+          reEnqueued++;
+        } else {
+          // No hay sesión → pausar
+          await prisma.wa_campanas.update({
+            where: { id: campana.id },
+            data: { estado: "PAUSADA" },
+          });
+        }
+      }
+
+      if (enCola.length > 0) {
+        console.log(`[MessageQueue] Recovered ${enCola.length} EN_COLA campaigns (${reEnqueued} re-enqueued, ${enCola.length - reEnqueued} paused)`);
+      }
+    } catch (err) {
+      console.error("[MessageQueue] Error recovering orphaned campaigns:", err);
+    }
+  }
+
+  /** Obtener estadísticas de la cola */
+  getStats() {
+    return {
+      activeCampaigns: this.activeCampaigns,
+      maxConcurrent: MAX_CONCURRENT_CAMPAIGNS,
+      processingUsers: this.processing.size,
+      queuedItems: Array.from(this.queues.values()).reduce((sum, q) => sum + q.length, 0),
+    };
+  }
+
   /** Procesar cola de un usuario */
   private async processCampaign(userId: number): Promise<void> {
     this.processing.add(userId);
 
     try {
       while (this.queues.get(userId)?.length) {
+        // Esperar si se alcanzó el límite global de concurrencia
+        while (this.activeCampaigns >= MAX_CONCURRENT_CAMPAIGNS) {
+          console.log(`[MessageQueue] Global limit reached (${this.activeCampaigns}/${MAX_CONCURRENT_CAMPAIGNS}), user ${userId} waiting...`);
+          await sleep(5000);
+        }
+
         const item = this.queues.get(userId)!.shift()!;
-        await this.sendCampaign(item);
+        this.activeCampaigns++;
+        try {
+          await this.sendCampaign(item);
+        } finally {
+          this.activeCampaigns--;
+        }
       }
     } finally {
       this.processing.delete(userId);
@@ -94,8 +179,9 @@ class MessageQueue {
     if (!sock) {
       await prisma.wa_campanas.update({
         where: { id: campanaId },
-        data: { estado: "CANCELADA" },
+        data: { estado: "PAUSADA" },
       });
+      console.log(`[MessageQueue] No socket for user ${userId}, campaign ${campanaId} paused`);
       return;
     }
 
@@ -137,6 +223,8 @@ class MessageQueue {
     let burstCount = 0;
     let currentBurstSize = burstSize(spamOpts);
     let msgIndex = 0;
+    let consecutiveErrors = 0;
+    const MAX_CONSECUTIVE_ERRORS = 5;
 
     for (const msg of mensajes) {
       // Check campaña still active (every 5 messages to reduce DB queries)
@@ -158,6 +246,16 @@ class MessageQueue {
           data: { estado: "PAUSADA" },
         });
         console.log(`[MessageQueue] Daily limit reached mid-campaign for user ${userId}`);
+        break;
+      }
+
+      // Detener si hay muchos errores consecutivos (posible ban/desconexión)
+      if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+        await prisma.wa_campanas.update({
+          where: { id: campanaId },
+          data: { estado: "PAUSADA" },
+        });
+        console.log(`[MessageQueue] ${MAX_CONSECUTIVE_ERRORS} consecutive errors for user ${userId}, pausing campaign ${campanaId}`);
         break;
       }
 
@@ -214,6 +312,7 @@ class MessageQueue {
 
         remaining--;
         burstCount++;
+        consecutiveErrors = 0; // Reset on success
 
         // Human delay before next message
         const delay = humanDelay(msg.mensaje_texto.length, spamOpts);
@@ -222,6 +321,7 @@ class MessageQueue {
       } catch (err) {
         const errorMsg = err instanceof Error ? err.message : "Unknown error";
         console.error(`[MessageQueue] Failed to send to ${msg.numero_destino}:`, errorMsg);
+        consecutiveErrors++;
 
         await prisma.wa_mensajes.update({
           where: { id: msg.id },
@@ -244,9 +344,13 @@ class MessageQueue {
       select: { estado: true },
     });
     if (campana?.estado === "ENVIANDO") {
+      // Verificar si hay mensajes pendientes restantes
+      const pendientes = await prisma.wa_mensajes.count({
+        where: { campana_id: campanaId, estado: "PENDIENTE" },
+      });
       await prisma.wa_campanas.update({
         where: { id: campanaId },
-        data: { estado: "COMPLETADA" },
+        data: { estado: pendientes > 0 ? "PAUSADA" : "COMPLETADA" },
       });
     }
   }

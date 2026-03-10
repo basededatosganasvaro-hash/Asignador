@@ -107,53 +107,76 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     timerVence = await calcularTimerVenceConConfig(transicion.etapa_destino.timer_dias);
   }
 
-  // Ejecutar en transacción
-  const [opActualizada] = await prisma.$transaction(async (tx) => {
-    const deactivate = transicion.devuelve_al_pool;
-    const updated = await tx.oportunidades.update({
-      where: { id: Number(id) },
-      data: {
-        etapa_id: deactivate ? null : transicion.etapa_destino_id,
-        activo: !deactivate,
-        timer_vence: deactivate ? null : timerVence,
-        ...(esVenta && num_operacion && { num_operacion }),
-        ...(esVenta && { venta_validada: false }),
-      },
-      include: { etapa: true },
-    });
+  // Ejecutar en transacción con verificación de etapa actual (evita doble-transición)
+  try {
+    const [opActualizada] = await prisma.$transaction(async (tx) => {
+      // Re-verificar etapa actual dentro de la transacción (optimistic lock)
+      const opActual = await tx.oportunidades.findUnique({
+        where: { id: Number(id) },
+        select: { etapa_id: true, activo: true },
+      });
+      if (!opActual || !opActual.activo || opActual.etapa_id !== op.etapa_id) {
+        throw new Error("ETAPA_CAMBIADA");
+      }
 
-    await tx.historial.create({
-      data: {
-        oportunidad_id: Number(id),
-        usuario_id: userId,
-        tipo: canal ? canal : "CAMBIO_ETAPA",
-        etapa_anterior_id: op.etapa_id,
-        // Siempre registrar la etapa destino real en historial (para auditoría)
-        etapa_nueva_id: transicion.etapa_destino_id,
-        canal: canal ?? null,
-        nota: nota ?? null,
-      },
-    });
+      const deactivate = transicion.devuelve_al_pool;
+      const updated = await tx.oportunidades.update({
+        where: { id: Number(id) },
+        data: {
+          etapa_id: deactivate ? null : transicion.etapa_destino_id,
+          activo: !deactivate,
+          timer_vence: deactivate ? null : timerVence,
+          ...(esVenta && num_operacion && { num_operacion }),
+          ...(esVenta && { venta_validada: false }),
+        },
+        include: { etapa: true },
+      });
 
-    if (esVenta && num_operacion) {
-      await tx.ventas.create({
+      await tx.historial.create({
         data: {
           oportunidad_id: Number(id),
           usuario_id: userId,
-          num_operacion,
-          monto: monto ? parseFloat(String(monto)) : null,
-          validada: false,
+          tipo: canal ? canal : "CAMBIO_ETAPA",
+          etapa_anterior_id: op.etapa_id,
+          // Siempre registrar la etapa destino real en historial (para auditoría)
+          etapa_nueva_id: transicion.etapa_destino_id,
+          canal: canal ?? null,
+          nota: nota ?? null,
         },
       });
+
+      if (esVenta && num_operacion) {
+        await tx.ventas.create({
+          data: {
+            oportunidad_id: Number(id),
+            usuario_id: userId,
+            num_operacion,
+            monto: monto ? parseFloat(String(monto)) : null,
+            validada: false,
+          },
+        });
+      }
+
+      return [updated];
+    });
+
+    return NextResponse.json({
+      oportunidad: opActualizada,
+      confetti: esVenta,
+      devuelta_al_pool: transicion.devuelve_al_pool,
+      enviada_a_bandeja: enviarABandeja,
+    });
+  } catch (err) {
+    if (err instanceof Error && err.message === "ETAPA_CAMBIADA") {
+      return NextResponse.json(
+        { error: "La etapa de esta oportunidad cambió. Recarga la página e intenta de nuevo." },
+        { status: 409 }
+      );
     }
-
-    return [updated];
-  });
-
-  return NextResponse.json({
-    oportunidad: opActualizada,
-    confetti: esVenta,
-    devuelta_al_pool: transicion.devuelve_al_pool,
-    enviada_a_bandeja: enviarABandeja,
-  });
+    console.error("Error en transicion:", err instanceof Error ? err.message : "Error desconocido");
+    return NextResponse.json(
+      { error: "Error al procesar la transición" },
+      { status: 500 }
+    );
+  }
 }

@@ -279,8 +279,23 @@ export async function POST(request: Request) {
           }
         }
 
-        const cantidadReal = Math.min(registrosFinales.length, cupoFinal);
-        const registrosReales = registrosFinales.slice(0, cantidadReal);
+        // 8a2. Re-verificar que los clientes no fueron asignados por otro promotor
+        // (race condition: entre la consulta a BD Clientes y esta transacción)
+        const candidateIds = registrosFinales.map((r) => r.id);
+        const yaAsignadosAhora = await tx.$queryRaw<{ cliente_id: number }[]>`
+          SELECT DISTINCT cliente_id FROM oportunidades
+          WHERE cliente_id = ANY(${candidateIds}::int[])
+            AND activo = true
+        `;
+        const yaAsignadosSet = new Set(yaAsignadosAhora.map((r) => r.cliente_id));
+        const registrosFiltrados = registrosFinales.filter((r) => !yaAsignadosSet.has(r.id));
+
+        const cantidadReal = Math.min(registrosFiltrados.length, cupoFinal);
+        const registrosReales = registrosFiltrados.slice(0, cantidadReal);
+
+        if (registrosReales.length === 0) {
+          throw new Error("SIN_REGISTROS");
+        }
 
         // 8b. Crear lote
         const lote = await tx.lotes.create({
@@ -349,6 +364,12 @@ export async function POST(request: Request) {
     if (err instanceof Error && err.message === "CUPO_AGOTADO") {
       return NextResponse.json(
         { error: "Has alcanzado el límite diario de asignaciones", cupo_restante: 0 },
+        { status: 409 }
+      );
+    }
+    if (err instanceof Error && err.message === "SIN_REGISTROS") {
+      return NextResponse.json(
+        { error: "Los registros seleccionados ya fueron asignados a otro promotor. Intenta de nuevo." },
         { status: 409 }
       );
     }

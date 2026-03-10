@@ -29,6 +29,9 @@ export async function POST(req: Request) {
     if (!Array.isArray(body.destinatarios) || body.destinatarios.length === 0) {
       return NextResponse.json({ error: "destinatarios es requerido" }, { status: 400 });
     }
+    if (body.destinatarios.length > 500) {
+      return NextResponse.json({ error: "Máximo 500 destinatarios por campaña" }, { status: 400 });
+    }
 
     // Replace {promotor} in mensaje_base and variaciones before sending to WA service
     const mensajeBase = body.mensaje_base.replace(/\{promotor\}/g, promotorNombre);
