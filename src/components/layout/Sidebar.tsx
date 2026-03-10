@@ -34,7 +34,8 @@ export default function Sidebar({ rol, open, onToggle }: SidebarProps) {
   const isOperaciones = rol === "operaciones";
   const isSupervisor = rol === "supervisor";
   const isAsesorDigital = rol === "asesor_digital";
-  const isPromotor = !isOperaciones && !isSupervisor && !isAsesorDigital && rol !== "admin" && rol !== "gerente_regional" && rol !== "gerente_sucursal";
+  const isGerente = rol === "gerente_regional" || rol === "gerente_sucursal";
+  const isPromotor = !isOperaciones && !isSupervisor && !isAsesorDigital && !isGerente && rol !== "admin";
 
   return (
     <>
@@ -51,6 +52,7 @@ export default function Sidebar({ rol, open, onToggle }: SidebarProps) {
           isOperaciones={isOperaciones}
           isSupervisor={isSupervisor}
           isAsesorDigital={isAsesorDigital}
+          isGerente={isGerente}
           isPromotor={isPromotor}
           onToggle={onToggle}
         />
@@ -75,7 +77,8 @@ export default function Sidebar({ rol, open, onToggle }: SidebarProps) {
               isOperaciones={isOperaciones}
               isSupervisor={isSupervisor}
               isAsesorDigital={isAsesorDigital}
-          isPromotor={isPromotor}
+              isGerente={isGerente}
+              isPromotor={isPromotor}
               onToggle={onToggle}
             />
           </aside>
@@ -92,6 +95,7 @@ function SidebarContent({
   isOperaciones,
   isSupervisor,
   isAsesorDigital,
+  isGerente,
   isPromotor,
   onToggle,
 }: {
@@ -101,6 +105,7 @@ function SidebarContent({
   isOperaciones: boolean;
   isSupervisor: boolean;
   isAsesorDigital: boolean;
+  isGerente: boolean;
   isPromotor: boolean;
   onToggle: () => void;
 }) {
@@ -154,6 +159,22 @@ function SidebarContent({
           <>
             <NavItem label="Mis Registros" href="/asesor-digital" icon={<TrendingUp className="w-5 h-5" />} pathname={pathname} showLabels={showLabels} exact />
             <NavItem label="Redes Sociales" href="/asesor-digital/redes-sociales" icon={<Share2 className="w-5 h-5" />} pathname={pathname} showLabels={showLabels} exact />
+          </>
+        ) : isGerente ? (
+          <>
+            <NavItem label="Dashboard" href="/gerente" icon={<LayoutDashboard className="w-5 h-5" />} pathname={pathname} showLabels={showLabels} exact />
+            <NavItem label="Promotores" href="/gerente/promotores" icon={<Users className="w-5 h-5" />} pathname={pathname} showLabels={showLabels} exact />
+            <NavItem label="Embudo" href="/gerente/embudo" icon={<Filter className="w-5 h-5" />} pathname={pathname} showLabels={showLabels} exact />
+            <NavItem label="Actividad" href="/gerente/actividad" icon={<BarChart3 className="w-5 h-5" />} pathname={pathname} showLabels={showLabels} exact />
+            <div className="h-px bg-slate-800/50 my-2" />
+            {showLabels && (
+              <p className="px-3 py-1 text-[10px] font-semibold text-slate-600 uppercase tracking-widest">
+                Mensajería
+              </p>
+            )}
+            <NavItem label="WhatsApp" href="/gerente/whatsapp" icon={<WhatsAppIcon />} pathname={pathname} showLabels={showLabels} exact />
+            <div className="h-px bg-slate-800/50 my-2" />
+            <NavItem label="Comparativa" href="/gerente/comparativa" icon={<TrendingUp className="w-5 h-5" />} pathname={pathname} showLabels={showLabels} exact />
           </>
         ) : isPromotor ? (
           <>

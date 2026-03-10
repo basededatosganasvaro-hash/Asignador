@@ -99,6 +99,28 @@ export async function requirePromotorOrSupervisor() {
   return { session: session!, error: null };
 }
 
+export async function requireGerente() {
+  const { session, error } = await getSessionOrError();
+  if (error) return { session: null, error, scopeFilter: null };
+  const rol = session!.user.rol;
+  if (rol !== "gerente_regional" && rol !== "gerente_sucursal") {
+    return { session: null, error: NextResponse.json({ error: "Acceso denegado" }, { status: 403 }), scopeFilter: null };
+  }
+  // Scope filter: gerente_regional filtra por region_id, gerente_sucursal por sucursal_id
+  const scopeFilter = rol === "gerente_regional"
+    ? { field: "region_id" as const, value: session!.user.region_id }
+    : { field: "sucursal_id" as const, value: session!.user.sucursal_id };
+
+  if (!scopeFilter.value) {
+    return {
+      session: null,
+      error: NextResponse.json({ error: `No tienes ${scopeFilter.field === "region_id" ? "región" : "sucursal"} asignada` }, { status: 400 }),
+      scopeFilter: null,
+    };
+  }
+  return { session: session!, error: null, scopeFilter };
+}
+
 export async function requireAuth() {
   const { session, error } = await getSessionOrError();
   if (error) return { session: null, error };

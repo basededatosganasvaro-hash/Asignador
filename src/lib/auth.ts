@@ -80,6 +80,8 @@ export const authOptions: NextAuthOptions = {
           nombre: user.nombre,
           rol: user.rol,
           debe_cambiar_password: user.debe_cambiar_password,
+          region_id: user.region_id,
+          sucursal_id: user.sucursal_id,
         };
       },
     }),
@@ -95,6 +97,8 @@ export const authOptions: NextAuthOptions = {
         token.rol = (user as { rol: string }).rol;
         token.nombre = (user as { nombre: string }).nombre;
         token.debe_cambiar_password = (user as { debe_cambiar_password: boolean }).debe_cambiar_password;
+        token.region_id = (user as { region_id?: number | null }).region_id ?? null;
+        token.sucursal_id = (user as { sucursal_id?: number | null }).sucursal_id ?? null;
         token.lastRefresh = Date.now();
       } else if (token.id) {
         // Refrescar debe_cambiar_password cada 5 minutos o inmediatamente si update() fue llamado
@@ -123,6 +127,8 @@ export const authOptions: NextAuthOptions = {
         session.user.rol = token.rol as string;
         session.user.nombre = token.nombre as string;
         session.user.debe_cambiar_password = token.debe_cambiar_password as boolean;
+        session.user.region_id = token.region_id as number | null | undefined;
+        session.user.sucursal_id = token.sucursal_id as number | null | undefined;
       }
       return session;
     },

@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
 
-const ROLES_ADMIN_AREA = ["admin", "gerente_regional", "gerente_sucursal"];
+const ROLES_ADMIN_AREA = ["admin"];
+const ROLES_GERENTE_AREA = ["gerente_regional", "gerente_sucursal"];
 const ROLES_SUPERVISOR_AREA = ["supervisor"];
 const ROLES_PROMOTOR_AREA = ["promotor"];
 const ROLES_OPERACIONES_AREA = ["gestor_operaciones"];
@@ -61,13 +62,24 @@ export async function middleware(request: NextRequest) {
   // Area supervisor: acceso solo para supervisores
   if ((pathname.startsWith("/supervisor") || pathname.startsWith("/api/supervisor")) && !ROLES_SUPERVISOR_AREA.includes(rol)) {
     if (ROLES_ADMIN_AREA.includes(rol)) return NextResponse.redirect(new URL("/admin", request.url));
+    if (ROLES_GERENTE_AREA.includes(rol)) return NextResponse.redirect(new URL("/gerente", request.url));
     if (ROLES_OPERACIONES_AREA.includes(rol)) return NextResponse.redirect(new URL("/operaciones", request.url));
     if (ROLES_ASESOR_DIGITAL_AREA.includes(rol)) return NextResponse.redirect(new URL("/asesor-digital", request.url));
     return NextResponse.redirect(new URL("/promotor", request.url));
   }
 
-  // Area admin: acceso para roles de gestion (sin supervisor)
+  // Area gerente: acceso solo para gerentes regionales y de sucursal
+  if ((pathname.startsWith("/gerente") || pathname.startsWith("/api/gerente")) && !ROLES_GERENTE_AREA.includes(rol)) {
+    if (ROLES_ADMIN_AREA.includes(rol)) return NextResponse.redirect(new URL("/admin", request.url));
+    if (ROLES_SUPERVISOR_AREA.includes(rol)) return NextResponse.redirect(new URL("/supervisor", request.url));
+    if (ROLES_OPERACIONES_AREA.includes(rol)) return NextResponse.redirect(new URL("/operaciones", request.url));
+    if (ROLES_ASESOR_DIGITAL_AREA.includes(rol)) return NextResponse.redirect(new URL("/asesor-digital", request.url));
+    return NextResponse.redirect(new URL("/promotor", request.url));
+  }
+
+  // Area admin: acceso solo para admin
   if (pathname.startsWith("/admin") && !ROLES_ADMIN_AREA.includes(rol)) {
+    if (ROLES_GERENTE_AREA.includes(rol)) return NextResponse.redirect(new URL("/gerente", request.url));
     if (ROLES_SUPERVISOR_AREA.includes(rol)) return NextResponse.redirect(new URL("/supervisor", request.url));
     if (ROLES_OPERACIONES_AREA.includes(rol)) return NextResponse.redirect(new URL("/operaciones", request.url));
     if (ROLES_ASESOR_DIGITAL_AREA.includes(rol)) return NextResponse.redirect(new URL("/asesor-digital", request.url));
@@ -76,10 +88,11 @@ export async function middleware(request: NextRequest) {
 
   // Area promotor: acceso solo para promotores
   if (pathname.startsWith("/promotor") && !ROLES_PROMOTOR_AREA.includes(rol)) {
+    if (ROLES_ADMIN_AREA.includes(rol)) return NextResponse.redirect(new URL("/admin", request.url));
+    if (ROLES_GERENTE_AREA.includes(rol)) return NextResponse.redirect(new URL("/gerente", request.url));
     if (ROLES_SUPERVISOR_AREA.includes(rol)) return NextResponse.redirect(new URL("/supervisor", request.url));
     if (ROLES_OPERACIONES_AREA.includes(rol)) return NextResponse.redirect(new URL("/operaciones", request.url));
     if (ROLES_ASESOR_DIGITAL_AREA.includes(rol)) return NextResponse.redirect(new URL("/asesor-digital", request.url));
-    return NextResponse.redirect(new URL("/admin", request.url));
   }
 
   return NextResponse.next();
@@ -88,10 +101,12 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     "/admin/:path*",
+    "/gerente/:path*",
     "/supervisor/:path*",
     "/promotor/:path*",
     "/operaciones/:path*",
     "/api/supervisor/:path*",
+    "/api/gerente/:path*",
     "/api/admin/:path*",
     "/api/asignaciones/:path*",
     "/api/clientes/:path*",
