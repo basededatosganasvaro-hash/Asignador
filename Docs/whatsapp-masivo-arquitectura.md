@@ -15,7 +15,8 @@
 7. [Interceptor Service](#interceptor-service)
 8. [API Endpoints](#api-endpoints)
 9. [Lo que se Captura Automáticamente](#lo-que-se-captura-automáticamente)
-10. [Stack Tecnológico](#stack-tecnológico)
+10. [Stack Tecnológico](#stack-tecnológico) entendido 
+
 
 ---
 
