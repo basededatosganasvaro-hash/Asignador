@@ -78,6 +78,8 @@ export async function PUT(
   }
 
   // Auto-derivar sucursal_id y region_id desde la jerarquía del equipo
+  // Solo cuando se ASIGNA un equipo — no al quitarlo, ya que region/sucursal
+  // pueden ser asignados independientemente (ej. gerentes sin equipo)
   const equipoId = parsed.data.equipo_id !== undefined ? parsed.data.equipo_id : undefined;
   if (equipoId) {
     const equipo = await prisma.equipos.findUnique({
@@ -88,10 +90,6 @@ export async function PUT(
       data.sucursal_id = equipo.sucursal.id;
       data.region_id = equipo.sucursal.zona?.region_id ?? null;
     }
-  } else if (equipoId === null) {
-    // Si se quita el equipo, limpiar sucursal y region también
-    data.sucursal_id = null;
-    data.region_id = null;
   }
   if (parsed.data.password) {
     const hashed = await bcrypt.hash(parsed.data.password, 10);
