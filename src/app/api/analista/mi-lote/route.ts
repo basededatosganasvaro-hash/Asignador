@@ -37,7 +37,7 @@ export async function GET() {
         where: { id: { in: clienteIds } },
         select: {
           id: true,
-          rfc: true,
+          curp: true,
           nombres: true,
           a_paterno: true,
           a_materno: true,

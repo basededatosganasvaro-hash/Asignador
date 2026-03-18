@@ -10,7 +10,7 @@ import { CheckCircle, Clock, Send, Pencil, X, Save } from "lucide-react";
 
 interface ClienteData {
   id: number;
-  rfc?: string;
+  curp?: string;
   nombres?: string;
   a_paterno?: string;
   a_materno?: string;
@@ -146,10 +146,10 @@ export default function AnalistaPage() {
       },
     },
     {
-      id: "rfc",
-      header: "RFC",
-      size: 140,
-      accessorFn: (row) => row.cliente?.rfc ?? "—",
+      id: "curp",
+      header: "CURP",
+      size: 180,
+      accessorFn: (row) => row.cliente?.curp ?? "—",
     },
     {
       id: "capacidad",
