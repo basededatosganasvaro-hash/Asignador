@@ -16,6 +16,8 @@ interface ClienteData {
   a_materno?: string;
   tel_1?: string;
   capacidad?: string;
+  percepciones_fijas?: string;
+  descuentos_terceros?: string;
 }
 
 interface CalificacionItem {
@@ -150,6 +152,38 @@ export default function AnalistaPage() {
       header: "CURP",
       size: 180,
       accessorFn: (row) => row.cliente?.curp ?? "—",
+    },
+    {
+      id: "percepciones_fijas",
+      header: "Percepciones Fijas",
+      size: 150,
+      accessorFn: (row) => row.cliente?.percepciones_fijas ?? "—",
+      cell: ({ getValue }) => {
+        const val = getValue() as string;
+        if (val === "—") return <span className="text-slate-500">—</span>;
+        const num = parseFloat(val);
+        return (
+          <span className="text-slate-200">
+            {isNaN(num) ? val : `$${num.toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+          </span>
+        );
+      },
+    },
+    {
+      id: "descuentos_terceros",
+      header: "Descuentos Terceros",
+      size: 160,
+      accessorFn: (row) => row.cliente?.descuentos_terceros ?? "—",
+      cell: ({ getValue }) => {
+        const val = getValue() as string;
+        if (val === "—") return <span className="text-slate-500">—</span>;
+        const num = parseFloat(val);
+        return (
+          <span className="text-slate-200">
+            {isNaN(num) ? val : `$${num.toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+          </span>
+        );
+      },
     },
     {
       id: "capacidad",

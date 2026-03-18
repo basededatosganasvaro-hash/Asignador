@@ -119,6 +119,10 @@ model clientes {
   num_ext               String?
   num_int               String?
 
+  // Nómina
+  percepciones_fijas    String?
+  descuentos_terceros   String?
+
   // Oportunidad
   oportunidad_total     String?
   oportunidad_real      String?

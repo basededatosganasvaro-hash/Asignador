@@ -43,6 +43,8 @@ export async function GET() {
           a_materno: true,
           tel_1: true,
           capacidad: true,
+          percepciones_fijas: true,
+          descuentos_terceros: true,
         },
       })
     : [];
