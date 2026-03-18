@@ -108,10 +108,13 @@ export const authOptions: NextAuthOptions = {
           try {
             const dbUser = await prisma.usuarios.findUnique({
               where: { id: parseInt(token.id as string) },
-              select: { debe_cambiar_password: true },
+              select: { debe_cambiar_password: true, region_id: true, sucursal_id: true, rol: true },
             });
             if (dbUser) {
               token.debe_cambiar_password = dbUser.debe_cambiar_password;
+              token.region_id = dbUser.region_id ?? null;
+              token.sucursal_id = dbUser.sucursal_id ?? null;
+              token.rol = dbUser.rol;
             }
             token.lastRefresh = Date.now();
           } catch {

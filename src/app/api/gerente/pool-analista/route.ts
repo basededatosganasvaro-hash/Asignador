@@ -13,8 +13,21 @@ export async function GET() {
     expira_at: { gt: new Date() },
   };
 
-  if (scopeFilter?.field === "region_id" && scopeFilter.value) {
-    wherePool.region_id = scopeFilter.value;
+  // Resolver region_id para ambos tipos de gerente
+  let regionId: number | null = null;
+  if (scopeFilter?.field === "region_id") {
+    regionId = scopeFilter.value ?? null;
+  } else {
+    // gerente_sucursal: obtener region_id desde la BD
+    const usuario = await prisma.usuarios.findUnique({
+      where: { id: Number(session.user.id) },
+      select: { region_id: true },
+    });
+    regionId = usuario?.region_id ?? null;
+  }
+
+  if (regionId) {
+    wherePool.region_id = regionId;
   }
 
   const poolItems = await prisma.pool_gerente.findMany({
@@ -40,6 +53,8 @@ export async function GET() {
       a_materno: true,
       tel_1: true,
       capacidad: true,
+      percepciones_fijas: true,
+      descuentos_terceros: true,
       convenio: true,
       estado: true,
       municipio: true,

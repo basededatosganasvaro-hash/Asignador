@@ -449,9 +449,7 @@ export default function AnalistaPage() {
         <DialogBody>
           <p className="text-sm text-slate-300">
             Se enviarán <strong className="text-green-400">{lote.total_calificados}</strong> registros
-            calificados al pool del gerente.
-            Los <strong className="text-slate-400">{lote.total_pendientes}</strong> pendientes serán
-            descartados.
+            calificados al pool del gerente regional.
           </p>
           <p className="text-sm text-slate-500 mt-2">
             Esta acción no se puede deshacer.

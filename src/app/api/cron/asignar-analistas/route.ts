@@ -37,17 +37,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ message: "Todos los analistas ya tienen lote hoy", asignados: 0 });
   }
 
-  // Obtener cliente_ids ya calificados o en proceso (para excluir)
-  const calificacionesExistentes = await prisma.calificaciones_analista.findMany({
-    select: { cliente_id: true },
-  });
-  const idsExcluidos = new Set(calificacionesExistentes.map((c) => c.cliente_id));
-
-  // También excluir los que ya están en pool_gerente
-  const poolExistentes = await prisma.pool_gerente.findMany({
-    select: { cliente_id: true },
-  });
-  poolExistentes.forEach((p) => idsExcluidos.add(p.cliente_id));
+  // Obtener cliente_ids ya calificados o en pool (DISTINCT + UNION para eficiencia)
+  const idsExcluidosRaw = await prisma.$queryRaw<{ cliente_id: number }[]>`
+    SELECT DISTINCT cliente_id FROM calificaciones_analista
+    UNION
+    SELECT DISTINCT cliente_id FROM pool_gerente
+  `;
+  const idsExcluidos = new Set(idsExcluidosRaw.map((r) => r.cliente_id));
 
   // Obtener cartera IEPPO de BD Clientes
   const totalNecesario = analistasSinLote.length * REGISTROS_POR_ANALISTA;

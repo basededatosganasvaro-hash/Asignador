@@ -26,9 +26,35 @@ export async function POST(req: Request) {
 
   let calificacionesLimpiadas = 0;
   let lotesLimpiados = 0;
+  let calificadosRescatados = 0;
 
   if (lotesVencidos.length > 0) {
     const loteIds = lotesVencidos.map((l) => l.id);
+
+    // Rescatar registros calificados: moverlos al pool del gerente antes de limpiar
+    const calificados = await prisma.calificaciones_analista.findMany({
+      where: {
+        lote_id: { in: loteIds },
+        calificado: true,
+      },
+      include: { analista: { select: { region_id: true } } },
+    });
+
+    if (calificados.length > 0) {
+      const seisMeses = new Date(ahora);
+      seisMeses.setMonth(seisMeses.getMonth() + 6);
+
+      await prisma.pool_gerente.createMany({
+        data: calificados.map((c) => ({
+          cliente_id: c.cliente_id,
+          calificado_por: c.analista_id,
+          region_id: c.analista?.region_id ?? null,
+          expira_at: seisMeses,
+        })),
+        skipDuplicates: true,
+      });
+      calificadosRescatados = calificados.length;
+    }
 
     // Eliminar calificaciones no completadas de esos lotes
     const result = await prisma.calificaciones_analista.deleteMany({
@@ -58,6 +84,7 @@ export async function POST(req: Request) {
   return NextResponse.json({
     lotes_limpiados: lotesLimpiados,
     calificaciones_limpiadas: calificacionesLimpiadas,
+    calificados_rescatados: calificadosRescatados,
     pool_expirado: poolExpirado.count,
   });
 }

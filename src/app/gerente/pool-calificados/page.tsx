@@ -18,9 +18,14 @@ interface ClienteData {
   a_materno?: string;
   tel_1?: string;
   capacidad?: string;
+  percepciones_fijas?: string;
+  descuentos_terceros?: string;
   convenio?: string;
   estado?: string;
   municipio?: string;
+  estatus_laboral?: string;
+  fecha_ingreso?: string;
+  estatus_calificacion?: string;
 }
 
 interface PoolItem {
@@ -163,6 +168,12 @@ export default function PoolCalificadosPage() {
       },
     },
     {
+      id: "curp",
+      header: "CURP",
+      size: 180,
+      accessorFn: (row) => row.cliente?.curp ?? "—",
+    },
+    {
       id: "nss",
       header: "NSS",
       size: 120,
@@ -175,19 +186,94 @@ export default function PoolCalificadosPage() {
       accessorFn: (row) => row.cliente?.convenio ?? "—",
     },
     {
+      id: "percepciones_fijas",
+      header: "Percepciones Fijas",
+      size: 150,
+      accessorFn: (row) => row.cliente?.percepciones_fijas ?? "—",
+      cell: ({ getValue }) => {
+        const val = getValue() as string;
+        if (val === "—") return <span className="text-slate-500">—</span>;
+        const num = parseFloat(val);
+        return (
+          <span className="text-slate-200">
+            {isNaN(num) ? val : `$${num.toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+          </span>
+        );
+      },
+    },
+    {
+      id: "descuentos_terceros",
+      header: "Descuentos Terceros",
+      size: 160,
+      accessorFn: (row) => row.cliente?.descuentos_terceros ?? "—",
+      cell: ({ getValue }) => {
+        const val = getValue() as string;
+        if (val === "—") return <span className="text-slate-500">—</span>;
+        const num = parseFloat(val);
+        return (
+          <span className="text-slate-200">
+            {isNaN(num) ? val : `$${num.toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+          </span>
+        );
+      },
+    },
+    {
       id: "capacidad",
       header: "Capacidad",
-      size: 120,
+      size: 130,
       accessorFn: (row) => row.cliente?.capacidad ?? "—",
-      cell: ({ getValue }) => (
-        <span className="text-amber-400 font-medium">{getValue() as string}</span>
-      ),
+      cell: ({ getValue }) => {
+        const val = getValue() as string;
+        if (val === "—") return <span className="text-slate-500">—</span>;
+        const num = parseFloat(val);
+        return (
+          <span className="text-amber-400 font-medium">
+            {isNaN(num) ? val : `$${num.toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+          </span>
+        );
+      },
+    },
+    {
+      id: "estatus_laboral",
+      header: "Estatus Laboral",
+      size: 130,
+      accessorFn: (row) => row.cliente?.estatus_laboral ?? "—",
+      cell: ({ getValue }) => {
+        const val = getValue() as string;
+        if (val === "—") return <span className="text-slate-500">—</span>;
+        return (
+          <Badge color={val === "Estable" ? "green" : "amber"}>
+            {val}
+          </Badge>
+        );
+      },
+    },
+    {
+      id: "fecha_ingreso",
+      header: "Fecha Ingreso",
+      size: 120,
+      accessorFn: (row) => row.cliente?.fecha_ingreso ?? "—",
     },
     {
       id: "tel_1",
       header: "Teléfono",
       size: 130,
       accessorFn: (row) => row.cliente?.tel_1 ?? "—",
+    },
+    {
+      id: "estatus_calificacion",
+      header: "Estatus",
+      size: 120,
+      accessorFn: (row) => row.cliente?.estatus_calificacion ?? "—",
+      cell: ({ getValue }) => {
+        const val = getValue() as string;
+        if (val === "—") return <span className="text-slate-500">—</span>;
+        return (
+          <Badge color={val === "Localizado" ? "green" : "red"}>
+            {val}
+          </Badge>
+        );
+      },
     },
     {
       id: "calificado_por",

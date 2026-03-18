@@ -7,7 +7,11 @@ const calificarSchema = z.object({
   capacidad: z.string().min(1, "La capacidad es requerida"),
   tel_1: z.string().min(7, "El teléfono debe tener al menos 7 dígitos").optional(),
   estatus_laboral: z.enum(["Estable", "No estable"], { message: "El estatus es requerido" }),
-  fecha_ingreso: z.string().regex(/^\d{2}\/\d{2}\/\d{4}$/, "Formato debe ser dd/mm/aaaa"),
+  fecha_ingreso: z.string().regex(/^\d{2}\/\d{2}\/\d{4}$/, "Formato debe ser dd/mm/aaaa").refine((val) => {
+    const [dd, mm, yyyy] = val.split("/").map(Number);
+    const d = new Date(yyyy, mm - 1, dd);
+    return d.getFullYear() === yyyy && d.getMonth() === mm - 1 && d.getDate() === dd;
+  }, "Fecha inválida"),
   no_localizado: z.literal(false).optional(),
 });
 

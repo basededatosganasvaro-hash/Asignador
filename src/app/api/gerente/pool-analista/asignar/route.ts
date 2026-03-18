@@ -9,7 +9,7 @@ const asignarPoolSchema = z.object({
 });
 
 export async function POST(req: Request) {
-  const { session, error } = await requireGerente();
+  const { session, error, scopeFilter } = await requireGerente();
   if (error) return error;
 
   const body = await req.json();
@@ -24,12 +24,28 @@ export async function POST(req: Request) {
   const { pool_ids, promotor_id } = parsed.data;
   const gerenteId = Number(session.user.id);
 
-  // Verificar que el promotor existe y está activo
+  // Resolver region_id del gerente (regional directo, sucursal via DB)
+  let gerenteRegionId: number | null = null;
+  if (scopeFilter?.field === "region_id") {
+    gerenteRegionId = scopeFilter.value ?? null;
+  } else {
+    const gerente = await prisma.usuarios.findUnique({
+      where: { id: gerenteId },
+      select: { region_id: true },
+    });
+    gerenteRegionId = gerente?.region_id ?? null;
+  }
+
+  // Verificar que el promotor existe, está activo y pertenece a la región
   const promotor = await prisma.usuarios.findFirst({
     where: { id: promotor_id, rol: "promotor", activo: true },
+    select: { id: true, nombre: true, region_id: true },
   });
   if (!promotor) {
     return NextResponse.json({ error: "Promotor no encontrado o inactivo" }, { status: 400 });
+  }
+  if (gerenteRegionId && promotor.region_id !== gerenteRegionId) {
+    return NextResponse.json({ error: "El promotor no pertenece a tu región" }, { status: 403 });
   }
 
   // Verificar que los pool_ids no estén ya asignados
@@ -39,6 +55,14 @@ export async function POST(req: Request) {
 
   if (poolItems.length === 0) {
     return NextResponse.json({ error: "Los registros ya fueron asignados" }, { status: 400 });
+  }
+
+  // Validar que todos los items pertenecen a la región del gerente
+  if (gerenteRegionId) {
+    const fueraDeScope = poolItems.some((p) => p.region_id !== gerenteRegionId);
+    if (fueraDeScope) {
+      return NextResponse.json({ error: "Algunos registros están fuera de tu región" }, { status: 403 });
+    }
   }
 
   const ahora = new Date();

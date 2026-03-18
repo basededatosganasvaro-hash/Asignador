@@ -40,8 +40,8 @@ export async function POST() {
     select: { region_id: true },
   });
 
-  const seissMeses = new Date();
-  seissMeses.setMonth(seissMeses.getMonth() + 6);
+  const seisMeses = new Date();
+  seisMeses.setMonth(seisMeses.getMonth() + 6);
 
   await prisma.$transaction(async (tx) => {
     // Mover calificados al pool del gerente
@@ -50,7 +50,7 @@ export async function POST() {
         cliente_id: c.cliente_id,
         calificado_por: userId,
         region_id: analista?.region_id ?? null,
-        expira_at: seissMeses,
+        expira_at: seisMeses,
       })),
       skipDuplicates: true,
     });

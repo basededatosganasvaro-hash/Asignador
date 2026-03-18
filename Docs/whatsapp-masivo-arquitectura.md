@@ -272,7 +272,7 @@ Seguimiento → CRMGONAv3
 │                                                  │
 │  [Subir Cartera CSV]  [Auto-asignar datos]       │
 │  [Conectar WhatsApp → QR]                        │
-│  [Lanzar campaña]     [Ver estado envíos]        │
+│  [Lanzar campaña]     [Ver estado envíos]        │cl
 └──────────────────┬───────────────────────────────┘
                    ↓
 ┌──────────────────────────────────────────────────┐
