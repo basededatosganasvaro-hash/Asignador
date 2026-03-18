@@ -6,6 +6,8 @@ import { z } from "zod";
 const calificarSchema = z.object({
   capacidad: z.string().min(1, "La capacidad es requerida"),
   tel_1: z.string().min(7, "El teléfono debe tener al menos 7 dígitos").optional(),
+  estatus_laboral: z.enum(["Estable", "No estable"], { message: "El estatus es requerido" }),
+  fecha_ingreso: z.string().regex(/^\d{2}\/\d{2}\/\d{4}$/, "Formato debe ser dd/mm/aaaa"),
 });
 
 export async function PUT(
@@ -46,51 +48,31 @@ export async function PUT(
     return NextResponse.json({ error: "El lote ya fue finalizado" }, { status: 400 });
   }
 
-  // Guardar capacidad y teléfono en datos_contacto (BD Sistema)
-  const { capacidad, tel_1 } = parsed.data;
+  // Guardar campos en datos_contacto (BD Sistema)
+  const { capacidad, tel_1, estatus_laboral, fecha_ingreso } = parsed.data;
 
   await prisma.$transaction(async (tx) => {
-    // Upsert capacidad
-    const existeCap = await tx.datos_contacto.findFirst({
-      where: { cliente_id: calificacion.cliente_id, campo: "capacidad" },
-    });
-    if (existeCap) {
-      await tx.datos_contacto.update({
-        where: { id: existeCap.id },
-        data: { valor: capacidad, editado_por: userId },
+    // Helper upsert datos_contacto
+    const upsertDato = async (campo: string, valor: string) => {
+      const existe = await tx.datos_contacto.findFirst({
+        where: { cliente_id: calificacion.cliente_id, campo },
       });
-    } else {
-      await tx.datos_contacto.create({
-        data: {
-          cliente_id: calificacion.cliente_id,
-          campo: "capacidad",
-          valor: capacidad,
-          editado_por: userId,
-        },
-      });
-    }
-
-    // Upsert teléfono si se proporcionó
-    if (tel_1) {
-      const existeTel = await tx.datos_contacto.findFirst({
-        where: { cliente_id: calificacion.cliente_id, campo: "tel_1" },
-      });
-      if (existeTel) {
+      if (existe) {
         await tx.datos_contacto.update({
-          where: { id: existeTel.id },
-          data: { valor: tel_1, editado_por: userId },
+          where: { id: existe.id },
+          data: { valor, editado_por: userId },
         });
       } else {
         await tx.datos_contacto.create({
-          data: {
-            cliente_id: calificacion.cliente_id,
-            campo: "tel_1",
-            valor: tel_1,
-            editado_por: userId,
-          },
+          data: { cliente_id: calificacion.cliente_id, campo, valor, editado_por: userId },
         });
       }
-    }
+    };
+
+    await upsertDato("capacidad", capacidad);
+    await upsertDato("estatus_laboral", estatus_laboral);
+    await upsertDato("fecha_ingreso", fecha_ingreso);
+    if (tel_1) await upsertDato("tel_1", tel_1);
 
     // Marcar como calificado
     await tx.calificaciones_analista.update({

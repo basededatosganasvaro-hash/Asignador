@@ -19,6 +19,8 @@ interface ClienteData {
   capacidad?: string;
   percepciones_fijas?: string;
   descuentos_terceros?: string;
+  estatus_laboral?: string;
+  fecha_ingreso?: string;
 }
 
 interface CalificacionItem {
@@ -44,6 +46,8 @@ export default function AnalistaPage() {
   const [editItem, setEditItem] = useState<CalificacionItem | null>(null);
   const [formCapacidad, setFormCapacidad] = useState("");
   const [formTel, setFormTel] = useState("");
+  const [formEstatus, setFormEstatus] = useState("");
+  const [formFechaIngreso, setFormFechaIngreso] = useState("");
   const [saving, setSaving] = useState(false);
   const [finalizando, setFinalizando] = useState(false);
   const [confirmFinalizar, setConfirmFinalizar] = useState(false);
@@ -70,6 +74,8 @@ export default function AnalistaPage() {
     setEditItem(item);
     setFormCapacidad(item.cliente?.capacidad || "");
     setFormTel(item.cliente?.tel_1 || "");
+    setFormEstatus(item.cliente?.estatus_laboral || "");
+    setFormFechaIngreso(item.cliente?.fecha_ingreso || "");
   };
 
   const handleSaveCalificacion = async () => {
@@ -84,6 +90,14 @@ export default function AnalistaPage() {
       toast("La capacidad debe ser un monto válido", "error");
       return;
     }
+    if (!formEstatus) {
+      toast("El estatus es requerido", "error");
+      return;
+    }
+    if (!/^\d{2}\/\d{2}\/\d{4}$/.test(formFechaIngreso)) {
+      toast("La fecha debe tener formato dd/mm/aaaa", "error");
+      return;
+    }
 
     setSaving(true);
     try {
@@ -93,6 +107,8 @@ export default function AnalistaPage() {
         body: JSON.stringify({
           capacidad: numVal.toFixed(2),
           tel_1: formTel.trim() || undefined,
+          estatus_laboral: formEstatus,
+          fecha_ingreso: formFechaIngreso,
         }),
       });
 
@@ -207,6 +223,27 @@ export default function AnalistaPage() {
           </span>
         );
       },
+    },
+    {
+      id: "estatus_laboral",
+      header: "Estatus",
+      size: 110,
+      accessorFn: (row) => row.cliente?.estatus_laboral ?? "—",
+      cell: ({ getValue }) => {
+        const val = getValue() as string;
+        if (val === "—") return <span className="text-slate-500">—</span>;
+        return (
+          <Badge color={val === "Estable" ? "green" : "amber"}>
+            {val}
+          </Badge>
+        );
+      },
+    },
+    {
+      id: "fecha_ingreso",
+      header: "Fecha Ingreso",
+      size: 120,
+      accessorFn: (row) => row.cliente?.fecha_ingreso ?? "—",
     },
     {
       id: "tel_1",
@@ -329,6 +366,31 @@ export default function AnalistaPage() {
             onChange={(e) => setFormCapacidad(e.target.value)}
             required
             placeholder="Ej: 50000.00"
+          />
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-1">
+              Estatus <span className="text-red-400">*</span>
+            </label>
+            <select
+              value={formEstatus}
+              onChange={(e) => setFormEstatus(e.target.value)}
+              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-slate-100 focus:outline-none focus:border-amber-500 transition-colors"
+            >
+              <option value="">Seleccionar...</option>
+              <option value="Estable">Estable</option>
+              <option value="No estable">No estable</option>
+            </select>
+          </div>
+          <Input
+            label="Fecha de Ingreso (dd/mm/aaaa)"
+            value={formFechaIngreso}
+            onChange={(e) => {
+              const v = e.target.value.replace(/[^\d/]/g, "");
+              setFormFechaIngreso(v);
+            }}
+            maxLength={10}
+            required
+            placeholder="dd/mm/aaaa"
           />
           <Input
             label="Teléfono (opcional)"
