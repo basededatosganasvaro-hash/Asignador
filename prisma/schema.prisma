@@ -73,7 +73,7 @@ model usuarios {
   username      String   @unique @db.VarChar(50)
   password_hash String
   rol           String   @default("promotor") @db.VarChar(30)
-  // admin | gerente_regional | gerente_sucursal | supervisor | promotor | gestor_operaciones | comercial | direccion | asesor_digital
+  // admin | gerente_regional | gerente_sucursal | supervisor | promotor | gestor_operaciones | comercial | direccion | asesor_digital | analista
 
   telegram_id BigInt?  @unique
 
@@ -110,6 +110,8 @@ model usuarios {
   ad_redes_sociales       ad_redes_sociales[]
   busquedas_clientes      busquedas_clientes[]
   busquedas_clientes_logs busquedas_clientes_logs[]
+  lotes_analista          lotes_analista[]
+  calificaciones_analista calificaciones_analista[]
 
   @@index([username])
   @@index([rol])
@@ -774,4 +776,79 @@ model ad_redes_sociales {
 
   @@index([usuario_id, activo, fecha])
   @@index([usuario_id, status])
+}
+
+// =============================================
+// ANALISTA — LOTES DE CALIFICACIÓN
+// =============================================
+
+model lotes_analista {
+  id              Int      @id @default(autoincrement())
+  analista_id     Int
+  fecha           DateTime @default(now()) @db.Date
+  cantidad        Int
+  estado          String   @default("PENDIENTE") @db.VarChar(20)
+  // PENDIENTE | EN_PROCESO | FINALIZADO | LIMPIADO
+  finalizado_at   DateTime?
+  created_at      DateTime @default(now())
+
+  analista        usuarios                  @relation(fields: [analista_id], references: [id])
+  calificaciones  calificaciones_analista[]
+
+  @@unique([analista_id, fecha])
+  @@index([analista_id])
+  @@index([estado])
+  @@index([fecha])
+}
+
+// =============================================
+// ANALISTA — CALIFICACIONES INDIVIDUALES
+// =============================================
+
+model calificaciones_analista {
+  id              Int      @id @default(autoincrement())
+  lote_id         Int
+  analista_id     Int
+  cliente_id      Int
+  // Referencia a clientes.id en BD Clientes (sin FK constraint — DBs separadas)
+  calificado      Boolean  @default(false)
+  created_at      DateTime @default(now())
+  updated_at      DateTime @default(now()) @updatedAt
+
+  lote      lotes_analista @relation(fields: [lote_id], references: [id])
+  analista  usuarios       @relation(fields: [analista_id], references: [id])
+
+  @@unique([lote_id, cliente_id])
+  @@index([analista_id])
+  @@index([lote_id, calificado])
+  @@index([cliente_id])
+}
+
+// =============================================
+// POOL GERENTE — CLIENTES CALIFICADOS POR ANALISTAS
+// =============================================
+
+model pool_gerente {
+  id              Int       @id @default(autoincrement())
+  cliente_id      Int
+  // Referencia a clientes.id en BD Clientes (sin FK constraint — DBs separadas)
+  calificado_por  Int
+  // analista_id que lo calificó
+  region_id       Int?
+  // Región del analista (para scope del gerente)
+  asignado        Boolean   @default(false)
+  asignado_a      Int?
+  // promotor_id al que fue asignado
+  asignado_por    Int?
+  // gerente_id que lo asignó
+  asignado_at     DateTime?
+  expira_at       DateTime
+  // 6 meses desde calificación
+  created_at      DateTime  @default(now())
+
+  @@unique([cliente_id, calificado_por])
+  @@index([asignado])
+  @@index([region_id, asignado])
+  @@index([expira_at])
+  @@index([calificado_por])
 }

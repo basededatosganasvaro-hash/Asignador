@@ -35,7 +35,8 @@ export default function Sidebar({ rol, open, onToggle }: SidebarProps) {
   const isSupervisor = rol === "supervisor";
   const isAsesorDigital = rol === "asesor_digital";
   const isGerente = rol === "gerente_regional" || rol === "gerente_sucursal";
-  const isPromotor = !isOperaciones && !isSupervisor && !isAsesorDigital && !isGerente && rol !== "admin";
+  const isAnalista = rol === "analista";
+  const isPromotor = !isOperaciones && !isSupervisor && !isAsesorDigital && !isGerente && !isAnalista && rol !== "admin";
 
   return (
     <>
@@ -53,6 +54,7 @@ export default function Sidebar({ rol, open, onToggle }: SidebarProps) {
           isSupervisor={isSupervisor}
           isAsesorDigital={isAsesorDigital}
           isGerente={isGerente}
+          isAnalista={isAnalista}
           isPromotor={isPromotor}
           onToggle={onToggle}
         />
@@ -78,6 +80,7 @@ export default function Sidebar({ rol, open, onToggle }: SidebarProps) {
               isSupervisor={isSupervisor}
               isAsesorDigital={isAsesorDigital}
               isGerente={isGerente}
+              isAnalista={isAnalista}
               isPromotor={isPromotor}
               onToggle={onToggle}
             />
@@ -96,6 +99,7 @@ function SidebarContent({
   isSupervisor,
   isAsesorDigital,
   isGerente,
+  isAnalista,
   isPromotor,
   onToggle,
 }: {
@@ -106,6 +110,7 @@ function SidebarContent({
   isSupervisor: boolean;
   isAsesorDigital: boolean;
   isGerente: boolean;
+  isAnalista: boolean;
   isPromotor: boolean;
   onToggle: () => void;
 }) {
@@ -174,7 +179,12 @@ function SidebarContent({
             )}
             <NavItem label="WhatsApp" href="/gerente/whatsapp" icon={<WhatsAppIcon />} pathname={pathname} showLabels={showLabels} exact />
             <div className="h-px bg-slate-800/50 my-2" />
+            <NavItem label="Pool Calificados" href="/gerente/pool-calificados" icon={<ClipboardList className="w-5 h-5" />} pathname={pathname} showLabels={showLabels} exact />
             <NavItem label="Comparativa" href="/gerente/comparativa" icon={<TrendingUp className="w-5 h-5" />} pathname={pathname} showLabels={showLabels} exact />
+          </>
+        ) : isAnalista ? (
+          <>
+            <NavItem label="Mi Lote" href="/analista" icon={<ClipboardList className="w-5 h-5" />} pathname={pathname} showLabels={showLabels} exact />
           </>
         ) : isPromotor ? (
           <>

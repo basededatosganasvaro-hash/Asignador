@@ -25,5 +25,9 @@ export default async function Home() {
     redirect("/asesor-digital");
   }
 
+  if (session.user.rol === "analista") {
+    redirect("/analista");
+  }
+
   redirect("/admin");
 }

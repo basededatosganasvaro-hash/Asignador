@@ -8,6 +8,7 @@ const ROLES_SUPERVISOR_AREA = ["supervisor"];
 const ROLES_PROMOTOR_AREA = ["promotor"];
 const ROLES_OPERACIONES_AREA = ["gestor_operaciones"];
 const ROLES_ASESOR_DIGITAL_AREA = ["asesor_digital"];
+const ROLES_ANALISTA_AREA = ["analista"];
 // Rate limiting por IP para login (credential stuffing protection)
 const loginAttempts = new Map<string, number[]>();
 const LOGIN_WINDOW_MS = 15 * 60 * 1000; // 15 minutos
@@ -65,6 +66,7 @@ export async function middleware(request: NextRequest) {
     if (ROLES_GERENTE_AREA.includes(rol)) return NextResponse.redirect(new URL("/gerente", request.url));
     if (ROLES_OPERACIONES_AREA.includes(rol)) return NextResponse.redirect(new URL("/operaciones", request.url));
     if (ROLES_ASESOR_DIGITAL_AREA.includes(rol)) return NextResponse.redirect(new URL("/asesor-digital", request.url));
+    if (ROLES_ANALISTA_AREA.includes(rol)) return NextResponse.redirect(new URL("/analista", request.url));
     return NextResponse.redirect(new URL("/promotor", request.url));
   }
 
@@ -74,11 +76,23 @@ export async function middleware(request: NextRequest) {
     if (ROLES_SUPERVISOR_AREA.includes(rol)) return NextResponse.redirect(new URL("/supervisor", request.url));
     if (ROLES_OPERACIONES_AREA.includes(rol)) return NextResponse.redirect(new URL("/operaciones", request.url));
     if (ROLES_ASESOR_DIGITAL_AREA.includes(rol)) return NextResponse.redirect(new URL("/asesor-digital", request.url));
+    if (ROLES_ANALISTA_AREA.includes(rol)) return NextResponse.redirect(new URL("/analista", request.url));
     return NextResponse.redirect(new URL("/promotor", request.url));
   }
 
   // Area admin: acceso solo para admin
   if (pathname.startsWith("/admin") && !ROLES_ADMIN_AREA.includes(rol)) {
+    if (ROLES_GERENTE_AREA.includes(rol)) return NextResponse.redirect(new URL("/gerente", request.url));
+    if (ROLES_SUPERVISOR_AREA.includes(rol)) return NextResponse.redirect(new URL("/supervisor", request.url));
+    if (ROLES_OPERACIONES_AREA.includes(rol)) return NextResponse.redirect(new URL("/operaciones", request.url));
+    if (ROLES_ASESOR_DIGITAL_AREA.includes(rol)) return NextResponse.redirect(new URL("/asesor-digital", request.url));
+    if (ROLES_ANALISTA_AREA.includes(rol)) return NextResponse.redirect(new URL("/analista", request.url));
+    return NextResponse.redirect(new URL("/promotor", request.url));
+  }
+
+  // Area analista: acceso solo para analistas
+  if ((pathname.startsWith("/analista") || pathname.startsWith("/api/analista")) && !ROLES_ANALISTA_AREA.includes(rol)) {
+    if (ROLES_ADMIN_AREA.includes(rol)) return NextResponse.redirect(new URL("/admin", request.url));
     if (ROLES_GERENTE_AREA.includes(rol)) return NextResponse.redirect(new URL("/gerente", request.url));
     if (ROLES_SUPERVISOR_AREA.includes(rol)) return NextResponse.redirect(new URL("/supervisor", request.url));
     if (ROLES_OPERACIONES_AREA.includes(rol)) return NextResponse.redirect(new URL("/operaciones", request.url));
@@ -93,6 +107,7 @@ export async function middleware(request: NextRequest) {
     if (ROLES_SUPERVISOR_AREA.includes(rol)) return NextResponse.redirect(new URL("/supervisor", request.url));
     if (ROLES_OPERACIONES_AREA.includes(rol)) return NextResponse.redirect(new URL("/operaciones", request.url));
     if (ROLES_ASESOR_DIGITAL_AREA.includes(rol)) return NextResponse.redirect(new URL("/asesor-digital", request.url));
+    if (ROLES_ANALISTA_AREA.includes(rol)) return NextResponse.redirect(new URL("/analista", request.url));
   }
 
   return NextResponse.next();
@@ -122,5 +137,7 @@ export const config = {
     "/asistente/:path*",
     "/asesor-digital/:path*",
     "/api/asesor-digital/:path*",
+    "/analista/:path*",
+    "/api/analista/:path*",
   ],
 };
