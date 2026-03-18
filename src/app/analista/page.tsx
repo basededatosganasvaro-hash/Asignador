@@ -3,24 +3,19 @@ import { useEffect, useState, useCallback } from "react";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Dialog, DialogHeader, DialogBody, DialogFooter } from "@/components/ui/Dialog";
-import { Input } from "@/components/ui/Input";
 import { useToast } from "@/components/ui/Toast";
 import { DataTable } from "@/components/ui/DataTable";
 import { ColumnDef } from "@tanstack/react-table";
-import { CheckCircle, Clock, Send, Pencil } from "lucide-react";
+import { CheckCircle, Clock, Send, Pencil, X, Save } from "lucide-react";
 
 interface ClienteData {
   id: number;
-  nss?: string;
-  curp?: string;
+  rfc?: string;
   nombres?: string;
   a_paterno?: string;
   a_materno?: string;
   tel_1?: string;
   capacidad?: string;
-  convenio?: string;
-  estado?: string;
-  municipio?: string;
 }
 
 interface CalificacionItem {
@@ -43,7 +38,7 @@ export default function AnalistaPage() {
   const [lote, setLote] = useState<LoteInfo | null>(null);
   const [clientes, setClientes] = useState<CalificacionItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [editItem, setEditItem] = useState<CalificacionItem | null>(null);
+  const [editingId, setEditingId] = useState<number | null>(null);
   const [formCapacidad, setFormCapacidad] = useState("");
   const [formTel, setFormTel] = useState("");
   const [saving, setSaving] = useState(false);
@@ -68,33 +63,44 @@ export default function AnalistaPage() {
     fetchLote();
   }, [fetchLote]);
 
-  const handleOpenEdit = (item: CalificacionItem) => {
-    setEditItem(item);
+  const handleStartEdit = (item: CalificacionItem) => {
+    setEditingId(item.id);
     setFormCapacidad(item.cliente?.capacidad || "");
     setFormTel(item.cliente?.tel_1 || "");
   };
 
-  const handleSaveCalificacion = async () => {
-    if (!editItem) return;
+  const handleCancelEdit = () => {
+    setEditingId(null);
+    setFormCapacidad("");
+    setFormTel("");
+  };
+
+  const handleSaveCalificacion = async (itemId: number) => {
     if (!formCapacidad.trim()) {
       toast("La capacidad es requerida", "error");
       return;
     }
 
+    const numVal = parseFloat(formCapacidad);
+    if (isNaN(numVal) || numVal < 0) {
+      toast("La capacidad debe ser un monto válido", "error");
+      return;
+    }
+
     setSaving(true);
     try {
-      const res = await fetch(`/api/analista/calificar/${editItem.id}`, {
+      const res = await fetch(`/api/analista/calificar/${itemId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          capacidad: formCapacidad.trim(),
+          capacidad: numVal.toFixed(2),
           tel_1: formTel.trim() || undefined,
         }),
       });
 
       if (res.ok) {
         toast("Registro calificado", "success");
-        setEditItem(null);
+        setEditingId(null);
         fetchLote();
       } else {
         const data = await res.json();
@@ -140,27 +146,44 @@ export default function AnalistaPage() {
       },
     },
     {
-      id: "nss",
-      header: "NSS",
-      size: 120,
-      accessorFn: (row) => row.cliente?.nss ?? "—",
-    },
-    {
-      id: "convenio",
-      header: "Convenio",
-      size: 160,
-      accessorFn: (row) => row.cliente?.convenio ?? "—",
+      id: "rfc",
+      header: "RFC",
+      size: 140,
+      accessorFn: (row) => row.cliente?.rfc ?? "—",
     },
     {
       id: "capacidad",
-      header: "Capacidad",
-      size: 120,
+      header: "Capacidad (MXN)",
+      size: 160,
       accessorFn: (row) => row.cliente?.capacidad ?? "—",
-      cell: ({ getValue }) => {
-        const val = getValue() as string;
+      cell: ({ row }) => {
+        const item = row.original;
+        if (editingId === item.id) {
+          return (
+            <div className="flex items-center gap-1">
+              <span className="text-slate-400 text-sm">$</span>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={formCapacidad}
+                onChange={(e) => setFormCapacidad(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleSaveCalificacion(item.id);
+                  if (e.key === "Escape") handleCancelEdit();
+                }}
+                autoFocus
+                className="w-28 px-2 py-1 bg-slate-800 border border-amber-500/50 rounded text-sm text-slate-100 focus:outline-none focus:border-amber-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              />
+            </div>
+          );
+        }
+        const val = item.cliente?.capacidad;
+        if (!val) return <span className="text-slate-500">—</span>;
+        const num = parseFloat(val);
         return (
-          <span className={val === "—" ? "text-slate-500" : "text-amber-400 font-medium"}>
-            {val}
+          <span className="text-amber-400 font-medium">
+            ${isNaN(num) ? val : num.toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </span>
         );
       },
@@ -168,17 +191,26 @@ export default function AnalistaPage() {
     {
       id: "tel_1",
       header: "Teléfono",
-      size: 130,
+      size: 150,
       accessorFn: (row) => row.cliente?.tel_1 ?? "—",
-    },
-    {
-      id: "estado_mun",
-      header: "Ubicación",
-      size: 160,
-      accessorFn: (row) => {
-        const c = row.cliente;
-        if (!c) return "—";
-        return [c.estado, c.municipio].filter(Boolean).join(", ");
+      cell: ({ row }) => {
+        const item = row.original;
+        if (editingId === item.id) {
+          return (
+            <input
+              type="tel"
+              value={formTel}
+              onChange={(e) => setFormTel(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleSaveCalificacion(item.id);
+                if (e.key === "Escape") handleCancelEdit();
+              }}
+              placeholder="Opcional"
+              className="w-32 px-2 py-1 bg-slate-800 border border-slate-600 rounded text-sm text-slate-100 focus:outline-none focus:border-amber-400"
+            />
+          );
+        }
+        return <span className={item.cliente?.tel_1 ? "text-slate-200" : "text-slate-500"}>{item.cliente?.tel_1 ?? "—"}</span>;
       },
     },
     {
@@ -194,21 +226,45 @@ export default function AnalistaPage() {
     {
       id: "actions",
       header: "Acción",
-      size: 80,
+      size: 100,
       enableSorting: false,
-      cell: ({ row }) => (
-        <button
-          onClick={() => handleOpenEdit(row.original)}
-          title={row.original.calificado ? "Editar calificación" : "Calificar"}
-          className="p-1.5 text-slate-400 hover:text-amber-400 hover:bg-slate-800/60 rounded-lg transition-colors"
-        >
-          {row.original.calificado ? (
-            <Pencil className="w-4 h-4" />
-          ) : (
-            <CheckCircle className="w-4 h-4" />
-          )}
-        </button>
-      ),
+      cell: ({ row }) => {
+        const item = row.original;
+        if (editingId === item.id) {
+          return (
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => handleSaveCalificacion(item.id)}
+                disabled={saving}
+                title="Guardar"
+                className="p-1.5 text-green-400 hover:text-green-300 hover:bg-slate-800/60 rounded-lg transition-colors disabled:opacity-50"
+              >
+                <Save className="w-4 h-4" />
+              </button>
+              <button
+                onClick={handleCancelEdit}
+                title="Cancelar"
+                className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-slate-800/60 rounded-lg transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          );
+        }
+        return (
+          <button
+            onClick={() => handleStartEdit(item)}
+            title={item.calificado ? "Editar calificación" : "Calificar"}
+            className="p-1.5 text-slate-400 hover:text-amber-400 hover:bg-slate-800/60 rounded-lg transition-colors"
+          >
+            {item.calificado ? (
+              <Pencil className="w-4 h-4" />
+            ) : (
+              <CheckCircle className="w-4 h-4" />
+            )}
+          </button>
+        );
+      },
     },
   ];
 
@@ -287,48 +343,6 @@ export default function AnalistaPage() {
         pageSize={25}
         pageSizeOptions={[25, 50, 100]}
       />
-
-      {/* Dialog calificar */}
-      <Dialog open={!!editItem} onClose={() => setEditItem(null)} maxWidth="sm">
-        <DialogHeader onClose={() => setEditItem(null)}>
-          Calificar Registro
-        </DialogHeader>
-        <DialogBody className="space-y-4">
-          {editItem?.cliente && (
-            <div className="bg-slate-800/40 rounded-lg p-3 space-y-1">
-              <p className="text-sm text-slate-300 font-medium">
-                {[editItem.cliente.nombres, editItem.cliente.a_paterno, editItem.cliente.a_materno]
-                  .filter(Boolean)
-                  .join(" ")}
-              </p>
-              <p className="text-xs text-slate-500">
-                NSS: {editItem.cliente.nss ?? "—"} | Convenio: {editItem.cliente.convenio ?? "—"}
-              </p>
-            </div>
-          )}
-          <Input
-            label="Capacidad"
-            value={formCapacidad}
-            onChange={(e) => setFormCapacidad(e.target.value)}
-            required
-            placeholder="Ej: $50,000"
-          />
-          <Input
-            label="Teléfono (opcional)"
-            value={formTel}
-            onChange={(e) => setFormTel(e.target.value)}
-            placeholder="Ej: 5512345678"
-          />
-        </DialogBody>
-        <DialogFooter>
-          <Button variant="ghost" onClick={() => setEditItem(null)}>
-            Cancelar
-          </Button>
-          <Button variant="primary" onClick={handleSaveCalificacion} disabled={saving}>
-            {saving ? "Guardando..." : "Guardar"}
-          </Button>
-        </DialogFooter>
-      </Dialog>
 
       {/* Dialog confirmar finalizar */}
       <Dialog open={confirmFinalizar} onClose={() => setConfirmFinalizar(false)} maxWidth="sm">

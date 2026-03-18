@@ -37,18 +37,12 @@ export async function GET() {
         where: { id: { in: clienteIds } },
         select: {
           id: true,
-          nss: true,
-          curp: true,
+          rfc: true,
           nombres: true,
           a_paterno: true,
           a_materno: true,
           tel_1: true,
-          tipo_1: true,
           capacidad: true,
-          convenio: true,
-          tipo_cliente: true,
-          estado: true,
-          municipio: true,
         },
       })
     : [];
