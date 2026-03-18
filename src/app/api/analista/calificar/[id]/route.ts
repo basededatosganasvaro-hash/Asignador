@@ -8,6 +8,11 @@ const calificarSchema = z.object({
   tel_1: z.string().min(7, "El teléfono debe tener al menos 7 dígitos").optional(),
   estatus_laboral: z.enum(["Estable", "No estable"], { message: "El estatus es requerido" }),
   fecha_ingreso: z.string().regex(/^\d{2}\/\d{2}\/\d{4}$/, "Formato debe ser dd/mm/aaaa"),
+  no_localizado: z.literal(false).optional(),
+});
+
+const noLocalizadoSchema = z.object({
+  no_localizado: z.literal(true),
 });
 
 export async function PUT(
@@ -24,12 +29,16 @@ export async function PUT(
   }
 
   const body = await req.json();
-  const parsed = calificarSchema.safeParse(body);
-  if (!parsed.success) {
-    return NextResponse.json(
-      { error: parsed.error.issues[0].message },
-      { status: 400 }
-    );
+  const esNoLocalizado = noLocalizadoSchema.safeParse(body).success;
+
+  if (!esNoLocalizado) {
+    const parsed = calificarSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: parsed.error.issues[0].message },
+        { status: 400 }
+      );
+    }
   }
 
   const userId = Number(session.user.id);
@@ -47,9 +56,6 @@ export async function PUT(
   if (calificacion.lote.estado === "FINALIZADO" || calificacion.lote.estado === "LIMPIADO") {
     return NextResponse.json({ error: "El lote ya fue finalizado" }, { status: 400 });
   }
-
-  // Guardar campos en datos_contacto (BD Sistema)
-  const { capacidad, tel_1, estatus_laboral, fecha_ingreso } = parsed.data;
 
   await prisma.$transaction(async (tx) => {
     // Helper upsert datos_contacto
@@ -69,10 +75,16 @@ export async function PUT(
       }
     };
 
-    await upsertDato("capacidad", capacidad);
-    await upsertDato("estatus_laboral", estatus_laboral);
-    await upsertDato("fecha_ingreso", fecha_ingreso);
-    if (tel_1) await upsertDato("tel_1", tel_1);
+    if (esNoLocalizado) {
+      await upsertDato("estatus_calificacion", "No localizado");
+    } else {
+      const { capacidad, tel_1, estatus_laboral, fecha_ingreso } = calificarSchema.parse(body);
+      await upsertDato("capacidad", capacidad);
+      await upsertDato("estatus_laboral", estatus_laboral);
+      await upsertDato("fecha_ingreso", fecha_ingreso);
+      await upsertDato("estatus_calificacion", "Localizado");
+      if (tel_1) await upsertDato("tel_1", tel_1);
+    }
 
     // Marcar como calificado
     await tx.calificaciones_analista.update({

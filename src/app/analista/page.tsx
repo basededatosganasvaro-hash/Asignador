@@ -49,6 +49,7 @@ export default function AnalistaPage() {
   const [formEstatus, setFormEstatus] = useState("");
   const [formFechaIngreso, setFormFechaIngreso] = useState("");
   const [saving, setSaving] = useState(false);
+  const [savingNoLoc, setSavingNoLoc] = useState(false);
   const [finalizando, setFinalizando] = useState(false);
   const [confirmFinalizar, setConfirmFinalizar] = useState(false);
   const { toast } = useToast();
@@ -124,6 +125,29 @@ export default function AnalistaPage() {
       toast("Error de conexion", "error");
     }
     setSaving(false);
+  };
+
+  const handleNoLocalizado = async () => {
+    if (!editItem) return;
+    setSavingNoLoc(true);
+    try {
+      const res = await fetch(`/api/analista/calificar/${editItem.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ no_localizado: true }),
+      });
+      if (res.ok) {
+        toast("Registro marcado como no localizado", "success");
+        setEditItem(null);
+        fetchLote();
+      } else {
+        const data = await res.json();
+        toast(data.error || "Error al marcar", "error");
+      }
+    } catch {
+      toast("Error de conexion", "error");
+    }
+    setSavingNoLoc(false);
   };
 
   const handleFinalizar = async () => {
@@ -301,7 +325,7 @@ export default function AnalistaPage() {
           variant="primary"
           icon={<Send className="w-4 h-4" />}
           onClick={() => setConfirmFinalizar(true)}
-          disabled={lote.total_calificados === 0}
+          disabled={lote.total_pendientes > 0}
         >
           Finalizar Lote
         </Button>
@@ -400,10 +424,18 @@ export default function AnalistaPage() {
           />
         </DialogBody>
         <DialogFooter>
+          <Button
+            variant="ghost"
+            onClick={handleNoLocalizado}
+            disabled={savingNoLoc || saving}
+            className="!text-red-400 hover:!bg-red-500/10 mr-auto"
+          >
+            {savingNoLoc ? "Marcando..." : "Datos no localizados"}
+          </Button>
           <Button variant="ghost" onClick={() => setEditItem(null)}>
             Cancelar
           </Button>
-          <Button variant="primary" onClick={handleSaveCalificacion} disabled={saving}>
+          <Button variant="primary" onClick={handleSaveCalificacion} disabled={saving || savingNoLoc}>
             {saving ? "Guardando..." : "Guardar"}
           </Button>
         </DialogFooter>

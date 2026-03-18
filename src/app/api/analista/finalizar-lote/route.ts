@@ -26,9 +26,10 @@ export async function POST() {
 
   const calificados = lote.calificaciones.filter((c) => c.calificado);
 
-  if (calificados.length === 0) {
+  const pendientes = lote.calificaciones.filter((c) => !c.calificado);
+  if (pendientes.length > 0) {
     return NextResponse.json(
-      { error: "Debes calificar al menos un registro antes de finalizar" },
+      { error: `Faltan ${pendientes.length} registros por calificar` },
       { status: 400 }
     );
   }
