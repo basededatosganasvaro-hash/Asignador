@@ -45,6 +45,7 @@ export async function GET() {
           capacidad: true,
           percepciones_fijas: true,
           descuentos_terceros: true,
+          filiacion: true,
         },
       })
     : [];

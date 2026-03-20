@@ -16,6 +16,7 @@ interface ClienteData {
   a_paterno?: string;
   a_materno?: string;
   tel_1?: string;
+  filiacion?: string;
   capacidad?: string;
   percepciones_fijas?: string;
   descuentos_terceros?: string;
@@ -46,6 +47,7 @@ export default function AnalistaPage() {
   const [editItem, setEditItem] = useState<CalificacionItem | null>(null);
   const [formCapacidad, setFormCapacidad] = useState("");
   const [formTel, setFormTel] = useState("");
+  const [formFiliacion, setFormFiliacion] = useState("");
   const [formEstatus, setFormEstatus] = useState("");
   const [formFechaIngreso, setFormFechaIngreso] = useState("");
   const [saving, setSaving] = useState(false);
@@ -75,6 +77,7 @@ export default function AnalistaPage() {
     setEditItem(item);
     setFormCapacidad(item.cliente?.capacidad || "");
     setFormTel(item.cliente?.tel_1 || "");
+    setFormFiliacion(item.cliente?.filiacion || "");
     setFormEstatus(item.cliente?.estatus_laboral || "");
     setFormFechaIngreso(item.cliente?.fecha_ingreso || "");
   };
@@ -108,6 +111,7 @@ export default function AnalistaPage() {
         body: JSON.stringify({
           capacidad: numVal.toFixed(2),
           tel_1: formTel.trim() || undefined,
+          filiacion: formFiliacion.trim() || undefined,
           estatus_laboral: formEstatus,
           fecha_ingreso: formFechaIngreso,
         }),
@@ -199,6 +203,17 @@ export default function AnalistaPage() {
       header: "CURP",
       size: 180,
       accessorFn: (row) => row.cliente?.curp ?? "—",
+    },
+    {
+      id: "filiacion",
+      header: "Filiación",
+      size: 130,
+      accessorFn: (row) => row.cliente?.filiacion ?? "—",
+      cell: ({ getValue }) => {
+        const val = getValue() as string;
+        if (val === "—") return <span className="text-slate-500">—</span>;
+        return <span className="text-slate-200">{val}</span>;
+      },
     },
     {
       id: "percepciones_fijas",
@@ -421,6 +436,12 @@ export default function AnalistaPage() {
             value={formTel}
             onChange={(e) => setFormTel(e.target.value)}
             placeholder="Ej: 5512345678"
+          />
+          <Input
+            label="Filiación (opcional)"
+            value={formFiliacion}
+            onChange={(e) => setFormFiliacion(e.target.value)}
+            placeholder="Ej: 1234567890"
           />
         </DialogBody>
         <DialogFooter>
