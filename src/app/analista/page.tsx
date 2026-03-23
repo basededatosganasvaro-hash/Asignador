@@ -246,24 +246,8 @@ export default function AnalistaPage() {
       },
     },
     {
-      id: "capacidad",
-      header: "Capacidad Original",
-      size: 160,
-      accessorFn: (row) => row.cliente?.capacidad ?? "—",
-      cell: ({ getValue }) => {
-        const val = getValue() as string;
-        if (val === "—") return <span className="text-slate-500">—</span>;
-        const num = parseFloat(val);
-        return (
-          <span className="text-slate-300">
-            {isNaN(num) ? val : `$${num.toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-          </span>
-        );
-      },
-    },
-    {
       id: "capacidad_actualizada",
-      header: "Cap. Actualizada",
+      header: "Capacidad (MXN)",
       size: 160,
       accessorFn: (row) => row.cliente?.capacidad_actualizada ?? "—",
       cell: ({ getValue }) => {
@@ -410,22 +394,12 @@ export default function AnalistaPage() {
               </p>
             </div>
           )}
-          {/* Datos de solo lectura */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-medium text-slate-500 mb-1">Filiación</label>
-              <p className="px-3 py-2 bg-slate-800/60 border border-slate-700/50 rounded-lg text-sm text-slate-300">
-                {editItem?.cliente?.filiacion || "—"}
-              </p>
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-slate-500 mb-1">Capacidad Original</label>
-              <p className="px-3 py-2 bg-slate-800/60 border border-slate-700/50 rounded-lg text-sm text-slate-300">
-                {editItem?.cliente?.capacidad
-                  ? `$${parseFloat(editItem.cliente.capacidad).toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                  : "—"}
-              </p>
-            </div>
+          {/* Filiación solo lectura */}
+          <div>
+            <label className="block text-xs font-medium text-slate-500 mb-1">Filiación</label>
+            <p className="px-3 py-2 bg-slate-800/60 border border-slate-700/50 rounded-lg text-sm text-slate-300">
+              {editItem?.cliente?.filiacion || "—"}
+            </p>
           </div>
           <Input
             label="Capacidad Actualizada (MXN)"
