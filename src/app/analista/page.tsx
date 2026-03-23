@@ -18,6 +18,7 @@ interface ClienteData {
   tel_1?: string;
   filiacion?: string;
   capacidad?: string;
+  capacidad_actualizada?: string;
   percepciones_fijas?: string;
   descuentos_terceros?: string;
   estatus_laboral?: string;
@@ -45,9 +46,8 @@ export default function AnalistaPage() {
   const [clientes, setClientes] = useState<CalificacionItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [editItem, setEditItem] = useState<CalificacionItem | null>(null);
-  const [formCapacidad, setFormCapacidad] = useState("");
+  const [formCapacidadActualizada, setFormCapacidadActualizada] = useState("");
   const [formTel, setFormTel] = useState("");
-  const [formFiliacion, setFormFiliacion] = useState("");
   const [formEstatus, setFormEstatus] = useState("");
   const [formFechaIngreso, setFormFechaIngreso] = useState("");
   const [saving, setSaving] = useState(false);
@@ -75,23 +75,22 @@ export default function AnalistaPage() {
 
   const handleOpenEdit = (item: CalificacionItem) => {
     setEditItem(item);
-    setFormCapacidad(item.cliente?.capacidad || "");
+    setFormCapacidadActualizada(item.cliente?.capacidad_actualizada || "");
     setFormTel(item.cliente?.tel_1 || "");
-    setFormFiliacion(item.cliente?.filiacion || "");
     setFormEstatus(item.cliente?.estatus_laboral || "");
     setFormFechaIngreso(item.cliente?.fecha_ingreso || "");
   };
 
   const handleSaveCalificacion = async () => {
     if (!editItem) return;
-    if (!formCapacidad.trim()) {
-      toast("La capacidad es requerida", "error");
+    if (!formCapacidadActualizada.trim()) {
+      toast("La capacidad actualizada es requerida", "error");
       return;
     }
 
-    const numVal = parseFloat(formCapacidad);
+    const numVal = parseFloat(formCapacidadActualizada);
     if (isNaN(numVal) || numVal < 0) {
-      toast("La capacidad debe ser un monto válido", "error");
+      toast("La capacidad actualizada debe ser un monto válido", "error");
       return;
     }
     if (!formEstatus) {
@@ -109,9 +108,8 @@ export default function AnalistaPage() {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          capacidad: numVal.toFixed(2),
+          capacidad_actualizada: numVal.toFixed(2),
           tel_1: formTel.trim() || undefined,
-          filiacion: formFiliacion.trim() || undefined,
           estatus_laboral: formEstatus,
           fecha_ingreso: formFechaIngreso,
         }),
@@ -249,9 +247,25 @@ export default function AnalistaPage() {
     },
     {
       id: "capacidad",
-      header: "Capacidad (MXN)",
+      header: "Capacidad Original",
       size: 160,
       accessorFn: (row) => row.cliente?.capacidad ?? "—",
+      cell: ({ getValue }) => {
+        const val = getValue() as string;
+        if (val === "—") return <span className="text-slate-500">—</span>;
+        const num = parseFloat(val);
+        return (
+          <span className="text-slate-300">
+            {isNaN(num) ? val : `$${num.toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+          </span>
+        );
+      },
+    },
+    {
+      id: "capacidad_actualizada",
+      header: "Cap. Actualizada",
+      size: 160,
+      accessorFn: (row) => row.cliente?.capacidad_actualizada ?? "—",
       cell: ({ getValue }) => {
         const val = getValue() as string;
         if (val === "—") return <span className="text-slate-500">—</span>;
@@ -396,13 +410,30 @@ export default function AnalistaPage() {
               </p>
             </div>
           )}
+          {/* Datos de solo lectura */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-slate-500 mb-1">Filiación</label>
+              <p className="px-3 py-2 bg-slate-800/60 border border-slate-700/50 rounded-lg text-sm text-slate-300">
+                {editItem?.cliente?.filiacion || "—"}
+              </p>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-500 mb-1">Capacidad Original</label>
+              <p className="px-3 py-2 bg-slate-800/60 border border-slate-700/50 rounded-lg text-sm text-slate-300">
+                {editItem?.cliente?.capacidad
+                  ? `$${parseFloat(editItem.cliente.capacidad).toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                  : "—"}
+              </p>
+            </div>
+          </div>
           <Input
-            label="Capacidad (MXN)"
+            label="Capacidad Actualizada (MXN)"
             type="number"
             step="0.01"
             min="0"
-            value={formCapacidad}
-            onChange={(e) => setFormCapacidad(e.target.value)}
+            value={formCapacidadActualizada}
+            onChange={(e) => setFormCapacidadActualizada(e.target.value)}
             required
             placeholder="Ej: 50000.00"
           />
@@ -436,12 +467,6 @@ export default function AnalistaPage() {
             value={formTel}
             onChange={(e) => setFormTel(e.target.value)}
             placeholder="Ej: 5512345678"
-          />
-          <Input
-            label="Filiación (opcional)"
-            value={formFiliacion}
-            onChange={(e) => setFormFiliacion(e.target.value)}
-            placeholder="Ej: 1234567890"
           />
         </DialogBody>
         <DialogFooter>

@@ -4,9 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 
 const calificarSchema = z.object({
-  capacidad: z.string().min(1, "La capacidad es requerida"),
+  capacidad_actualizada: z.string().min(1, "La capacidad actualizada es requerida"),
   tel_1: z.string().min(7, "El teléfono debe tener al menos 7 dígitos").optional(),
-  filiacion: z.string().optional(),
   estatus_laboral: z.enum(["Estable", "No estable"], { message: "El estatus es requerido" }),
   fecha_ingreso: z.string().regex(/^\d{2}\/\d{2}\/\d{4}$/, "Formato debe ser dd/mm/aaaa").refine((val) => {
     const [dd, mm, yyyy] = val.split("/").map(Number);
@@ -83,13 +82,12 @@ export async function PUT(
     if (esNoLocalizado) {
       await upsertDato("estatus_calificacion", "No localizado");
     } else {
-      const { capacidad, tel_1, filiacion, estatus_laboral, fecha_ingreso } = calificarSchema.parse(body);
-      await upsertDato("capacidad", capacidad);
+      const { capacidad_actualizada, tel_1, estatus_laboral, fecha_ingreso } = calificarSchema.parse(body);
+      await upsertDato("capacidad_actualizada", capacidad_actualizada);
       await upsertDato("estatus_laboral", estatus_laboral);
       await upsertDato("fecha_ingreso", fecha_ingreso);
       await upsertDato("estatus_calificacion", "Localizado");
       if (tel_1) await upsertDato("tel_1", tel_1);
-      if (filiacion) await upsertDato("filiacion", filiacion);
     }
 
     // Marcar como calificado

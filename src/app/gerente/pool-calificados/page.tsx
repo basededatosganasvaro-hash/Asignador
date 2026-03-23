@@ -18,6 +18,7 @@ interface ClienteData {
   a_materno?: string;
   tel_1?: string;
   capacidad?: string;
+  capacidad_actualizada?: string;
   percepciones_fijas?: string;
   descuentos_terceros?: string;
   convenio?: string;
@@ -219,9 +220,25 @@ export default function PoolCalificadosPage() {
     },
     {
       id: "capacidad",
-      header: "Capacidad",
+      header: "Cap. Original",
       size: 130,
       accessorFn: (row) => row.cliente?.capacidad ?? "—",
+      cell: ({ getValue }) => {
+        const val = getValue() as string;
+        if (val === "—") return <span className="text-slate-500">—</span>;
+        const num = parseFloat(val);
+        return (
+          <span className="text-slate-300">
+            {isNaN(num) ? val : `$${num.toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+          </span>
+        );
+      },
+    },
+    {
+      id: "capacidad_actualizada",
+      header: "Cap. Actualizada",
+      size: 140,
+      accessorFn: (row) => row.cliente?.capacidad_actualizada ?? "—",
       cell: ({ getValue }) => {
         const val = getValue() as string;
         if (val === "—") return <span className="text-slate-500">—</span>;
