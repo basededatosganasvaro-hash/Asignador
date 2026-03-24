@@ -2,12 +2,15 @@
  * Next.js Instrumentation — se ejecuta UNA vez al iniciar el servidor.
  * Sincroniza las etapas y transiciones del embudo desde la definición en código.
  * Si cambias las reglas en este archivo → deploy → la BD se actualiza sola.
- * También inicia el cron interno de check-timers (cada 10 min).
+ * También inicia crons internos:
+ *   - check-timers (cada 10 min)
+ *   - analistas: asignar 8AM / limpiar 12AM (hora México)
  */
 export async function register() {
   if (process.env.NEXT_RUNTIME === "nodejs") {
     await syncEmbudo();
     startTimerCron();
+    startAnalistasCron();
   }
 }
 
@@ -215,6 +218,234 @@ async function checkTimers() {
     }
   } catch (err) {
     console.error("[cron] Error en check-timers:", err instanceof Error ? err.message : err);
+  } finally {
+    await prisma.$disconnect();
+  }
+}
+
+// =============================================
+// CRON INTERNO: ANALISTAS (asignar 8AM, limpiar 12AM — hora México)
+// =============================================
+const ANALISTAS_INTERVAL_MS = 10 * 60 * 1000; // revisa cada 10 min
+const REGISTROS_POR_ANALISTA = 100;
+
+let lastAsignacionDate: string | null = null;
+let lastLimpiezaDate: string | null = null;
+
+function getMexicoDate(): { date: string; hour: number } {
+  const now = new Date();
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Mexico_City",
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", hour12: false,
+  }).formatToParts(now);
+
+  const p: Record<string, string> = {};
+  for (const part of parts) p[part.type] = part.value;
+  return { date: `${p.year}-${p.month}-${p.day}`, hour: parseInt(p.hour) };
+}
+
+function startAnalistasCron() {
+  console.log("[cron] Analistas cron programado (asignar 8AM, limpiar 12AM hora México).");
+
+  setTimeout(() => {
+    checkAnalistas();
+    setInterval(checkAnalistas, ANALISTAS_INTERVAL_MS);
+  }, 90_000); // 90s tras arranque
+}
+
+async function checkAnalistas() {
+  const { date, hour } = getMexicoDate();
+
+  // Asignar lotes: después de las 8AM, una vez al día
+  if (hour >= 8 && hour < 20 && lastAsignacionDate !== date) {
+    await asignarAnalistas();
+    lastAsignacionDate = date;
+  }
+
+  // Limpiar lotes vencidos: después de medianoche, una vez al día
+  if (hour >= 0 && hour < 7 && lastLimpiezaDate !== date) {
+    await limpiarAnalistas();
+    lastLimpiezaDate = date;
+  }
+}
+
+async function asignarAnalistas() {
+  const { PrismaClient } = await import("@prisma/client");
+  const prisma = new PrismaClient();
+
+  // Import dinámico para BD Clientes (generated client separado)
+  const { PrismaClient: PrismaClientClientes } = await import("./generated/prisma-clientes");
+  const prismaClientes = new PrismaClientClientes();
+
+  try {
+    const analistas = await prisma.usuarios.findMany({
+      where: { rol: "analista", activo: true },
+      select: { id: true, nombre: true, region_id: true },
+    });
+
+    if (analistas.length === 0) {
+      console.log("[cron-analistas] No hay analistas activos.");
+      return;
+    }
+
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+
+    // Verificar que no tengan lote de hoy
+    const lotesHoy = await prisma.lotes_analista.findMany({
+      where: { fecha: hoy },
+      select: { analista_id: true },
+    });
+    const analistasConLote = new Set(lotesHoy.map((l) => l.analista_id));
+    const analistasSinLote = analistas.filter((a) => !analistasConLote.has(a.id));
+
+    if (analistasSinLote.length === 0) {
+      console.log("[cron-analistas] Todos los analistas ya tienen lote hoy.");
+      return;
+    }
+
+    // IDs ya calificados o en pool
+    const idsExcluidosRaw = await prisma.$queryRaw<{ cliente_id: number }[]>`
+      SELECT DISTINCT cliente_id FROM calificaciones_analista
+      UNION
+      SELECT DISTINCT cliente_id FROM pool_gerente
+    `;
+    const idsExcluidos = new Set(idsExcluidosRaw.map((r) => r.cliente_id));
+
+    // Cartera IEPPO de BD Clientes
+    const totalNecesario = analistasSinLote.length * REGISTROS_POR_ANALISTA;
+    const clientesIEPPO = await prismaClientes.clientes.findMany({
+      where: {
+        tipo_cliente: "Cartera para calificar IEPPO",
+        id: { notIn: Array.from(idsExcluidos) },
+      },
+      select: { id: true },
+      take: totalNecesario * 2,
+    });
+
+    if (clientesIEPPO.length === 0) {
+      console.log("[cron-analistas] No hay clientes IEPPO disponibles.");
+      return;
+    }
+
+    // Fisher-Yates shuffle
+    const shuffled = [...clientesIEPPO];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+
+    let totalAsignados = 0;
+
+    for (const analista of analistasSinLote) {
+      const clientesParaAnalista = shuffled.splice(0, REGISTROS_POR_ANALISTA);
+      if (clientesParaAnalista.length === 0) break;
+
+      await prisma.$transaction(async (tx) => {
+        const lote = await tx.lotes_analista.create({
+          data: {
+            analista_id: analista.id,
+            fecha: hoy,
+            cantidad: clientesParaAnalista.length,
+            estado: "PENDIENTE",
+          },
+        });
+
+        await tx.calificaciones_analista.createMany({
+          data: clientesParaAnalista.map((c) => ({
+            lote_id: lote.id,
+            analista_id: analista.id,
+            cliente_id: c.id,
+          })),
+        });
+      });
+
+      totalAsignados += clientesParaAnalista.length;
+    }
+
+    console.log(`[cron-analistas] Asignados: ${totalAsignados} registros a ${analistasSinLote.length} analistas.`);
+  } catch (err) {
+    console.error("[cron-analistas] Error en asignación:", err instanceof Error ? err.message : err);
+  } finally {
+    await prisma.$disconnect();
+    await prismaClientes.$disconnect();
+  }
+}
+
+async function limpiarAnalistas() {
+  const { PrismaClient } = await import("@prisma/client");
+  const prisma = new PrismaClient();
+
+  try {
+    const ahora = new Date();
+    const hoyInicio = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
+
+    // Lotes no finalizados de días anteriores
+    const lotesVencidos = await prisma.lotes_analista.findMany({
+      where: {
+        fecha: { lt: hoyInicio },
+        estado: { in: ["PENDIENTE", "EN_PROCESO"] },
+      },
+      select: { id: true },
+    });
+
+    let calificacionesLimpiadas = 0;
+    let lotesLimpiados = 0;
+    let calificadosRescatados = 0;
+
+    if (lotesVencidos.length > 0) {
+      const loteIds = lotesVencidos.map((l) => l.id);
+
+      // Rescatar calificados → pool gerente
+      const calificados = await prisma.calificaciones_analista.findMany({
+        where: { lote_id: { in: loteIds }, calificado: true },
+        include: { analista: { select: { region_id: true } } },
+      });
+
+      if (calificados.length > 0) {
+        const seisMeses = new Date(ahora);
+        seisMeses.setMonth(seisMeses.getMonth() + 6);
+
+        await prisma.pool_gerente.createMany({
+          data: calificados.map((c) => ({
+            cliente_id: c.cliente_id,
+            calificado_por: c.analista_id,
+            region_id: c.analista?.region_id ?? null,
+            expira_at: seisMeses,
+          })),
+          skipDuplicates: true,
+        });
+        calificadosRescatados = calificados.length;
+      }
+
+      // Eliminar calificaciones no completadas
+      const result = await prisma.calificaciones_analista.deleteMany({
+        where: { lote_id: { in: loteIds }, calificado: false },
+      });
+      calificacionesLimpiadas = result.count;
+
+      // Marcar lotes como LIMPIADO
+      await prisma.lotes_analista.updateMany({
+        where: { id: { in: loteIds } },
+        data: { estado: "LIMPIADO" },
+      });
+      lotesLimpiados = loteIds.length;
+    }
+
+    // Limpiar pool_gerente expirado
+    const poolExpirado = await prisma.pool_gerente.deleteMany({
+      where: { expira_at: { lt: ahora }, asignado: false },
+    });
+
+    if (lotesLimpiados > 0 || poolExpirado.count > 0) {
+      console.log(
+        `[cron-analistas] Limpieza: ${lotesLimpiados} lotes, ${calificacionesLimpiadas} calif eliminadas, ` +
+        `${calificadosRescatados} rescatadas al pool, ${poolExpirado.count} pool expirado.`
+      );
+    }
+  } catch (err) {
+    console.error("[cron-analistas] Error en limpieza:", err instanceof Error ? err.message : err);
   } finally {
     await prisma.$disconnect();
   }
