@@ -44,6 +44,7 @@ interface HistorialEntry {
 interface OportunidadDetalle {
   id: number;
   cliente_id: number;
+  origen: string;
   etapa: { id: number; nombre: string; tipo: string; color: string } | null;
   timer_vence: string | null;
   activo: boolean;
@@ -58,6 +59,16 @@ interface OportunidadDetalle {
     estado?: string | null;
     municipio?: string | null;
     oferta?: string | null;
+    // Campos IEPPO / analista
+    filiacion?: string | null;
+    capacidad?: string | null;
+    capacidad_actualizada?: string | null;
+    percepciones_fijas?: string | null;
+    descuentos_terceros?: string | null;
+    estatus_laboral?: string | null;
+    fecha_ingreso?: string | null;
+    estatus_calificacion?: string | null;
+    clave_cct?: string | null;
   };
   transiciones: Transicion[];
   historial: HistorialEntry[];
@@ -211,20 +222,58 @@ export default function OportunidadDetallePage({ params }: { params: Promise<{ i
           <h2 className="text-lg font-semibold text-slate-100 mb-4">Datos del Cliente</h2>
           <div className="flex flex-col gap-3">
             <Row label="Nombre" value={data.cliente.nombres} />
-            <Row label="Convenio" value={data.cliente.convenio} />
-            <Row label="Estado / Municipio" value={`${data.cliente.estado ?? "—"} / ${data.cliente.municipio ?? "—"}`} />
-            <Row label="Oferta" value={data.cliente.oferta} />
-            <Divider />
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-slate-500">Tel 1</p>
-                <p className="text-sm text-slate-200">{data.cliente.tel_1 ?? <em className="text-slate-600">Sin telefono</em>}</p>
-              </div>
-              <Button size="sm" variant="ghost" onClick={() => { setEditTel(data.cliente.tel_1 ?? ""); setEditTelOpen(true); }}>Editar</Button>
-            </div>
-            <Row label="CURP" value={data.cliente.curp} />
-            <Row label="RFC" value={data.cliente.rfc} />
-            <Row label="Num. Empleado" value={data.cliente.num_empleado} />
+            {data.origen === "POOL" ? (
+              <>
+                <Row label="CURP" value={data.cliente.curp} />
+                <Row label="Filiación" value={data.cliente.filiacion} />
+                <Divider />
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-slate-500">Teléfono</p>
+                    <p className="text-sm text-slate-200">{data.cliente.tel_1 ?? <em className="text-slate-600">Sin telefono</em>}</p>
+                  </div>
+                  <Button size="sm" variant="ghost" onClick={() => { setEditTel(data.cliente.tel_1 ?? ""); setEditTelOpen(true); }}>Editar</Button>
+                </div>
+                <Divider />
+                <p className="text-xs text-slate-500 uppercase tracking-wider">Datos de Calificación</p>
+                <Row label="Capacidad Actualizada" value={
+                  data.cliente.capacidad_actualizada
+                    ? `$${parseFloat(data.cliente.capacidad_actualizada).toLocaleString("es-MX", { minimumFractionDigits: 2 })}`
+                    : null
+                } />
+                <Row label="Percepciones Fijas" value={
+                  data.cliente.percepciones_fijas
+                    ? `$${parseFloat(data.cliente.percepciones_fijas).toLocaleString("es-MX", { minimumFractionDigits: 2 })}`
+                    : null
+                } />
+                <Row label="Descuentos Terceros" value={
+                  data.cliente.descuentos_terceros
+                    ? `$${parseFloat(data.cliente.descuentos_terceros).toLocaleString("es-MX", { minimumFractionDigits: 2 })}`
+                    : null
+                } />
+                <Row label="Estatus Laboral" value={data.cliente.estatus_laboral} />
+                <Row label="Fecha de Ingreso" value={data.cliente.fecha_ingreso} />
+                <Row label="Estatus Calificación" value={data.cliente.estatus_calificacion} />
+                {data.cliente.clave_cct && <Row label="Clave CCT" value={data.cliente.clave_cct} />}
+              </>
+            ) : (
+              <>
+                <Row label="Convenio" value={data.cliente.convenio} />
+                <Row label="Estado / Municipio" value={`${data.cliente.estado ?? "—"} / ${data.cliente.municipio ?? "—"}`} />
+                <Row label="Oferta" value={data.cliente.oferta} />
+                <Divider />
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-slate-500">Tel 1</p>
+                    <p className="text-sm text-slate-200">{data.cliente.tel_1 ?? <em className="text-slate-600">Sin telefono</em>}</p>
+                  </div>
+                  <Button size="sm" variant="ghost" onClick={() => { setEditTel(data.cliente.tel_1 ?? ""); setEditTelOpen(true); }}>Editar</Button>
+                </div>
+                <Row label="CURP" value={data.cliente.curp} />
+                <Row label="RFC" value={data.cliente.rfc} />
+                <Row label="Num. Empleado" value={data.cliente.num_empleado} />
+              </>
+            )}
           </div>
         </Card>
 
