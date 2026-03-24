@@ -4,6 +4,7 @@ import { ReactNode } from "react";
 interface StatCardProps {
   title: string;
   value: string | number;
+  subtitle?: string;
   icon: ReactNode;
   color?: "amber" | "blue" | "green" | "red" | "purple" | "teal" | "orange" | "slate";
   className?: string;
@@ -20,7 +21,7 @@ const colorMap: Record<string, { bg: string; text: string; ring: string; gradien
   slate: { bg: "bg-slate-500/10", text: "text-slate-400", ring: "ring-slate-500/20", gradient: "from-slate-500 to-slate-600" },
 };
 
-export default function StatCard({ title, value, icon, color = "amber", className = "" }: StatCardProps) {
+export default function StatCard({ title, value, subtitle, icon, color = "amber", className = "" }: StatCardProps) {
   const c = colorMap[color] || colorMap.amber;
 
   return (
@@ -36,6 +37,7 @@ export default function StatCard({ title, value, icon, color = "amber", classNam
           <p className="font-display text-3xl font-extrabold text-slate-100 mt-1">
             {value}
           </p>
+          {subtitle && <p className="text-sm text-slate-400 mt-0.5">{subtitle}</p>}
         </div>
         <span
           className={`w-10 h-10 rounded-lg flex items-center justify-center ${c.bg} ${c.text} ring-1 ${c.ring}`}
