@@ -36,10 +36,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ error: "La nota no puede exceder 500 caracteres" }, { status: 400 });
   }
 
-  // Cargar oportunidad
+  // Cargar oportunidad (incluir region del promotor para posible recalificación)
   const op = await prisma.oportunidades.findUnique({
     where: { id: Number(id) },
-    include: { etapa: true },
+    include: { etapa: true, usuario: { select: { region_id: true } } },
   });
 
   if (!op || !op.activo) {
@@ -155,6 +155,19 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
             monto: monto ? parseFloat(String(monto)) : null,
             validada: false,
           },
+        });
+      }
+
+      // Si la oportunidad vino del pool de analistas y se devuelve al pool → marcar para recalificación
+      if (deactivate && op.origen === "POOL" && op.cliente_id) {
+        await tx.recalificaciones_pendientes.upsert({
+          where: { cliente_id: op.cliente_id },
+          create: {
+            cliente_id: op.cliente_id,
+            region_id: op.usuario?.region_id ?? null,
+            motivo: "DEVUELTO_POOL",
+          },
+          update: {},
         });
       }
 

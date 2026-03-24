@@ -73,6 +73,7 @@ export async function GET() {
       id: cal.id,
       cliente_id: cal.cliente_id,
       calificado: cal.calificado,
+      recalificar: cal.recalificar,
       cliente: cliente || null,
     };
   });

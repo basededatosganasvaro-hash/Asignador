@@ -812,6 +812,8 @@ model calificaciones_analista {
   cliente_id      Int
   // Referencia a clientes.id en BD Clientes (sin FK constraint — DBs separadas)
   calificado      Boolean  @default(false)
+  recalificar     Boolean  @default(false)
+  // true = registro devuelto del promotor, requiere re-calificación
   created_at      DateTime @default(now())
   updated_at      DateTime @default(now()) @updatedAt
 
@@ -851,4 +853,21 @@ model pool_gerente {
   @@index([region_id, asignado])
   @@index([expira_at])
   @@index([calificado_por])
+}
+
+// =============================================
+// RECALIFICACIONES PENDIENTES — Clientes devueltos del promotor
+// =============================================
+
+model recalificaciones_pendientes {
+  id              Int      @id @default(autoincrement())
+  cliente_id      Int      @unique
+  // Referencia a clientes.id en BD Clientes (sin FK constraint — DBs separadas)
+  region_id       Int?
+  // Región para scope del CRON (asignar al analista de la misma región)
+  motivo          String   @default("DEVUELTO_POOL") @db.VarChar(50)
+  // DEVUELTO_POOL | TIMER_VENCIDO
+  created_at      DateTime @default(now())
+
+  @@index([region_id])
 }

@@ -154,7 +154,11 @@ async function checkTimers() {
           timer_vence: { lt: ahora },
           origen: { not: "CAPACIDADES" },
         },
-        select: { id: true, etapa_id: true, usuario_id: true, etapa: { select: { nombre: true } } },
+        select: {
+          id: true, etapa_id: true, usuario_id: true, origen: true, cliente_id: true,
+          etapa: { select: { nombre: true } },
+          usuario: { select: { region_id: true } },
+        },
         take: BATCH_SIZE,
       });
 
@@ -184,6 +188,21 @@ async function checkTimers() {
             })),
           }),
         ]);
+
+        // Oportunidades POOL devueltas → marcar para recalificación del analista
+        const poolOrigen = alPool.filter((op) => op.origen === "POOL" && op.cliente_id);
+        for (const op of poolOrigen) {
+          await prisma.recalificaciones_pendientes.upsert({
+            where: { cliente_id: op.cliente_id! },
+            create: {
+              cliente_id: op.cliente_id!,
+              region_id: op.usuario?.region_id ?? null,
+              motivo: "TIMER_VENCIDO",
+            },
+            update: {},
+          });
+        }
+
         totalPool += alPool.length;
       }
 
@@ -227,7 +246,7 @@ async function checkTimers() {
 // CRON INTERNO: ANALISTAS (asignar 8AM, limpiar 12AM — hora México)
 // =============================================
 const ANALISTAS_INTERVAL_MS = 10 * 60 * 1000; // revisa cada 10 min
-const REGISTROS_POR_ANALISTA = 100;
+const REGISTROS_POR_ANALISTA = 300;
 
 let lastAsignacionDate: string | null = null;
 let lastLimpiezaDate: string | null = null;
@@ -305,7 +324,7 @@ async function asignarAnalistas() {
       return;
     }
 
-    // IDs ya calificados o en pool
+    // IDs ya calificados o en pool (excluir de nuevas asignaciones)
     const idsExcluidosRaw = await prisma.$queryRaw<{ cliente_id: number }[]>`
       SELECT DISTINCT cliente_id FROM calificaciones_analista
       UNION
@@ -313,7 +332,7 @@ async function asignarAnalistas() {
     `;
     const idsExcluidos = new Set(idsExcluidosRaw.map((r) => r.cliente_id));
 
-    // Cartera IEPPO de BD Clientes
+    // Cartera IEPPO nueva de BD Clientes
     const totalNecesario = analistasSinLote.length * REGISTROS_POR_ANALISTA;
     const clientesIEPPO = await prismaClientes.clientes.findMany({
       where: {
@@ -324,19 +343,38 @@ async function asignarAnalistas() {
       take: totalNecesario * 2,
     });
 
-    if (clientesIEPPO.length === 0) {
-      console.log("[cron-analistas] No hay clientes IEPPO disponibles.");
+    // Si no hay IEPPO nuevos, buscar recalificaciones pendientes
+    let recalificaciones: { id: number; cliente_id: number }[] = [];
+    const hayIEPPOSuficiente = clientesIEPPO.length >= totalNecesario;
+
+    if (!hayIEPPOSuficiente) {
+      recalificaciones = await prisma.recalificaciones_pendientes.findMany({
+        select: { id: true, cliente_id: true },
+        take: totalNecesario - clientesIEPPO.length,
+      });
+    }
+
+    // Combinar: primero IEPPO nuevos, luego recalificaciones (solo si IEPPO no alcanza)
+    const todosClientes: { id: number; recalificar: boolean }[] = [
+      ...clientesIEPPO.map((c) => ({ id: c.id, recalificar: false })),
+      ...recalificaciones.map((r) => ({ id: r.cliente_id, recalificar: true })),
+    ];
+
+    if (todosClientes.length === 0) {
+      console.log("[cron-analistas] No hay clientes IEPPO ni recalificaciones disponibles.");
       return;
     }
 
     // Fisher-Yates shuffle
-    const shuffled = [...clientesIEPPO];
+    const shuffled = [...todosClientes];
     for (let i = shuffled.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
     }
 
     let totalAsignados = 0;
+    let totalRecalificaciones = 0;
+    const recalificacionIdsUsados: number[] = [];
 
     for (const analista of analistasSinLote) {
       const clientesParaAnalista = shuffled.splice(0, REGISTROS_POR_ANALISTA);
@@ -357,14 +395,33 @@ async function asignarAnalistas() {
             lote_id: lote.id,
             analista_id: analista.id,
             cliente_id: c.id,
+            recalificar: c.recalificar,
           })),
         });
       });
 
+      const recals = clientesParaAnalista.filter((c) => c.recalificar);
+      totalRecalificaciones += recals.length;
+      // Guardar IDs de recalificaciones usadas para limpiarlas después
+      for (const r of recals) {
+        const match = recalificaciones.find((rc) => rc.cliente_id === r.id);
+        if (match) recalificacionIdsUsados.push(match.id);
+      }
+
       totalAsignados += clientesParaAnalista.length;
     }
 
-    console.log(`[cron-analistas] Asignados: ${totalAsignados} registros a ${analistasSinLote.length} analistas.`);
+    // Eliminar recalificaciones pendientes que ya fueron asignadas
+    if (recalificacionIdsUsados.length > 0) {
+      await prisma.recalificaciones_pendientes.deleteMany({
+        where: { id: { in: recalificacionIdsUsados } },
+      });
+    }
+
+    console.log(
+      `[cron-analistas] Asignados: ${totalAsignados} registros a ${analistasSinLote.length} analistas` +
+      (totalRecalificaciones > 0 ? ` (${totalRecalificaciones} recalificaciones).` : ".")
+    );
   } catch (err) {
     console.error("[cron-analistas] Error en asignación:", err instanceof Error ? err.message : err);
   } finally {

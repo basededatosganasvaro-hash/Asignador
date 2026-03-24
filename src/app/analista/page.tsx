@@ -29,6 +29,7 @@ interface CalificacionItem {
   id: number;
   cliente_id: number;
   calificado: boolean;
+  recalificar: boolean;
   cliente: ClienteData | null;
 }
 
@@ -291,11 +292,16 @@ export default function AnalistaPage() {
     {
       id: "status",
       header: "Estado",
-      size: 110,
+      size: 140,
       cell: ({ row }) => (
-        <Badge color={row.original.calificado ? "green" : "slate"}>
-          {row.original.calificado ? "Calificado" : "Pendiente"}
-        </Badge>
+        <div className="flex items-center gap-1.5">
+          <Badge color={row.original.calificado ? "green" : "slate"}>
+            {row.original.calificado ? "Calificado" : "Pendiente"}
+          </Badge>
+          {row.original.recalificar && (
+            <Badge color="amber">Recalificar</Badge>
+          )}
+        </div>
       ),
     },
   ];
