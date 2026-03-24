@@ -92,7 +92,7 @@ export default function PoolCalificadosPage() {
       return;
     }
     try {
-      const res = await fetch("/api/admin/usuarios/promotores");
+      const res = await fetch("/api/gerente/pool-analista/promotores");
       if (!res.ok) throw new Error();
       const data = await res.json();
       setPromotores(data);
