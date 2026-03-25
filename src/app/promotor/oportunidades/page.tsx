@@ -786,6 +786,14 @@ function OportunidadesContent() {
         },
       } as ColumnDef<Oportunidad, unknown>,
       {
+        accessorKey: "filiacion",
+        header: "Filiación",
+        size: 120,
+        cell: ({ row }: { row: { original: Oportunidad } }) => (
+          <span className="text-xs text-slate-300">{(row.original.filiacion as string | null) ?? "—"}</span>
+        ),
+      } as ColumnDef<Oportunidad, unknown>,
+      {
         accessorKey: "estatus_laboral",
         header: "Est. Laboral",
         size: 110,

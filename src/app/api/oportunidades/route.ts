@@ -65,6 +65,8 @@ export async function GET() {
           cotizador: true, tasa: true, cat: true, financiera: true, plazo: true,
           monto_solicitado: true, descuento_actual: true, plazo_transcurrido: true,
           plazo_restante: true, cat_actual: true, tasa_actual: true,
+          // IEPPO
+          filiacion: true, percepciones_fijas: true, descuentos_terceros: true,
           // Cartera
           convenio: true, monto_comisionable: true, dependencia: true, estatus: true,
           monto: true, num_empleado: true,
