@@ -573,6 +573,9 @@ function OportunidadesContent() {
     setCapDialog({ open: true, loading: false, data: datos });
   };
 
+  // ─── Flag: hay items POOL en la vista actual ───
+  const hasPoolItems = useMemo(() => filteredByCard.some((r) => r.origen === "POOL"), [filteredByCard]);
+
   // ─── Derive selectedIds from rowSelection ───
   const selectedIds = useMemo(() => {
     return Object.keys(rowSelection).filter((k) => rowSelection[k]).map(Number);
@@ -766,6 +769,32 @@ function OportunidadesContent() {
         ),
       } as ColumnDef<Oportunidad, unknown>,
     ] : []),
+    ...(hasPoolItems ? [
+      {
+        accessorKey: "capacidad_actualizada",
+        header: "Cap. Actualizada",
+        size: 140,
+        cell: ({ row }: { row: { original: Oportunidad } }) => {
+          const val = row.original.capacidad_actualizada as string | null;
+          if (!val) return <span className="text-xs text-slate-600">—</span>;
+          const num = parseFloat(val);
+          return (
+            <span className="text-xs font-semibold text-amber-400">
+              ${isNaN(num) ? val : num.toLocaleString("es-MX", { minimumFractionDigits: 2 })}
+            </span>
+          );
+        },
+      } as ColumnDef<Oportunidad, unknown>,
+      {
+        accessorKey: "estatus_laboral",
+        header: "Est. Laboral",
+        size: 110,
+        cell: ({ row }: { row: { original: Oportunidad } }) => {
+          const val = row.original.estatus_laboral as string | null;
+          return <span className={`text-xs ${val === "Estable" ? "text-green-400" : val === "No estable" ? "text-red-400" : "text-slate-600"}`}>{val ?? "—"}</span>;
+        },
+      } as ColumnDef<Oportunidad, unknown>,
+    ] : []),
     // All client extra columns (hidden by default)
     ...CLIENTE_EXTRA_COLUMNS.map((col) => ({
       accessorKey: col.field,
@@ -896,7 +925,7 @@ function OportunidadesContent() {
       },
     },
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  ], [transMap, transitioning, observaciones, cardFiltro, promotorNombre, plantillas, openEtapaDropdown, dropdownPos, porVencerIds]);
+  ], [transMap, transitioning, observaciones, cardFiltro, hasPoolItems, promotorNombre, plantillas, openEtapaDropdown, dropdownPos, porVencerIds]);
 
   // Destinatarios para la campana: filas seleccionadas con telefono
   const destinatariosSeleccionados = useMemo(() => {
