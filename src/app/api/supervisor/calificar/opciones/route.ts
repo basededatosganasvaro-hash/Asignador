@@ -38,7 +38,7 @@ function parseRangoOferta(rango: string | undefined): { min: number; max: number
   }
 }
 
-const TIPO_CLIENTE_LOCKED = "Compilado Cartera";
+const TIPOS_PERMITIDOS = ["Compilado Cartera", "Cartera para calificar IEPPO"];
 
 export async function GET(req: Request) {
   const { session, error } = await requireSupervisor();
@@ -47,6 +47,8 @@ export async function GET(req: Request) {
   const supervisorId = parseInt(session.user.id);
 
   const { searchParams } = new URL(req.url);
+  const tipo_cliente = searchParams.get("tipo_cliente") || TIPOS_PERMITIDOS[0];
+  const tipoCliente = TIPOS_PERMITIDOS.includes(tipo_cliente) ? tipo_cliente : TIPOS_PERMITIDOS[0];
   const convenio = searchParams.get("convenio") || undefined;
   const estado = searchParams.get("estado") || undefined;
   const municipio = searchParams.get("municipio") || undefined;
@@ -88,9 +90,9 @@ export async function GET(req: Request) {
   type FilterRow = { value: string | null }[];
   const filterPromises: Promise<void>[] = [];
 
-  const convKey = `sup_conv_${TIPO_CLIENTE_LOCKED}`;
-  const estKey = `sup_est_${TIPO_CLIENTE_LOCKED}_${convenio || "*"}`;
-  const munKey = `sup_mun_${TIPO_CLIENTE_LOCKED}_${convenio || "*"}_${estado || "*"}`;
+  const convKey = `sup_conv_${tipoCliente}`;
+  const estKey = `sup_est_${tipoCliente}_${convenio || "*"}`;
+  const munKey = `sup_mun_${tipoCliente}_${convenio || "*"}_${estado || "*"}`;
 
   let convs: string[] = getCachedFilter(convKey) || [];
   let ests: string[] = getCachedFilter(estKey) || [];
@@ -100,7 +102,7 @@ export async function GET(req: Request) {
     filterPromises.push(
       prismaClientes.$queryRawUnsafe<FilterRow>(
         `SELECT DISTINCT convenio AS value FROM clientes WHERE convenio IS NOT NULL AND tipo_cliente = $1 ORDER BY 1`,
-        TIPO_CLIENTE_LOCKED
+        tipoCliente
       ).then((rows) => {
         convs = rows.map((r) => r.value).filter(Boolean) as string[];
         setCachedFilter(convKey, convs);
@@ -110,7 +112,7 @@ export async function GET(req: Request) {
 
   if (!getCachedFilter(estKey)) {
     const clauses: string[] = ["estado IS NOT NULL", `tipo_cliente = $1`];
-    const params: unknown[] = [TIPO_CLIENTE_LOCKED];
+    const params: unknown[] = [tipoCliente];
     if (convenio) { params.push(convenio); clauses.push(`convenio = $${params.length}`); }
     const sql = `SELECT DISTINCT estado AS value FROM clientes WHERE ${clauses.join(" AND ")} ORDER BY 1`;
     filterPromises.push(
@@ -123,7 +125,7 @@ export async function GET(req: Request) {
 
   if (estado && !getCachedFilter(munKey)) {
     const clauses: string[] = ["municipio IS NOT NULL", `tipo_cliente = $1`];
-    const params: unknown[] = [TIPO_CLIENTE_LOCKED];
+    const params: unknown[] = [tipoCliente];
     if (convenio) { params.push(convenio); clauses.push(`convenio = $${params.length}`); }
     params.push(estado); clauses.push(`estado = $${params.length}`);
     const sql = `SELECT DISTINCT municipio AS value FROM clientes WHERE ${clauses.join(" AND ")} ORDER BY 1`;
@@ -138,7 +140,7 @@ export async function GET(req: Request) {
   // ─── COUNT (fresco, con exclusion) ───
   const rangoOferta = parseRangoOferta(rango_oferta);
   const OFERTA_NUM = `CAST(NULLIF(regexp_replace(COALESCE(oferta, ''), '[^0-9]', '', 'g'), '') AS NUMERIC)`;
-  const countParams: unknown[] = [TIPO_CLIENTE_LOCKED];
+  const countParams: unknown[] = [tipoCliente];
   const countClauses: string[] = [`tipo_cliente = $1`];
 
   if (excludeArray.length > 0) {
@@ -167,7 +169,8 @@ export async function GET(req: Request) {
   ]);
 
   return NextResponse.json({
-    tipoCliente: TIPO_CLIENTE_LOCKED,
+    tiposCliente: TIPOS_PERMITIDOS,
+    tipoCliente,
     convenios: convs,
     estados: ests,
     municipios: muns,

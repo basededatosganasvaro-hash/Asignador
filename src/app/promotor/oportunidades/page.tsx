@@ -574,7 +574,7 @@ function OportunidadesContent() {
   };
 
   // ─── Flag: hay items POOL en la vista actual ───
-  const hasPoolItems = useMemo(() => filteredByCard.some((r) => r.origen === "POOL"), [filteredByCard]);
+  const hasPoolItems = useMemo(() => filteredByCard.some((r) => r.origen === "POOL" || r.origen === "POOL_SUPERVISOR"), [filteredByCard]);
 
   // ─── Derive selectedIds from rowSelection ───
   const selectedIds = useMemo(() => {
@@ -771,11 +771,17 @@ function OportunidadesContent() {
     ] : []),
     ...(hasPoolItems ? [
       {
-        accessorKey: "capacidad_actualizada",
+        id: "cap_actualizada_pool",
         header: "Cap. Actualizada",
         size: 140,
-        cell: ({ row }: { row: { original: Oportunidad } }) => {
-          const val = row.original.capacidad_actualizada as string | null;
+        accessorFn: (row: Oportunidad) => {
+          // POOL_SUPERVISOR usa campos sup_, POOL usa campos normales
+          return row.origen === "POOL_SUPERVISOR"
+            ? (row.sup_capacidad_actualizada as string | null)
+            : (row.capacidad_actualizada as string | null);
+        },
+        cell: ({ getValue }: { getValue: () => unknown }) => {
+          const val = getValue() as string | null;
           if (!val) return <span className="text-xs text-slate-600">—</span>;
           const num = parseFloat(val);
           return (
@@ -794,11 +800,16 @@ function OportunidadesContent() {
         ),
       } as ColumnDef<Oportunidad, unknown>,
       {
-        accessorKey: "estatus_laboral",
+        id: "est_laboral_pool",
         header: "Est. Laboral",
         size: 110,
-        cell: ({ row }: { row: { original: Oportunidad } }) => {
-          const val = row.original.estatus_laboral as string | null;
+        accessorFn: (row: Oportunidad) => {
+          return row.origen === "POOL_SUPERVISOR"
+            ? (row.sup_estatus_laboral as string | null)
+            : (row.estatus_laboral as string | null);
+        },
+        cell: ({ getValue }: { getValue: () => unknown }) => {
+          const val = getValue() as string | null;
           return <span className={`text-xs ${val === "Estable" ? "text-green-400" : val === "No estable" ? "text-red-400" : "text-slate-600"}`}>{val ?? "—"}</span>;
         },
       } as ColumnDef<Oportunidad, unknown>,

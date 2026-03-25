@@ -68,6 +68,11 @@ interface OportunidadDetalle {
     estatus_laboral?: string | null;
     fecha_ingreso?: string | null;
     estatus_calificacion?: string | null;
+    // Campos calificados por supervisor (sup_ prefix)
+    sup_capacidad_actualizada?: string | null;
+    sup_estatus_laboral?: string | null;
+    sup_fecha_ingreso?: string | null;
+    sup_estatus_calificacion?: string | null;
     clave_cct?: string | null;
   };
   transiciones: Transicion[];
@@ -222,7 +227,7 @@ export default function OportunidadDetallePage({ params }: { params: Promise<{ i
           <h2 className="text-lg font-semibold text-slate-100 mb-4">Datos del Cliente</h2>
           <div className="flex flex-col gap-3">
             <Row label="Nombre" value={data.cliente.nombres} />
-            {data.origen === "POOL" ? (
+            {(data.origen === "POOL" || data.origen === "POOL_SUPERVISOR") ? (
               <>
                 <Row label="CURP" value={data.cliente.curp} />
                 <Row label="Filiación" value={data.cliente.filiacion} />
@@ -236,11 +241,10 @@ export default function OportunidadDetallePage({ params }: { params: Promise<{ i
                 </div>
                 <Divider />
                 <p className="text-xs text-slate-500 uppercase tracking-wider">Datos de Calificación</p>
-                <Row label="Capacidad Actualizada" value={
-                  data.cliente.capacidad_actualizada
-                    ? `$${parseFloat(data.cliente.capacidad_actualizada).toLocaleString("es-MX", { minimumFractionDigits: 2 })}`
-                    : null
-                } />
+                <Row label="Capacidad Actualizada" value={(() => {
+                  const cap = data.origen === "POOL_SUPERVISOR" ? data.cliente.sup_capacidad_actualizada : data.cliente.capacidad_actualizada;
+                  return cap ? `$${parseFloat(cap).toLocaleString("es-MX", { minimumFractionDigits: 2 })}` : null;
+                })()} />
                 <Row label="Percepciones Fijas" value={
                   data.cliente.percepciones_fijas
                     ? `$${parseFloat(data.cliente.percepciones_fijas).toLocaleString("es-MX", { minimumFractionDigits: 2 })}`
@@ -251,9 +255,9 @@ export default function OportunidadDetallePage({ params }: { params: Promise<{ i
                     ? `$${parseFloat(data.cliente.descuentos_terceros).toLocaleString("es-MX", { minimumFractionDigits: 2 })}`
                     : null
                 } />
-                <Row label="Estatus Laboral" value={data.cliente.estatus_laboral} />
-                <Row label="Fecha de Ingreso" value={data.cliente.fecha_ingreso} />
-                <Row label="Estatus Calificación" value={data.cliente.estatus_calificacion} />
+                <Row label="Estatus Laboral" value={data.origen === "POOL_SUPERVISOR" ? data.cliente.sup_estatus_laboral : data.cliente.estatus_laboral} />
+                <Row label="Fecha de Ingreso" value={data.origen === "POOL_SUPERVISOR" ? data.cliente.sup_fecha_ingreso : data.cliente.fecha_ingreso} />
+                <Row label="Estatus Calificación" value={data.origen === "POOL_SUPERVISOR" ? data.cliente.sup_estatus_calificacion : data.cliente.estatus_calificacion} />
                 {data.cliente.clave_cct && <Row label="Clave CCT" value={data.cliente.clave_cct} />}
               </>
             ) : (

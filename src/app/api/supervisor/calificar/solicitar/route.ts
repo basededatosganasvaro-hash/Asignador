@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { prismaClientes } from "@/lib/prisma-clientes";
 import { requireSupervisor } from "@/lib/auth-utils";
 
-const TIPO_CLIENTE_LOCKED = "Compilado Cartera";
+const TIPOS_PERMITIDOS = ["Compilado Cartera", "Cartera para calificar IEPPO"];
 
 export async function POST(request: Request) {
   const { session, error } = await requireSupervisor();
@@ -12,6 +12,7 @@ export async function POST(request: Request) {
   const supervisorId = parseInt(session.user.id);
 
   let cantidad: number;
+  let tipo_cliente: string;
   let convenio: string | undefined;
   let estado: string | undefined;
   let municipio: string | undefined;
@@ -23,6 +24,10 @@ export async function POST(request: Request) {
     cantidad = Math.floor(Number(body.cantidad));
     if (!Number.isFinite(cantidad) || cantidad < 1) {
       return NextResponse.json({ error: "Cantidad debe ser un numero entero positivo" }, { status: 400 });
+    }
+    tipo_cliente = body.tipo_cliente || TIPOS_PERMITIDOS[0];
+    if (!TIPOS_PERMITIDOS.includes(tipo_cliente)) {
+      return NextResponse.json({ error: "Tipo de cliente no permitido" }, { status: 400 });
     }
     convenio = body.convenio || undefined;
     estado = body.estado || undefined;
@@ -83,7 +88,7 @@ export async function POST(request: Request) {
     const excludeArray = [...idSet];
 
     // Build SQL con filtros
-    const params: unknown[] = [TIPO_CLIENTE_LOCKED];
+    const params: unknown[] = [tipo_cliente];
     const clauses: string[] = [`tipo_cliente = $1`];
 
     if (excludeArray.length > 0) {

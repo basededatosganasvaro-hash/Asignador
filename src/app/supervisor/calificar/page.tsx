@@ -24,15 +24,16 @@ interface ClienteData {
   tel_1?: string;
   filiacion?: string;
   capacidad?: string;
-  capacidad_actualizada?: string;
   percepciones_fijas?: string;
   descuentos_terceros?: string;
-  estatus_laboral?: string;
-  fecha_ingreso?: string;
-  estatus_calificacion?: string;
   convenio?: string;
   estado?: string;
   municipio?: string;
+  // Campos sup_ (calificación del supervisor)
+  sup_capacidad_actualizada?: string;
+  sup_estatus_laboral?: string;
+  sup_fecha_ingreso?: string;
+  sup_estatus_calificacion?: string;
 }
 
 interface CalificacionItem {
@@ -68,6 +69,7 @@ interface Promotor {
 }
 
 interface Opciones {
+  tiposCliente: string[];
   tipoCliente: string;
   convenios: string[];
   estados: string[];
@@ -127,6 +129,7 @@ export default function SupervisorCalificarPage() {
 function SolicitarTab({ toast, onCreated }: { toast: ReturnType<typeof useToast>["toast"]; onCreated: () => void }) {
   const [opciones, setOpciones] = useState<Opciones | null>(null);
   const [loadingOpc, setLoadingOpc] = useState(false);
+  const [tipoCliente, setTipoCliente] = useState("Compilado Cartera");
   const [convenio, setConvenio] = useState("");
   const [estado, setEstado] = useState("");
   const [municipio, setMunicipio] = useState("");
@@ -138,6 +141,7 @@ function SolicitarTab({ toast, onCreated }: { toast: ReturnType<typeof useToast>
   const fetchOpciones = useCallback(async () => {
     setLoadingOpc(true);
     const params = new URLSearchParams();
+    params.set("tipo_cliente", tipoCliente);
     if (convenio) params.set("convenio", convenio);
     if (estado) params.set("estado", estado);
     if (municipio) params.set("municipio", municipio);
@@ -151,7 +155,7 @@ function SolicitarTab({ toast, onCreated }: { toast: ReturnType<typeof useToast>
       toast("Error cargando opciones", "error");
     }
     setLoadingOpc(false);
-  }, [convenio, estado, municipio, rangoOferta, tieneTelefono, toast]);
+  }, [tipoCliente, convenio, estado, municipio, rangoOferta, tieneTelefono, toast]);
 
   useEffect(() => {
     const timer = setTimeout(fetchOpciones, 300);
@@ -168,6 +172,7 @@ function SolicitarTab({ toast, onCreated }: { toast: ReturnType<typeof useToast>
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           cantidad: cant,
+          tipo_cliente: tipoCliente,
           convenio: convenio || undefined,
           estado: estado || undefined,
           municipio: municipio || undefined,
@@ -192,11 +197,14 @@ function SolicitarTab({ toast, onCreated }: { toast: ReturnType<typeof useToast>
   return (
     <Card>
       <h2 className="text-lg font-semibold text-slate-100 mb-4">Solicitar Lote para Calificar</h2>
-      <p className="text-sm text-slate-500 mb-4">
-        Tipo de cliente: <span className="text-amber-400 font-medium">Compilado Cartera</span> (fijo)
-      </p>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-4">
+        <Select
+          label="Tipo de cliente"
+          value={tipoCliente}
+          onChange={(e) => { setTipoCliente(e.target.value); setConvenio(""); setEstado(""); setMunicipio(""); }}
+          options={(opciones?.tiposCliente || ["Compilado Cartera", "Cartera para calificar IEPPO"]).map((t) => ({ value: t, label: t }))}
+        />
         <Select
           label="Convenio"
           value={convenio}
@@ -308,10 +316,10 @@ function MiLoteTab({ toast }: { toast: ReturnType<typeof useToast>["toast"] }) {
 
   const handleOpenEdit = (item: CalificacionItem) => {
     setEditItem(item);
-    setFormCap(item.cliente?.capacidad_actualizada || "");
+    setFormCap(item.cliente?.sup_capacidad_actualizada || "");
     setFormTel(item.cliente?.tel_1 || "");
-    setFormEstatus(item.cliente?.estatus_laboral || "");
-    setFormFecha(item.cliente?.fecha_ingreso || "");
+    setFormEstatus(item.cliente?.sup_estatus_laboral || "");
+    setFormFecha(item.cliente?.sup_fecha_ingreso || "");
   };
 
   const handleSave = async () => {
@@ -416,7 +424,7 @@ function MiLoteTab({ toast }: { toast: ReturnType<typeof useToast>["toast"] }) {
     },
     {
       id: "capacidad_actualizada", header: "Capacidad (MXN)", size: 150,
-      accessorFn: (row) => row.cliente?.capacidad_actualizada ?? "—",
+      accessorFn: (row) => row.cliente?.sup_capacidad_actualizada ?? "—",
       cell: ({ getValue }) => {
         const v = getValue() as string;
         if (v === "—") return <span className="text-slate-500">—</span>;
@@ -426,7 +434,7 @@ function MiLoteTab({ toast }: { toast: ReturnType<typeof useToast>["toast"] }) {
     },
     {
       id: "estatus", header: "Estatus", size: 110,
-      accessorFn: (row) => row.cliente?.estatus_laboral ?? "—",
+      accessorFn: (row) => row.cliente?.sup_estatus_laboral ?? "—",
       cell: ({ getValue }) => {
         const v = getValue() as string;
         if (v === "—") return <span className="text-slate-500">—</span>;
@@ -658,7 +666,7 @@ function MiPoolTab({ toast }: { toast: ReturnType<typeof useToast>["toast"] }) {
     { id: "curp", header: "CURP", size: 180, accessorFn: (row) => row.cliente?.curp ?? "—" },
     {
       id: "capacidad_actualizada", header: "Cap. Actualizada", size: 140,
-      accessorFn: (row) => row.cliente?.capacidad_actualizada ?? "—",
+      accessorFn: (row) => row.cliente?.sup_capacidad_actualizada ?? "—",
       cell: ({ getValue }) => {
         const v = getValue() as string;
         if (v === "—") return <span className="text-slate-500">—</span>;
@@ -668,7 +676,7 @@ function MiPoolTab({ toast }: { toast: ReturnType<typeof useToast>["toast"] }) {
     },
     {
       id: "estatus_laboral", header: "Est. Laboral", size: 110,
-      accessorFn: (row) => row.cliente?.estatus_laboral ?? "—",
+      accessorFn: (row) => row.cliente?.sup_estatus_laboral ?? "—",
       cell: ({ getValue }) => {
         const v = getValue() as string;
         if (v === "—") return <span className="text-slate-500">—</span>;

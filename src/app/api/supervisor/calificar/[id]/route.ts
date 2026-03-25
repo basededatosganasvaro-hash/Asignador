@@ -86,13 +86,13 @@ export async function PUT(
     };
 
     if (esNoLocalizado) {
-      await upsertDato("estatus_calificacion", "No localizado");
+      await upsertDato("sup_estatus_calificacion", "No localizado");
     } else {
       const { capacidad_actualizada, tel_1, estatus_laboral, fecha_ingreso } = calificarSchema.parse(body);
-      await upsertDato("capacidad_actualizada", capacidad_actualizada);
-      await upsertDato("estatus_laboral", estatus_laboral);
-      await upsertDato("fecha_ingreso", fecha_ingreso);
-      await upsertDato("estatus_calificacion", "Localizado");
+      await upsertDato("sup_capacidad_actualizada", capacidad_actualizada);
+      await upsertDato("sup_estatus_laboral", estatus_laboral);
+      await upsertDato("sup_fecha_ingreso", fecha_ingreso);
+      await upsertDato("sup_estatus_calificacion", "Localizado");
       if (tel_1) await upsertDato("tel_1", tel_1);
 
       // Auto-insertar en pool_supervisor (solo si fue calificado, no "no localizado")
