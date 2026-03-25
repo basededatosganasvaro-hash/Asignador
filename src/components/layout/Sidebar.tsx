@@ -3,7 +3,7 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import {
-  LayoutDashboard, Users, Settings, ClipboardList, Building2,
+  LayoutDashboard, Users, Settings, ClipboardList, ClipboardCheck, Building2,
   Map, Building, UsersRound, Briefcase, Filter, TrendingUp,
   Inbox, Scale, ArrowLeftRight, ChevronLeft, Menu, BarChart3, Search, History, Share2,
 } from "lucide-react";
@@ -156,6 +156,7 @@ function SidebarContent({
             <NavItem label="Dashboard" href="/supervisor" icon={<LayoutDashboard className="w-5 h-5" />} pathname={pathname} showLabels={showLabels} exact />
             <NavItem label="Bandeja" href="/supervisor/bandeja" icon={<Inbox className="w-5 h-5" />} pathname={pathname} showLabels={showLabels} />
             <NavItem label="Solicitar Datos" href="/supervisor/asignaciones" icon={<ClipboardList className="w-5 h-5" />} pathname={pathname} showLabels={showLabels} />
+            <NavItem label="Calificar" href="/supervisor/calificar" icon={<ClipboardCheck className="w-5 h-5" />} pathname={pathname} showLabels={showLabels} />
             <NavItem label="Mi Plantilla" href="/supervisor/plantilla" icon={<Users className="w-5 h-5" />} pathname={pathname} showLabels={showLabels} exact />
             <NavItem label="Busqueda" href="/supervisor/busqueda" icon={<Search className="w-5 h-5" />} pathname={pathname} showLabels={showLabels} exact />
             <NavItem label="WhatsApp" href="/supervisor/whatsapp" icon={<WhatsAppIcon />} pathname={pathname} showLabels={showLabels} exact />

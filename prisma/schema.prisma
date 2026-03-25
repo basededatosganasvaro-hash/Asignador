@@ -112,6 +112,8 @@ model usuarios {
   busquedas_clientes_logs busquedas_clientes_logs[]
   lotes_analista          lotes_analista[]
   calificaciones_analista calificaciones_analista[]
+  lotes_supervisor          lotes_supervisor[]
+  calificaciones_supervisor calificaciones_supervisor[]
 
   @@index([username])
   @@index([rol])
@@ -870,4 +872,64 @@ model recalificaciones_pendientes {
   created_at      DateTime @default(now())
 
   @@index([region_id])
+}
+
+// =============================================
+// CALIFICACIÓN SUPERVISOR — Lotes + Pool
+// =============================================
+
+model lotes_supervisor {
+  id              Int      @id @default(autoincrement())
+  supervisor_id   Int
+  fecha           DateTime @default(now()) @db.Date
+  cantidad        Int
+  estado          String   @default("PENDIENTE") @db.VarChar(20)
+  // PENDIENTE | EN_PROCESO | FINALIZADO
+  created_at      DateTime @default(now())
+
+  supervisor      usuarios                    @relation(fields: [supervisor_id], references: [id])
+  calificaciones  calificaciones_supervisor[]
+
+  @@index([supervisor_id])
+  @@index([estado])
+}
+
+model calificaciones_supervisor {
+  id              Int      @id @default(autoincrement())
+  lote_id         Int
+  supervisor_id   Int
+  cliente_id      Int
+  // Referencia a clientes.id en BD Clientes (sin FK constraint — DBs separadas)
+  calificado      Boolean  @default(false)
+  created_at      DateTime @default(now())
+  updated_at      DateTime @default(now()) @updatedAt
+
+  lote       lotes_supervisor @relation(fields: [lote_id], references: [id])
+  supervisor usuarios         @relation(fields: [supervisor_id], references: [id])
+
+  @@unique([lote_id, cliente_id])
+  @@index([supervisor_id])
+  @@index([lote_id, calificado])
+  @@index([cliente_id])
+}
+
+model pool_supervisor {
+  id              Int       @id @default(autoincrement())
+  cliente_id      Int
+  // Referencia a clientes.id en BD Clientes (sin FK constraint — DBs separadas)
+  supervisor_id   Int
+  // supervisor que lo calificó
+  equipo_id       Int?
+  // scope del equipo
+  asignado        Boolean   @default(false)
+  asignado_a      Int?
+  // promotor_id al que fue asignado
+  asignado_at     DateTime?
+  expira_at       DateTime
+  // 6 meses desde calificación
+  created_at      DateTime  @default(now())
+
+  @@unique([cliente_id, supervisor_id])
+  @@index([supervisor_id, asignado])
+  @@index([expira_at])
 }
