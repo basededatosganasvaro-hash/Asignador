@@ -108,8 +108,12 @@ export const authOptions: NextAuthOptions = {
           try {
             const dbUser = await prisma.usuarios.findUnique({
               where: { id: parseInt(token.id as string) },
-              select: { debe_cambiar_password: true, region_id: true, sucursal_id: true, rol: true },
+              select: { debe_cambiar_password: true, region_id: true, sucursal_id: true, rol: true, activo: true, bloqueado_hasta: true },
             });
+            if (!dbUser || !dbUser.activo || (dbUser.bloqueado_hasta && dbUser.bloqueado_hasta > new Date())) {
+              // Usuario desactivado o bloqueado: invalidar sesión
+              return { ...token, invalidated: true };
+            }
             if (dbUser) {
               token.debe_cambiar_password = dbUser.debe_cambiar_password;
               token.region_id = dbUser.region_id ?? null;
@@ -125,6 +129,10 @@ export const authOptions: NextAuthOptions = {
       return token;
     },
     async session({ session, token }) {
+      if (token.invalidated) {
+        // Sesión invalidada: forzar cierre — devolver sesión vacía
+        return { ...session, user: { id: "", email: "", name: "", rol: "", nombre: "" }, expires: new Date(0).toISOString() };
+      }
       if (session.user) {
         session.user.id = token.id as string;
         session.user.rol = token.rol as string;

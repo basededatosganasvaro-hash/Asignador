@@ -242,7 +242,7 @@ export default function ImportCaptacionDialog({ open, onClose, onSuccess, embedd
           <input
             type="file"
             className="hidden"
-            accept=".xlsx,.xls"
+            accept=".xlsx"
             onChange={(e) => {
               setFile(e.target.files?.[0] || null);
               setResult(null);

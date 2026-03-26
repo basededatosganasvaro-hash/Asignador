@@ -19,6 +19,10 @@ export function formatPhoneForWA(telefono: string): string {
   if (tel.length === 10) tel = "521" + tel;
   // Si ya tiene 52 pero sin el 1 (12 dígitos) → insertar el 1
   if (tel.length === 12 && tel.startsWith("52")) tel = "521" + tel.slice(2);
+  // Validar longitud final: debe ser 12-13 dígitos (ej. 521XXXXXXXXXX)
+  if (tel.length < 12 || tel.length > 13) {
+    console.warn(`[formatPhoneForWA] Longitud inesperada (${tel.length} dígitos): ${tel}`);
+  }
   return tel;
 }
 

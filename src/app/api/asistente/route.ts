@@ -12,7 +12,12 @@ export async function POST(request: NextRequest) {
   const { session, error } = await requireAsistente();
   if (error) return error;
 
-  const body = await request.json();
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "JSON inválido" }, { status: 400 });
+  }
   const { mensaje, conversacion_id } = body;
 
   if (!mensaje || typeof mensaje !== "string" || mensaje.trim().length === 0) {

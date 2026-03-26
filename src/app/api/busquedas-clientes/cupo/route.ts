@@ -13,8 +13,15 @@ export async function GET() {
 
   const now = new Date();
   const mx = now.toLocaleDateString("en-CA", { timeZone: MEXICO_TZ });
-  const start = new Date(`${mx}T00:00:00-06:00`);
-  const end = new Date(`${mx}T23:59:59.999-06:00`);
+  // Calcular offset dinámico para DST
+  const offsetFmt = new Intl.DateTimeFormat("en-US", { timeZone: MEXICO_TZ, timeZoneName: "shortOffset" });
+  const offsetPart = offsetFmt.formatToParts(now).find(p => p.type === "timeZoneName")?.value || "GMT-6";
+  const offsetStr = offsetPart.replace("GMT", "") || "+0";
+  const sign = offsetStr.startsWith("-") ? "-" : "+";
+  const absHours = Math.abs(parseInt(offsetStr));
+  const offset = `${sign}${String(absHours).padStart(2, "0")}:00`;
+  const start = new Date(`${mx}T00:00:00${offset}`);
+  const end = new Date(`${mx}T23:59:59.999${offset}`);
 
   const limite = parseInt(await getConfig("max_busquedas_por_dia") || "50");
   const usadas = await prisma.busquedas_clientes.count({

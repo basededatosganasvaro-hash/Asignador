@@ -31,7 +31,7 @@ interface SidebarProps {
 export default function Sidebar({ rol, open, onToggle }: SidebarProps) {
   const pathname = usePathname();
 
-  const isOperaciones = rol === "operaciones";
+  const isOperaciones = rol === "gestor_operaciones";
   const isSupervisor = rol === "supervisor";
   const isAsesorDigital = rol === "asesor_digital";
   const isGerente = rol === "gerente_regional" || rol === "gerente_sucursal";

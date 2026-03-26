@@ -7,11 +7,14 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   if (error) return error;
 
   const { id } = await params;
+  const entityId = parseInt(id);
+  if (isNaN(entityId)) return NextResponse.json({ error: "ID inválido" }, { status: 400 });
+
   const body = await req.json();
   const { nombre_accion, requiere_nota, requiere_supervisor, devuelve_al_pool, activo } = body;
 
   const updated = await prisma.embudo_transiciones.update({
-    where: { id: Number(id) },
+    where: { id: entityId },
     data: {
       ...(nombre_accion !== undefined && { nombre_accion }),
       ...(requiere_nota !== undefined && { requiere_nota }),

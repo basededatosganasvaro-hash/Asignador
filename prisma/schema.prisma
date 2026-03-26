@@ -115,7 +115,6 @@ model usuarios {
   lotes_supervisor          lotes_supervisor[]
   calificaciones_supervisor calificaciones_supervisor[]
 
-  @@index([username])
   @@index([rol])
 }
 
@@ -890,7 +889,7 @@ model lotes_supervisor {
   supervisor      usuarios                    @relation(fields: [supervisor_id], references: [id])
   calificaciones  calificaciones_supervisor[]
 
-  @@index([supervisor_id])
+  @@unique([supervisor_id, fecha])
   @@index([estado])
 }
 

@@ -226,7 +226,7 @@ export async function POST(request: Request) {
     const limitParam = `$${params.length}`;
 
     const whereClause = clauses.length > 0 ? `WHERE ${clauses.join(" AND ")}` : "";
-    const sql = `SELECT id FROM clientes ${whereClause} ORDER BY id ASC LIMIT ${limitParam}`;
+    const sql = `SELECT id FROM clientes ${whereClause} ORDER BY RANDOM() LIMIT ${limitParam}`;
 
     const records = await prismaClientes.$queryRawUnsafe<{ id: number }[]>(sql, ...params);
 

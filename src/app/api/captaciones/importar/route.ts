@@ -119,6 +119,9 @@ export async function POST(req: Request) {
   const etapaAsignado = await prisma.embudo_etapas.findFirst({
     where: { nombre: "Asignado", activo: true },
   });
+  if (!etapaAsignado) {
+    return NextResponse.json({ error: "Etapa 'Asignado' no encontrada. Contacta al administrador." }, { status: 500 });
+  }
   const timerConfig = await prisma.configuracion.findUnique({
     where: { clave: "timer_captacion_horas" },
   });

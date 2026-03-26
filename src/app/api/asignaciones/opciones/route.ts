@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { prismaClientes } from "@/lib/prisma-clientes";
-import { requireAuth } from "@/lib/auth-utils";
+import { requirePromotor } from "@/lib/auth-utils";
 
 /**
  * GET /api/asignaciones/opciones
@@ -16,7 +16,7 @@ import { requireAuth } from "@/lib/auth-utils";
  *   disponibles  → conteo con todos los filtros + excluye activos
  */
 export async function GET(req: Request) {
-  const { session, error } = await requireAuth();
+  const { session, error } = await requirePromotor();
   if (error) return error;
 
   const userId = parseInt(session.user.id);
@@ -98,7 +98,7 @@ export async function GET(req: Request) {
   if (convenio)     { countParams.push(convenio);     countClauses.push(`convenio = $${countParams.length}`); }
   if (estado)       { countParams.push(estado);       countClauses.push(`estado = $${countParams.length}`); }
   if (municipio)    { countParams.push(municipio);    countClauses.push(`municipio = $${countParams.length}`); }
-  if (tiene_telefono) countClauses.push(`tel_1 IS NOT NULL`);
+  if (tiene_telefono) countClauses.push(`tel_1 IS NOT NULL AND TRIM(tel_1) != ''`);
   if (rangoOferta) {
     countParams.push(rangoOferta.min);
     countClauses.push(`${OFERTA_NUM} >= $${countParams.length}`);

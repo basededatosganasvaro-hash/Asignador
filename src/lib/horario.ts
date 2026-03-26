@@ -19,10 +19,26 @@ interface HorarioResult {
   horarioFin?: string;
 }
 
+/**
+ * Retorna un Date cuyos campos UTC corresponden a la hora actual en Mexico.
+ * Usa Intl.DateTimeFormat con partes explícitas para evitar parsing ambiguo
+ * y funciona correctamente tanto en UTC-6 (invierno) como UTC-5 (verano/DST).
+ */
 function getHoraMexico(): Date {
   const now = new Date();
-  const mexicoStr = now.toLocaleString("en-US", { timeZone: ZONA_HORARIA });
-  return new Date(mexicoStr);
+  const fmt = new Intl.DateTimeFormat("en-US", {
+    timeZone: ZONA_HORARIA,
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", second: "2-digit",
+    hour12: false,
+  });
+  const parts = Object.fromEntries(
+    fmt.formatToParts(now).map((p) => [p.type, p.value])
+  );
+  return new Date(
+    Number(parts.year), Number(parts.month) - 1, Number(parts.day),
+    Number(parts.hour) % 24, Number(parts.minute), Number(parts.second)
+  );
 }
 
 export function verificarHorario(config?: {
@@ -86,19 +102,30 @@ export function calcularTimerVence(
   const fin = config?.horario_fin || HORARIO_FIN_DEFAULT;
   const diasPermitidos = config?.dias_operativos || DIAS_OPERATIVOS_DEFAULT;
 
+  // M3: Protección contra loop infinito si dias_operativos está vacío
+  if (diasPermitidos.length === 0) {
+    return new Date(Date.now() + diasTimer * 24 * 60 * 60 * 1000);
+  }
+
   const [hInicio, mInicio] = inicio.split(":").map(Number);
   const [hFin, mFin] = fin.split(":").map(Number);
   const minutosInicio = hInicio * 60 + mInicio;
   const minutosFin = hFin * 60 + mFin;
   const minutosOperativosPorDia = minutosFin - minutosInicio;
 
+  if (minutosOperativosPorDia <= 0) {
+    return new Date(Date.now() + diasTimer * 24 * 60 * 60 * 1000);
+  }
+
   let minutosRestantes = diasTimer * minutosOperativosPorDia;
   const cursor = getHoraMexico();
+  const MAX_ITERATIONS = 365; // safety limit
 
   // Avanzar al próximo momento operativo si estamos fuera de horario
   const avanzarAProximaVentana = () => {
+    let guard = 0;
     // Si es fin de semana o fuera de días operativos, avanzar al próximo día operativo
-    while (!diasPermitidos.includes(cursor.getDay())) {
+    while (!diasPermitidos.includes(cursor.getDay()) && ++guard < MAX_ITERATIONS) {
       cursor.setDate(cursor.getDate() + 1);
       cursor.setHours(hInicio, mInicio, 0, 0);
     }
@@ -109,7 +136,8 @@ export function calcularTimerVence(
       // Pasar al siguiente día operativo
       cursor.setDate(cursor.getDate() + 1);
       cursor.setHours(hInicio, mInicio, 0, 0);
-      while (!diasPermitidos.includes(cursor.getDay())) {
+      let g2 = 0;
+      while (!diasPermitidos.includes(cursor.getDay()) && ++g2 < MAX_ITERATIONS) {
         cursor.setDate(cursor.getDate() + 1);
       }
     }
@@ -117,7 +145,8 @@ export function calcularTimerVence(
 
   avanzarAProximaVentana();
 
-  while (minutosRestantes > 0) {
+  let loopGuard = 0;
+  while (minutosRestantes > 0 && ++loopGuard < MAX_ITERATIONS * 2) {
     const minutosActuales = cursor.getHours() * 60 + cursor.getMinutes();
     const minutosHastaFin = minutosFin - minutosActuales;
 
@@ -129,7 +158,8 @@ export function calcularTimerVence(
       // Saltar al siguiente día operativo
       cursor.setDate(cursor.getDate() + 1);
       cursor.setHours(hInicio, mInicio, 0, 0);
-      while (!diasPermitidos.includes(cursor.getDay())) {
+      let g3 = 0;
+      while (!diasPermitidos.includes(cursor.getDay()) && ++g3 < MAX_ITERATIONS) {
         cursor.setDate(cursor.getDate() + 1);
       }
     }

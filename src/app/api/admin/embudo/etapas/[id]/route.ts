@@ -7,6 +7,9 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   if (error) return error;
 
   const { id } = await params;
+  const entityId = parseInt(id);
+  if (isNaN(entityId)) return NextResponse.json({ error: "ID inválido" }, { status: 400 });
+
   const body = await req.json();
   const { nombre, orden, tipo, timer_dias, color, activo } = body;
 
@@ -15,7 +18,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   }
 
   const updated = await prisma.embudo_etapas.update({
-    where: { id: Number(id) },
+    where: { id: entityId },
     data: {
       ...(nombre !== undefined && { nombre }),
       ...(orden !== undefined && { orden: Number(orden) }),

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireSupervisor } from "@/lib/auth-utils";
 import { prisma } from "@/lib/prisma";
+import { calcularTimerVenceConConfig } from "@/lib/horario";
 import { z } from "zod";
 
 const asignarSchema = z.object({
@@ -44,25 +45,27 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Promotor no encontrado o no pertenece a tu equipo" }, { status: 400 });
   }
 
-  // Verificar que los pool_ids pertenecen al supervisor y no estan asignados
-  const poolItems = await prisma.pool_supervisor.findMany({
-    where: {
-      id: { in: pool_ids },
-      supervisor_id: supervisorId,
-      asignado: false,
-    },
-  });
-
-  if (poolItems.length === 0) {
-    return NextResponse.json({ error: "Los registros ya fueron asignados o no te pertenecen" }, { status: 400 });
-  }
-
   const ahora = new Date();
 
-  await prisma.$transaction(async (tx) => {
-    // Marcar como asignados en pool
+  const result = await prisma.$transaction(async (tx) => {
+    // Verificar DENTRO de la transacción para evitar race condition
+    // M17: Filtrar expirados para evitar asignar items caducados
+    const poolItems = await tx.pool_supervisor.findMany({
+      where: {
+        id: { in: pool_ids },
+        supervisor_id: supervisorId,
+        asignado: false,
+        expira_at: { gt: ahora },
+      },
+    });
+
+    if (poolItems.length === 0) {
+      return { error: "Los registros ya fueron asignados o no te pertenecen" } as const;
+    }
+
+    // Marcar como asignados en pool con WHERE asignado = false para atomicidad
     await tx.pool_supervisor.updateMany({
-      where: { id: { in: poolItems.map((p) => p.id) } },
+      where: { id: { in: poolItems.map((p) => p.id) }, asignado: false },
       data: {
         asignado: true,
         asignado_a: promotor_id,
@@ -84,6 +87,11 @@ export async function POST(req: Request) {
       where: { nombre: "Asignado", activo: true },
     });
 
+    // Calcular timer_vence para que las oportunidades escalen correctamente
+    const timerVence = etapaAsignado?.timer_dias
+      ? await calcularTimerVenceConConfig(etapaAsignado.timer_dias)
+      : null;
+
     // Crear oportunidades
     await tx.oportunidades.createMany({
       data: poolItems.map((item) => ({
@@ -92,6 +100,7 @@ export async function POST(req: Request) {
         etapa_id: etapaAsignado?.id ?? null,
         origen: "POOL_SUPERVISOR",
         lote_id: lote.id,
+        timer_vence: timerVence,
         activo: true,
       })),
     });
@@ -110,11 +119,17 @@ export async function POST(req: Request) {
         nota: `Asignacion desde pool calificado por supervisor`,
       })),
     });
+
+    return { ok: true, asignados: poolItems.length } as const;
   });
+
+  if ("error" in result) {
+    return NextResponse.json({ error: result.error }, { status: 400 });
+  }
 
   return NextResponse.json({
     ok: true,
-    asignados: poolItems.length,
+    asignados: result.asignados,
     promotor: promotor.nombre,
   });
 }

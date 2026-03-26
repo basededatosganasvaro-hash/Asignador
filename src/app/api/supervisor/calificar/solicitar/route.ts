@@ -120,7 +120,7 @@ export async function POST(request: Request) {
     }
 
     params.push(cantidad);
-    const sql = `SELECT id FROM clientes WHERE ${clauses.join(" AND ")} ORDER BY id ASC LIMIT $${params.length}`;
+    const sql = `SELECT id FROM clientes WHERE ${clauses.join(" AND ")} ORDER BY RANDOM() LIMIT $${params.length}`;
 
     const records = await prismaClientes.$queryRawUnsafe<{ id: number }[]>(sql, ...params);
 

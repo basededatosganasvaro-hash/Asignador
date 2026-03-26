@@ -29,5 +29,5 @@ export async function POST(req: Request) {
     create: { convenio, campo, obligatorio: obligatorio ?? true },
   });
 
-  return NextResponse.json(regla, { status: 201 });
+  return NextResponse.json(regla);
 }

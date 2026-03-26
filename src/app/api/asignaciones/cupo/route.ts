@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAuth } from "@/lib/auth-utils";
+import { requirePromotor } from "@/lib/auth-utils";
 
 /**
  * GET /api/asignaciones/cupo
  * Devuelve el cupo diario restante del promotor autenticado.
  */
 export async function GET() {
-  const { session, error } = await requireAuth();
+  const { session, error } = await requirePromotor();
   if (error) return error;
 
   const userId = parseInt(session.user.id);

@@ -57,6 +57,10 @@ export async function PUT(
     return NextResponse.json({ error: "Calificación no encontrada" }, { status: 404 });
   }
 
+  if (calificacion.calificado) {
+    return NextResponse.json({ error: "Ya calificado" }, { status: 400 });
+  }
+
   if (calificacion.lote.estado === "FINALIZADO" || calificacion.lote.estado === "LIMPIADO") {
     return NextResponse.json({ error: "El lote ya fue finalizado" }, { status: 400 });
   }

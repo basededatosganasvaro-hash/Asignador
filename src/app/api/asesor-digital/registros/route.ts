@@ -70,7 +70,7 @@ export async function POST(request: Request) {
       usuario_id: Number(session.user.id),
       etapa: body.etapa,
       nombre_cliente: body.nombre_cliente.trim(),
-      fecha: body.fecha ? new Date(body.fecha) : new Date(),
+      fecha: body.fecha && !isNaN(new Date(body.fecha).getTime()) ? new Date(body.fecha) : new Date(),
       status: body.status,
       estrategia: body.estrategia || null,
       flujo: body.flujo || null,

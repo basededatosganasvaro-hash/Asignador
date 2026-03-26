@@ -971,7 +971,7 @@ export default function ConfiguracionPage() {
             <input
               ref={adFileRef}
               type="file"
-              accept=".xlsx,.xls"
+              accept=".xlsx"
               onChange={(e) => {
                 setAdFile(e.target.files?.[0] || null);
                 setAdResult(null);

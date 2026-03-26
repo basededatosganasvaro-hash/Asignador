@@ -6,8 +6,8 @@ import { getConfigBatch } from "@/lib/config-cache";
 
 // ─── Caches ──────────────────────────────────────────────────────────────────
 
-// Exclusion IDs cache (60s)
-let excludeCache: { ids: number[]; expiry: number; key: string } | null = null;
+// M16: Exclusion IDs cache per supervisor (60s) — no longer single-slot overwrite
+const excludeCacheMap = new Map<string, { ids: number[]; expiry: number }>();
 
 // DISTINCT filter values cache (5 min) — dropdown options barely change
 const filterCache = new Map<string, { data: string[]; expiry: number }>();
@@ -91,8 +91,9 @@ export async function GET(req: Request) {
   const cacheKey = `${targetUserId}_${cooldownMeses}`;
   let excludeArray: number[];
 
-  if (excludeCache && excludeCache.key === cacheKey && Date.now() < excludeCache.expiry) {
-    excludeArray = excludeCache.ids;
+  const cached = excludeCacheMap.get(cacheKey);
+  if (cached && Date.now() < cached.expiry) {
+    excludeArray = cached.ids;
   } else {
     const excludeRows = await prisma.$queryRaw<{ cliente_id: number }[]>`
       SELECT DISTINCT cliente_id FROM oportunidades
@@ -100,7 +101,14 @@ export async function GET(req: Request) {
         AND (activo = true OR (usuario_id = ${targetUserId} AND created_at >= ${cooldownDate}))
     `;
     excludeArray = excludeRows.map((r) => r.cliente_id);
-    excludeCache = { ids: excludeArray, expiry: Date.now() + 60_000, key: cacheKey };
+    excludeCacheMap.set(cacheKey, { ids: excludeArray, expiry: Date.now() + 60_000 });
+    // Evict expired entries
+    if (excludeCacheMap.size > 50) {
+      const now = Date.now();
+      for (const [k, v] of excludeCacheMap) {
+        if (now > v.expiry) excludeCacheMap.delete(k);
+      }
+    }
   }
 
   // ─── DISTINCT filter values (cached 5 min, SIN exclusion para velocidad) ───

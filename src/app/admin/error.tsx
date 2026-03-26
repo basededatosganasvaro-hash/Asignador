@@ -16,7 +16,9 @@ export default function AdminError({
         <div>
           <p className="font-semibold">Ocurrio un error al cargar la pagina</p>
           <p className="text-sm text-red-400 mt-1">
-            {error.message || "Error inesperado. Intenta recargar la pagina."}
+            {process.env.NODE_ENV === "development"
+              ? (error.message || "Error inesperado. Intenta recargar la pagina.")
+              : "Error inesperado. Intenta recargar la pagina."}
           </p>
         </div>
       </div>

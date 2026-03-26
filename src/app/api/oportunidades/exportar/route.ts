@@ -77,15 +77,7 @@ export async function POST(req: Request) {
       captacion: { select: { convenio: true, datos_json: true } },
     },
     orderBy: { created_at: "asc" },
-    take: MAX_REGISTROS_DESCARGA + 1, // +1 para detectar exceso
   });
-
-  if (oportunidades.length > MAX_REGISTROS_DESCARGA) {
-    return NextResponse.json(
-      { error: `El resultado excede ${MAX_REGISTROS_DESCARGA} registros. Aplica más filtros.` },
-      { status: 400 }
-    );
-  }
 
   if (oportunidades.length === 0) {
     return NextResponse.json({ error: "No hay registros que coincidan con los filtros" }, { status: 404 });
@@ -194,6 +186,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "No hay registros que coincidan con los filtros" }, { status: 404 });
   }
 
+  if (rows.length > MAX_REGISTROS_DESCARGA) {
+    return NextResponse.json(
+      { error: `El resultado excede ${MAX_REGISTROS_DESCARGA} registros (${rows.length} encontrados). Aplica más filtros.` },
+      { status: 400 }
+    );
+  }
+
   // 6. Registrar descarga en historial
   await prisma.historial.create({
     data: {
@@ -248,7 +247,7 @@ export async function POST(req: Request) {
   return new NextResponse(buffer, {
     headers: {
       "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      "Content-Disposition": `attachment; filename=oportunidades_${fecha_desde}_${fecha_hasta}.xlsx`,
+      "Content-Disposition": `attachment; filename=oportunidades_${String(fecha_desde).replace(/[^a-zA-Z0-9_-]/g, "")}_${String(fecha_hasta).replace(/[^a-zA-Z0-9_-]/g, "")}.xlsx`,
     },
   });
 }

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { prismaClientes } from "@/lib/prisma-clientes";
-import { requireAuth } from "@/lib/auth-utils";
+import { requirePromotor } from "@/lib/auth-utils";
 import { verificarHorarioConConfig, calcularTimerVenceConConfig } from "@/lib/horario";
 import { getConfig } from "@/lib/config-cache";
 import { Prisma } from "@prisma/client";
@@ -22,7 +22,7 @@ async function withRetry<T>(fn: () => Promise<T>, maxRetries = 3): Promise<T> {
 
 // GET: Listar lotes del usuario autenticado
 export async function GET() {
-  const { session, error } = await requireAuth();
+  const { session, error } = await requirePromotor();
   if (error) return error;
 
   const userId = parseInt(session.user.id);
@@ -105,7 +105,7 @@ export async function GET() {
 
 // POST: Solicitar nuevo lote de asignacion
 export async function POST(request: Request) {
-  const { session, error } = await requireAuth();
+  const { session, error } = await requirePromotor();
   if (error) return error;
 
   // Validar horario operativo
@@ -182,6 +182,7 @@ export async function POST(request: Request) {
     const cooldownStr = await getConfig("cooldown_meses");
     const cooldownMeses = parseInt(cooldownStr || "3");
     const cooldownDate = new Date();
+    cooldownDate.setDate(1); // avoid month overflow
     cooldownDate.setMonth(cooldownDate.getMonth() - cooldownMeses);
 
     const excludeRows = await prisma.$queryRaw<{ cliente_id: number }[]>`

@@ -1,14 +1,14 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { prismaClientes } from "@/lib/prisma-clientes";
-import { requireAuth } from "@/lib/auth-utils";
+import { requirePromotor } from "@/lib/auth-utils";
 import { generateExcelBuffer } from "@/lib/excel";
 
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { session, error } = await requireAuth();
+  const { session, error } = await requirePromotor();
   if (error) return error;
 
   const { id } = await params;

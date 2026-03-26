@@ -77,7 +77,7 @@ export async function PUT(
     data: {
       ...(body.etapa !== undefined && { etapa: body.etapa }),
       ...(body.nombre_cliente !== undefined && { nombre_cliente: truncateStr(String(body.nombre_cliente).trim(), "nombre_cliente") || existing.nombre_cliente }),
-      ...(body.fecha !== undefined && { fecha: new Date(body.fecha) }),
+      ...(body.fecha !== undefined && { fecha: isNaN(new Date(body.fecha).getTime()) ? existing.fecha : new Date(body.fecha) }),
       ...(body.status !== undefined && { status: body.status }),
       ...(body.estrategia !== undefined && { estrategia: truncateStr(body.estrategia, "estrategia") }),
       ...(body.flujo !== undefined && { flujo: truncateStr(body.flujo, "flujo") }),
@@ -93,7 +93,7 @@ export async function PUT(
       ...(body.convenio !== undefined && { convenio: truncateStr(body.convenio, "convenio") }),
       ...(body.etiqueta !== undefined && { etiqueta: truncateStr(body.etiqueta, "etiqueta") }),
       ...(body.oferta !== undefined && { oferta: truncateStr(body.oferta, "oferta") }),
-      ...(body.motivo !== undefined && { motivo: body.motivo as string }),
+      ...(body.motivo !== undefined && { motivo: typeof body.motivo === "string" ? body.motivo.slice(0, 1000) : null }),
       ...(body.id_venta !== undefined && { id_venta: truncateStr(body.id_venta, "id_venta") }),
       ...(body.viabilidad !== undefined && { viabilidad: truncateStr(body.viabilidad, "viabilidad") }),
     },

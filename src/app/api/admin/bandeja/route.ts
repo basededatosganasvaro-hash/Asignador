@@ -10,15 +10,15 @@ export async function GET() {
   const userId = Number(session!.user.id);
   const rol = session!.user.rol;
 
-  // Scope: supervisor solo ve su equipo, admin ve todo
+  // Scope: supervisor solo ve su equipo (via equipos.supervisor_id), admin ve todo
   let equipoFilter = {};
   if (rol === "supervisor") {
-    const sup = await prisma.usuarios.findUnique({
-      where: { id: userId },
-      select: { equipo_id: true },
+    const equipo = await prisma.equipos.findFirst({
+      where: { supervisor_id: userId },
+      select: { id: true },
     });
-    if (sup?.equipo_id) {
-      equipoFilter = { usuario: { equipo_id: sup.equipo_id } };
+    if (equipo) {
+      equipoFilter = { usuario: { equipo_id: equipo.id } };
     }
   }
 

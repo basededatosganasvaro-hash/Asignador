@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { prismaClientes } from "@/lib/prisma-clientes";
 
-const REGISTROS_POR_ANALISTA = 300;
+const REGISTROS_POR_ANALISTA = 100;
 
 export async function POST(req: Request) {
   const authHeader = req.headers.get("authorization");
@@ -12,6 +12,15 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  // Advisory lock para evitar ejecución concurrente (C8)
+  const lockAcquired = await prisma.$queryRaw<{ pg_try_advisory_lock: boolean }[]>`
+    SELECT pg_try_advisory_lock(100001)
+  `;
+  if (!lockAcquired[0]?.pg_try_advisory_lock) {
+    return NextResponse.json({ message: "CRON ya en ejecución", asignados: 0 });
+  }
+
+  try {
   const analistas = await prisma.usuarios.findMany({
     where: { rol: "analista", activo: true },
     select: { id: true, nombre: true, region_id: true },
@@ -35,22 +44,32 @@ export async function POST(req: Request) {
     return NextResponse.json({ message: "Todos los analistas ya tienen lote hoy", asignados: 0 });
   }
 
+  // Obtener IDs excluidos de BD Sistema via raw SQL (una sola query, sin cargar en JS)
   const idsExcluidosRaw = await prisma.$queryRaw<{ cliente_id: number }[]>`
     SELECT DISTINCT cliente_id FROM calificaciones_analista
     UNION
     SELECT DISTINCT cliente_id FROM pool_gerente
   `;
-  const idsExcluidos = new Set(idsExcluidosRaw.map((r) => r.cliente_id));
+  const idsExcluidos = idsExcluidosRaw.map((r) => r.cliente_id);
 
   const totalNecesario = analistasSinLote.length * REGISTROS_POR_ANALISTA;
-  const clientesIEPPO = await prismaClientes.clientes.findMany({
-    where: {
-      tipo_cliente: "Cartera para calificar IEPPO",
-      id: { notIn: Array.from(idsExcluidos) },
-    },
-    select: { id: true },
-    take: totalNecesario * 2,
-  });
+
+  // Usar != ALL($1::int[]) en vez de NOT IN con parámetros individuales para evitar
+  // exceder el límite de 65535 parámetros de PostgreSQL
+  const clientesIEPPO = idsExcluidos.length > 0
+    ? await prismaClientes.$queryRaw<{ id: number }[]>`
+        SELECT id FROM clientes
+        WHERE tipo_cliente = 'Cartera para calificar IEPPO'
+          AND id != ALL(${idsExcluidos}::int[])
+        ORDER BY RANDOM()
+        LIMIT ${totalNecesario}
+      `
+    : await prismaClientes.$queryRaw<{ id: number }[]>`
+        SELECT id FROM clientes
+        WHERE tipo_cliente = 'Cartera para calificar IEPPO'
+        ORDER BY RANDOM()
+        LIMIT ${totalNecesario}
+      `;
 
   // Si no hay IEPPO suficiente, buscar recalificaciones pendientes
   let recalificaciones: { id: number; cliente_id: number }[] = [];
@@ -131,4 +150,7 @@ export async function POST(req: Request) {
     total_recalificaciones: totalRecalificaciones,
     registros_por_analista: REGISTROS_POR_ANALISTA,
   });
+  } finally {
+    await prisma.$queryRaw`SELECT pg_advisory_unlock(100001)`;
+  }
 }

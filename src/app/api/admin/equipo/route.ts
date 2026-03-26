@@ -11,11 +11,11 @@ export async function GET() {
 
   let equipoId: number | undefined;
   if (rol === "supervisor") {
-    const sup = await prisma.usuarios.findUnique({
-      where: { id: userId },
-      select: { equipo_id: true },
+    const equipo = await prisma.equipos.findFirst({
+      where: { supervisor_id: userId },
+      select: { id: true },
     });
-    equipoId = sup?.equipo_id ?? undefined;
+    equipoId = equipo?.id ?? undefined;
   }
 
   const promotores = await prisma.usuarios.findMany({

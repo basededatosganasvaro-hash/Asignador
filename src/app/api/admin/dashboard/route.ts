@@ -57,7 +57,7 @@ export async function GET() {
   return NextResponse.json({
     totalClientes,
     clientesAsignados,
-    clientesDisponibles: totalClientes - clientesAsignados,
+    clientesDisponibles: Math.max(0, totalClientes - clientesAsignados),
     totalPromotores,
     lotesHoy,
     porPromotor,

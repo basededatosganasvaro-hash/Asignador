@@ -134,8 +134,7 @@ export async function PUT(
     const pendientes = await tx.calificaciones_supervisor.count({
       where: { lote_id: calificacion.lote.id, calificado: false },
     });
-    if (pendientes <= 1) {
-      // <= 1 porque el actual aún no se contó como calificado en este count
+    if (pendientes === 0) {
       await tx.lotes_supervisor.update({
         where: { id: calificacion.lote.id },
         data: { estado: "FINALIZADO" },

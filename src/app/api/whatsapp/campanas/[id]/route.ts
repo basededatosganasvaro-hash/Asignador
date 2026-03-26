@@ -8,10 +8,15 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 
   const { id } = await params;
 
+  // H14: Validar que id sea numérico para prevenir path traversal
+  if (!/^\d+$/.test(id)) {
+    return NextResponse.json({ error: "ID inválido" }, { status: 400 });
+  }
+
   try {
     const result = await waFetch<Record<string, unknown>>(`/campaigns/${id}`);
-    // Verificar ownership: la campaña debe pertenecer al usuario autenticado
-    if (result && result.usuario_id && result.usuario_id !== Number(session!.user.id)) {
+    // H13: Verificar ownership siempre — si no viene usuario_id, denegar acceso
+    if (!result || !result.usuario_id || result.usuario_id !== Number(session!.user.id)) {
       return NextResponse.json({ error: "Sin acceso a esta campaña" }, { status: 403 });
     }
     return NextResponse.json(result);
@@ -25,6 +30,12 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (error) return error;
 
   const { id } = await params;
+
+  // H14: Validar que id sea numérico
+  if (!/^\d+$/.test(id)) {
+    return NextResponse.json({ error: "ID inválido" }, { status: 400 });
+  }
+
   const { action } = await req.json(); // "pause" | "resume" | "cancel"
 
   if (!["pause", "resume", "cancel"].includes(action)) {
@@ -32,9 +43,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   }
 
   try {
-    // Verificar ownership antes de ejecutar la acción
+    // H13: Verificar ownership — denegar si no viene usuario_id
     const campaign = await waFetch<Record<string, unknown>>(`/campaigns/${id}`);
-    if (campaign && campaign.usuario_id && campaign.usuario_id !== Number(session!.user.id)) {
+    if (!campaign || !campaign.usuario_id || campaign.usuario_id !== Number(session!.user.id)) {
       return NextResponse.json({ error: "Sin acceso a esta campaña" }, { status: 403 });
     }
 

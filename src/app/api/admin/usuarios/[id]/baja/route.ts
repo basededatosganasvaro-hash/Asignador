@@ -40,6 +40,25 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     }
   }
 
+  // Validar receptor: debe existir, estar activo, ser promotor y pertenecer al mismo equipo
+  const receptor = await prisma.usuarios.findUnique({
+    where: { id: receptorId },
+    select: { id: true, activo: true, rol: true, equipo_id: true },
+  });
+
+  if (!receptor) {
+    return NextResponse.json({ error: "El receptor no existe" }, { status: 404 });
+  }
+  if (!receptor.activo) {
+    return NextResponse.json({ error: "El receptor no está activo" }, { status: 400 });
+  }
+  if (receptor.rol !== "promotor") {
+    return NextResponse.json({ error: "El receptor debe tener rol promotor" }, { status: 400 });
+  }
+  if (receptor.equipo_id !== promotor.equipo_id) {
+    return NextResponse.json({ error: "El receptor debe pertenecer al mismo equipo que el promotor dado de baja" }, { status: 400 });
+  }
+
   // Buscar todas sus oportunidades activas
   const oportunidades = await prisma.oportunidades.findMany({
     where: { usuario_id: Number(id), activo: true },

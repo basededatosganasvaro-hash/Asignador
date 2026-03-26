@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireGerente } from "@/lib/auth-utils";
 import { prisma } from "@/lib/prisma";
+import { calcularTimerVenceConConfig } from "@/lib/horario";
 import { z } from "zod";
 
 const asignarPoolSchema = z.object({
@@ -48,29 +49,29 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "El promotor no pertenece a tu región" }, { status: 403 });
   }
 
-  // Verificar que los pool_ids no estén ya asignados
-  const poolItems = await prisma.pool_gerente.findMany({
-    where: { id: { in: pool_ids }, asignado: false },
-  });
-
-  if (poolItems.length === 0) {
-    return NextResponse.json({ error: "Los registros ya fueron asignados" }, { status: 400 });
-  }
-
-  // Validar que todos los items pertenecen a la región del gerente
-  if (gerenteRegionId) {
-    const fueraDeScope = poolItems.some((p) => p.region_id !== gerenteRegionId);
-    if (fueraDeScope) {
-      return NextResponse.json({ error: "Algunos registros están fuera de tu región" }, { status: 403 });
-    }
-  }
-
   const ahora = new Date();
 
-  await prisma.$transaction(async (tx) => {
-    // Marcar como asignados en pool
+  const result = await prisma.$transaction(async (tx) => {
+    // Verificar DENTRO de la transacción para evitar race condition
+    const poolItems = await tx.pool_gerente.findMany({
+      where: { id: { in: pool_ids }, asignado: false },
+    });
+
+    if (poolItems.length === 0) {
+      return { error: "Los registros ya fueron asignados" } as const;
+    }
+
+    // Validar scope de región
+    if (gerenteRegionId) {
+      const fueraDeScope = poolItems.some((p) => p.region_id !== gerenteRegionId);
+      if (fueraDeScope) {
+        return { error: "Algunos registros están fuera de tu región", status: 403 } as const;
+      }
+    }
+
+    // Marcar como asignados en pool con WHERE asignado = false para atomicidad
     await tx.pool_gerente.updateMany({
-      where: { id: { in: poolItems.map((p) => p.id) } },
+      where: { id: { in: poolItems.map((p) => p.id) }, asignado: false },
       data: {
         asignado: true,
         asignado_a: promotor_id,
@@ -93,24 +94,34 @@ export async function POST(req: Request) {
       where: { nombre: "Asignado", activo: true },
     });
 
-    // Crear oportunidades para cada cliente
-    for (const item of poolItems) {
-      await tx.oportunidades.create({
-        data: {
-          cliente_id: item.cliente_id,
-          usuario_id: promotor_id,
-          etapa_id: etapaAsignado?.id ?? null,
-          origen: "POOL",
-          lote_id: lote.id,
-          activo: true,
-        },
-      });
-    }
+    // Calcular timer_vence para que las oportunidades escalen correctamente
+    const timerVence = etapaAsignado?.timer_dias
+      ? await calcularTimerVenceConConfig(etapaAsignado.timer_dias)
+      : null;
+
+    // Crear oportunidades con createMany en vez de loop individual (L15)
+    await tx.oportunidades.createMany({
+      data: poolItems.map((item) => ({
+        cliente_id: item.cliente_id,
+        usuario_id: promotor_id,
+        etapa_id: etapaAsignado?.id ?? null,
+        origen: "POOL",
+        lote_id: lote.id,
+        timer_vence: timerVence,
+        activo: true,
+      })),
+    });
+
+    return { ok: true, asignados: poolItems.length } as const;
   });
+
+  if ("error" in result) {
+    return NextResponse.json({ error: result.error }, { status: "status" in result ? result.status : 400 });
+  }
 
   return NextResponse.json({
     ok: true,
-    asignados: poolItems.length,
+    asignados: result.asignados,
     promotor: promotor.nombre,
   });
 }

@@ -29,10 +29,22 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
   if (!op) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
 
-  // Solo el dueño, supervisor o admin puede ver esta oportunidad
-  const rolesSuperiores = ["admin", "gerente_regional", "gerente_sucursal", "supervisor"];
-  if (op.usuario_id !== userId && !rolesSuperiores.includes(rol)) {
-    return NextResponse.json({ error: "Sin acceso" }, { status: 403 });
+  // Solo el dueño o rol superior con scope puede ver esta oportunidad
+  if (op.usuario_id !== userId) {
+    const rolesSuperiores = ["admin", "gerente_regional", "gerente_sucursal", "supervisor"];
+    if (!rolesSuperiores.includes(rol)) {
+      return NextResponse.json({ error: "Sin acceso" }, { status: 403 });
+    }
+    // H17: Verificar scope organizacional para roles no-admin
+    if (rol === "supervisor") {
+      const equipo = await prisma.equipos.findFirst({ where: { supervisor_id: userId }, select: { id: true } });
+      if (equipo) {
+        const promotor = await prisma.usuarios.findUnique({ where: { id: op.usuario_id }, select: { equipo_id: true } });
+        if (promotor?.equipo_id !== equipo.id) {
+          return NextResponse.json({ error: "Sin acceso" }, { status: 403 });
+        }
+      }
+    }
   }
 
   let clienteMerged: Record<string, unknown> = {};

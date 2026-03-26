@@ -8,7 +8,14 @@ export async function GET() {
   if (error) return error;
 
   const usuarios = await prisma.usuarios.findMany({
-    include: {
+    select: {
+      id: true,
+      nombre: true,
+      username: true,
+      rol: true,
+      telegram_id: true,
+      activo: true,
+      created_at: true,
       region: { select: { nombre: true } },
       sucursal: { select: { nombre: true } },
       equipo: { select: { nombre: true } },

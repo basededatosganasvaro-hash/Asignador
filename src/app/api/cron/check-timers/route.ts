@@ -14,15 +14,21 @@ export async function POST(req: Request) {
   const ahora = new Date();
 
   // System user for historial
-  const admin = await prisma.usuarios.findFirst({ where: { rol: "admin" } });
-  const sistemaUserId = admin?.id ?? 1;
+  const admin = await prisma.usuarios.findFirst({ where: { rol: "admin", activo: true } });
+  if (!admin) {
+    return NextResponse.json({ error: "No active admin user found for historial" }, { status: 500 });
+  }
+  const sistemaUserId = admin.id;
 
   let totalPool = 0;
   let totalSupervisor = 0;
 
   // Procesar en batches para no sobrecargar con miles de registros
+  const MAX_ITERATIONS = 1000; // safety break to prevent infinite loops
   let hasMore = true;
-  while (hasMore) {
+  let iterations = 0;
+  while (hasMore && iterations < MAX_ITERATIONS) {
+    iterations++;
     const vencidas = await prisma.oportunidades.findMany({
       where: {
         activo: true,

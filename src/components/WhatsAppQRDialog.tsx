@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useRef, useCallback } from "react";
+import QRCode from "qrcode";
 import { Dialog, DialogHeader, DialogBody, DialogFooter } from "@/components/ui/Dialog";
 import { Button } from "@/components/ui/Button";
 import { Alert } from "@/components/ui/Alert";
@@ -15,6 +16,9 @@ interface Props {
 export default function WhatsAppQRDialog({ open, onClose, onConnected }: Props) {
   const [status, setStatus] = useState<"connecting" | "qr" | "connected" | "error">("connecting");
   const [qrData, setQrData] = useState<string>("");
+  const [qrDataUrl, setQrDataUrl] = useState<string>("");
+  const onConnectedRef = useRef(onConnected);
+  onConnectedRef.current = onConnected;
   const [error, setError] = useState("");
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -24,6 +28,15 @@ export default function WhatsAppQRDialog({ open, onClose, onConnected }: Props) 
       pollingRef.current = null;
     }
   }, []);
+
+  // Generar QR localmente en vez de enviar token a servidor externo (C6)
+  useEffect(() => {
+    if (qrData) {
+      QRCode.toDataURL(qrData, { width: 256, margin: 2 }).then(setQrDataUrl).catch(() => setQrDataUrl(""));
+    } else {
+      setQrDataUrl("");
+    }
+  }, [qrData]);
 
   useEffect(() => {
     if (!open) {
@@ -55,7 +68,7 @@ export default function WhatsAppQRDialog({ open, onClose, onConnected }: Props) 
         if (data.estado === "CONECTADO") {
           setStatus("connected");
           stopPolling();
-          setTimeout(() => onConnected(), 1500);
+          setTimeout(() => onConnectedRef.current(), 1500);
         } else if (data.estado === "QR_PENDIENTE" && data.qr_code) {
           setStatus("qr");
           setQrData(data.qr_code);
@@ -74,7 +87,7 @@ export default function WhatsAppQRDialog({ open, onClose, onConnected }: Props) 
     pollingRef.current = setInterval(poll, 2000);
 
     return () => stopPolling();
-  }, [open, onConnected, stopPolling]);
+  }, [open, stopPolling]);
 
   const handleClose = () => {
     stopPolling();
@@ -103,10 +116,10 @@ export default function WhatsAppQRDialog({ open, onClose, onConnected }: Props) 
           </div>
         )}
 
-        {status === "qr" && qrData && (
+        {status === "qr" && qrDataUrl && (
           <div className="py-4 flex flex-col items-center">
             <img
-              src={`https://api.qrserver.com/v1/create-qr-code/?size=256x256&data=${encodeURIComponent(qrData)}`}
+              src={qrDataUrl}
               alt="QR Code"
               className="w-64 h-64 mx-auto rounded-lg border-4 border-[#25D366]"
             />

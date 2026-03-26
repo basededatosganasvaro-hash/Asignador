@@ -36,10 +36,10 @@ export async function GET() {
     prisma.$queryRaw<{ usuario_id: number; nombre: string; campanas: bigint; enviados: bigint; entregados: bigint; leidos: bigint; fallidos: bigint }[]>`
       SELECT c.usuario_id, u.nombre,
              COUNT(DISTINCT c.id) as campanas,
-             SUM(c.enviados) as enviados,
-             SUM(c.entregados) as entregados,
-             SUM(c.leidos) as leidos,
-             SUM(c.fallidos) as fallidos
+             COALESCE(SUM(c.enviados), 0) as enviados,
+             COALESCE(SUM(c.entregados), 0) as entregados,
+             COALESCE(SUM(c.leidos), 0) as leidos,
+             COALESCE(SUM(c.fallidos), 0) as fallidos
       FROM wa_campanas c
       JOIN usuarios u ON u.id = c.usuario_id
       WHERE c.usuario_id = ANY(${promotorIds}::int[])

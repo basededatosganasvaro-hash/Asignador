@@ -9,24 +9,11 @@ const ROLES_PROMOTOR_AREA = ["promotor"];
 const ROLES_OPERACIONES_AREA = ["gestor_operaciones"];
 const ROLES_ASESOR_DIGITAL_AREA = ["asesor_digital"];
 const ROLES_ANALISTA_AREA = ["analista"];
-// Rate limiting por IP para login (credential stuffing protection)
-const loginAttempts = new Map<string, number[]>();
-const LOGIN_WINDOW_MS = 15 * 60 * 1000; // 15 minutos
-const LOGIN_MAX_PER_IP = 20;
-
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Rate limiting por IP en login — antes de cualquier otra lógica
+  // Login rate limiting se maneja en BD via intentos_fallidos + bloqueado_hasta (auth.ts)
   if (pathname === "/api/auth/callback/credentials" && request.method === "POST") {
-    const ip = (request as unknown as { ip?: string }).ip || request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
-    const now = Date.now();
-    const attempts = (loginAttempts.get(ip) || []).filter(t => now - t < LOGIN_WINDOW_MS);
-    if (attempts.length >= LOGIN_MAX_PER_IP) {
-      return NextResponse.json({ error: "Demasiados intentos" }, { status: 429 });
-    }
-    attempts.push(now);
-    loginAttempts.set(ip, attempts);
     return NextResponse.next();
   }
 
@@ -80,8 +67,8 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/promotor", request.url));
   }
 
-  // Area admin: acceso solo para admin
-  if (pathname.startsWith("/admin") && !ROLES_ADMIN_AREA.includes(rol)) {
+  // Area admin: acceso solo para admin (H2: incluye /api/admin)
+  if ((pathname.startsWith("/admin") || pathname.startsWith("/api/admin")) && !ROLES_ADMIN_AREA.includes(rol)) {
     if (ROLES_GERENTE_AREA.includes(rol)) return NextResponse.redirect(new URL("/gerente", request.url));
     if (ROLES_SUPERVISOR_AREA.includes(rol)) return NextResponse.redirect(new URL("/supervisor", request.url));
     if (ROLES_OPERACIONES_AREA.includes(rol)) return NextResponse.redirect(new URL("/operaciones", request.url));
@@ -108,6 +95,8 @@ export async function middleware(request: NextRequest) {
     if (ROLES_OPERACIONES_AREA.includes(rol)) return NextResponse.redirect(new URL("/operaciones", request.url));
     if (ROLES_ASESOR_DIGITAL_AREA.includes(rol)) return NextResponse.redirect(new URL("/asesor-digital", request.url));
     if (ROLES_ANALISTA_AREA.includes(rol)) return NextResponse.redirect(new URL("/analista", request.url));
+    // H3: return explícito para roles no contemplados (comercial, direccion, etc.)
+    return NextResponse.redirect(new URL("/", request.url));
   }
 
   return NextResponse.next();

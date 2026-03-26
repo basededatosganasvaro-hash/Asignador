@@ -17,7 +17,7 @@ interface HorarioState {
  */
 export function useHorario() {
   const [estado, setEstado] = useState<HorarioState>({
-    activo: true, // optimistic default
+    activo: false, // pessimistic default — deny until confirmed
     loading: true,
   });
 
@@ -29,8 +29,8 @@ export function useHorario() {
         setEstado({ ...data, loading: false });
       }
     } catch {
-      // Si falla la consulta, asumir activo para no bloquear
-      setEstado((prev) => ({ ...prev, loading: false }));
+      // Si falla la consulta, denegar acceso por seguridad
+      setEstado((prev) => ({ ...prev, activo: false, loading: false }));
     }
   }, []);
 

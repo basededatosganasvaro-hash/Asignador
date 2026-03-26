@@ -78,6 +78,9 @@ export async function POST(req: Request) {
   const etapaAsignado = await prisma.embudo_etapas.findFirst({
     where: { nombre: "Asignado", activo: true },
   });
+  if (!etapaAsignado) {
+    return NextResponse.json({ error: "Etapa 'Asignado' no encontrada. Contacta al administrador." }, { status: 500 });
+  }
 
   // Obtener timer de captación
   const timerConfig = await prisma.configuracion.findUnique({
@@ -92,7 +95,7 @@ export async function POST(req: Request) {
       data: {
         cliente_id: clienteId,
         usuario_id: userId,
-        etapa_id: etapaAsignado?.id ?? null,
+        etapa_id: etapaAsignado.id,
         origen: "CAPTACION",
         timer_vence: timerVence,
         activo: true,

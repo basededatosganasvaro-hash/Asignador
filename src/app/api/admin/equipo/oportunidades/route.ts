@@ -12,12 +12,12 @@ export async function GET() {
 
   let equipoFilter = {};
   if (rol === "supervisor") {
-    const sup = await prisma.usuarios.findUnique({
-      where: { id: userId },
-      select: { equipo_id: true },
+    const equipo = await prisma.equipos.findFirst({
+      where: { supervisor_id: userId },
+      select: { id: true },
     });
-    if (sup?.equipo_id) {
-      equipoFilter = { usuario: { equipo_id: sup.equipo_id } };
+    if (equipo) {
+      equipoFilter = { usuario: { equipo_id: equipo.id } };
     }
   }
 

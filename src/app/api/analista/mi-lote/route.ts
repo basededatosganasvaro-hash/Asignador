@@ -57,9 +57,10 @@ export async function GET() {
       })
     : [];
 
-  // Merge: datos_contacto encima de datos originales
+  // Merge: datos_contacto encima de datos originales (filter out 'id' to avoid overwriting PK)
   const clientesMap = new Map(clientes.map((c) => [c.id, { ...c }]));
   for (const dc of datosContacto) {
+    if (dc.campo === "id") continue; // never overwrite client PK
     const cliente = clientesMap.get(dc.cliente_id);
     if (cliente) {
       (cliente as Record<string, unknown>)[dc.campo] = dc.valor;

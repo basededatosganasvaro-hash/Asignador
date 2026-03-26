@@ -21,67 +21,10 @@ export async function GET() {
       orderBy: { nombre: "asc" },
     });
 
-    const sucursalIds = sucursales.map((s) => s.id);
-    if (sucursalIds.length === 0) {
+    if (sucursales.length === 0) {
       return NextResponse.json({ tipo: "sucursales", unidades: [] });
     }
 
-    const data = await prisma.$queryRaw<{
-      sucursal_id: number;
-      promotores: bigint;
-      opp_activas: bigint;
-      ventas_mes: bigint;
-      monto_mes: number;
-      asignados_mes: bigint;
-      interacciones_mes: bigint;
-    }[]>`
-      SELECT
-        u.sucursal_id,
-        COUNT(DISTINCT u.id) as promotores,
-        COUNT(DISTINCT CASE WHEN o.activo = true THEN o.id END) as opp_activas,
-        COUNT(DISTINCT v.id) as ventas_mes,
-        COALESCE(SUM(DISTINCT v.monto), 0) as monto_mes,
-        COUNT(DISTINCT CASE WHEN o.created_at >= ${startOfMonth} THEN o.id END) as asignados_mes,
-        (SELECT COUNT(*) FROM historial h
-         WHERE h.usuario_id = u.id
-           AND h.created_at >= ${startOfMonth}
-           AND h.tipo IN ('CAMBIO_ETAPA','NOTA','LLAMADA','WHATSAPP','SMS')
-        ) as interacciones_mes
-      FROM usuarios u
-      LEFT JOIN oportunidades o ON o.usuario_id = u.id
-      LEFT JOIN ventas v ON v.usuario_id = u.id AND v.created_at >= ${startOfMonth}
-      WHERE u.rol = 'promotor'
-        AND u.activo = true
-        AND u.sucursal_id = ANY(${sucursalIds}::int[])
-      GROUP BY u.sucursal_id, u.id
-    `;
-
-    // Agregar por sucursal
-    const sucMap = new Map<number, {
-      promotores: Set<number>;
-      oppActivas: number;
-      ventasMes: number;
-      montoMes: number;
-      asignadosMes: number;
-      interaccionesMes: number;
-    }>();
-
-    for (const s of sucursalIds) {
-      sucMap.set(s, { promotores: new Set(), oppActivas: 0, ventasMes: 0, montoMes: 0, asignadosMes: 0, interaccionesMes: 0 });
-    }
-
-    for (const row of data) {
-      const entry = sucMap.get(row.sucursal_id);
-      if (!entry) continue;
-      entry.oppActivas += Number(row.opp_activas);
-      entry.ventasMes += Number(row.ventas_mes);
-      entry.montoMes += Number(row.monto_mes);
-      entry.asignadosMes += Number(row.asignados_mes);
-      entry.interaccionesMes += Number(row.interacciones_mes);
-      entry.promotores.add(row.sucursal_id); // count distinct is already per user from SQL
-    }
-
-    // Simpler approach: query aggregated per sucursal directly
     const unidades = await Promise.all(sucursales.map(async (suc) => {
       const promotoresSuc = await prisma.usuarios.count({
         where: { rol: "promotor", activo: true, sucursal_id: suc.id },

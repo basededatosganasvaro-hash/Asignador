@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAuth } from "@/lib/auth-utils";
+import { requirePromotor } from "@/lib/auth-utils";
 import { WA_MENSAJES_DEFAULT } from "@/lib/whatsapp";
 
 // GET: obtener plantillas del usuario (merge con defaults)
 export async function GET() {
-  const { session, error } = await requireAuth();
+  const { session, error } = await requirePromotor();
   if (error) return error;
 
   const userId = Number(session!.user.id);
@@ -25,7 +25,7 @@ export async function GET() {
 
 // PUT: guardar todas las plantillas del usuario
 export async function PUT(request: Request) {
-  const { session, error } = await requireAuth();
+  const { session, error } = await requirePromotor();
   if (error) return error;
 
   const userId = Number(session!.user.id);

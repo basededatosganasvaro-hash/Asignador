@@ -4,6 +4,7 @@
 export function serializeBigInt<T>(data: T): T {
   if (data === null || data === undefined) return data;
   if (typeof data === "bigint") return String(data) as unknown as T;
+  if (data instanceof Date) return data.toISOString() as unknown as T;
   if (Array.isArray(data)) return data.map(serializeBigInt) as unknown as T;
   if (typeof data === "object") {
     const result: Record<string, unknown> = {};
