@@ -71,4 +71,5 @@ model solicitudes {
 
   @@index([user_id])
   @@index([estado])
+  @@index([user_id, estado])
 }

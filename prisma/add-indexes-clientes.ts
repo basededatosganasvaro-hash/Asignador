@@ -20,6 +20,7 @@ const INDEXES = [
   `CREATE INDEX IF NOT EXISTS idx_clientes_nss           ON clientes(nss)`,
   `CREATE INDEX IF NOT EXISTS idx_clientes_curp          ON clientes(curp)`,
   `CREATE INDEX IF NOT EXISTS idx_clientes_rfc           ON clientes(rfc)`,
+  `CREATE INDEX IF NOT EXISTS idx_clientes_tipo_conv_est ON clientes(tipo_cliente, convenio, estado)`,
 ];
 
 async function main() {

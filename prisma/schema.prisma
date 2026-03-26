@@ -17,8 +17,10 @@ model regiones {
   activo     Boolean    @default(true)
   created_at DateTime   @default(now())
 
-  zonas    zonas[]
-  usuarios usuarios[]
+  zonas              zonas[]
+  usuarios           usuarios[]
+  pool_gerente       pool_gerente[]
+  recalificaciones   recalificaciones_pendientes[]
 }
 
 model zonas {
@@ -55,9 +57,10 @@ model equipos {
   supervisor_id Int?
   activo        Boolean @default(true)
 
-  sucursal   sucursales? @relation(fields: [sucursal_id], references: [id])
-  miembros   usuarios[]  @relation("EquipoMiembros")
-  supervisor usuarios?   @relation("EquipoSupervisor", fields: [supervisor_id], references: [id])
+  sucursal        sucursales?      @relation(fields: [sucursal_id], references: [id])
+  miembros        usuarios[]       @relation("EquipoMiembros")
+  supervisor      usuarios?        @relation("EquipoSupervisor", fields: [supervisor_id], references: [id])
+  pool_supervisor pool_supervisor[]
 
   @@index([sucursal_id])
   @@index([supervisor_id])
@@ -112,10 +115,20 @@ model usuarios {
   busquedas_clientes_logs busquedas_clientes_logs[]
   lotes_analista          lotes_analista[]
   calificaciones_analista calificaciones_analista[]
-  lotes_supervisor          lotes_supervisor[]
-  calificaciones_supervisor calificaciones_supervisor[]
+  lotes_supervisor               lotes_supervisor[]
+  calificaciones_supervisor      calificaciones_supervisor[]
+  pool_gerente_calificados       pool_gerente[]    @relation("PoolCalificador")
+  pool_gerente_asignados         pool_gerente[]    @relation("PoolGerentePromotor")
+  pool_gerente_asignador         pool_gerente[]    @relation("PoolGerenteGerente")
+  pool_supervisor_supervisados   pool_supervisor[] @relation("PoolSupervisorSup")
+  pool_supervisor_asignados      pool_supervisor[] @relation("PoolSupervisorPromotor")
 
   @@index([rol])
+  @@index([equipo_id])
+  @@index([sucursal_id])
+  @@index([region_id])
+  @@index([rol, activo])
+  @@index([equipo_id, rol, activo])
 }
 
 // =============================================
@@ -225,7 +238,6 @@ model oportunidades {
 
   @@index([usuario_id, activo])
   @@index([cliente_id, activo])
-  @@index([etapa_id])
   @@index([timer_vence, activo])
   @@index([etapa_id, activo])
   @@index([lote_id])
@@ -253,6 +265,7 @@ model datos_contacto {
   editor usuarios @relation(fields: [editado_por], references: [id])
 
   @@index([cliente_id, campo])
+  @@index([cliente_id, campo, created_at])
 }
 
 // =============================================
@@ -302,6 +315,8 @@ model ventas {
   usuario     usuarios      @relation(fields: [usuario_id], references: [id])
 
   @@index([usuario_id, validada])
+  @@index([usuario_id])
+  @@index([created_at])
 }
 
 // =============================================
@@ -319,7 +334,6 @@ model cupo_diario {
   usuario usuarios @relation(fields: [usuario_id], references: [id])
 
   @@unique([usuario_id, fecha])
-  @@index([usuario_id])
   @@index([fecha])
 }
 
@@ -367,7 +381,6 @@ model plantillas_whatsapp {
   usuario usuarios @relation(fields: [usuario_id], references: [id])
 
   @@unique([usuario_id, etapa])
-  @@index([usuario_id])
 }
 
 model convenio_reglas {
@@ -377,7 +390,6 @@ model convenio_reglas {
   obligatorio Boolean @default(true)
 
   @@unique([convenio, campo])
-  @@index([convenio])
 }
 
 // =============================================
@@ -390,8 +402,8 @@ model wa_sesiones {
   estado     String   @default("DESCONECTADO") @db.VarChar(20)
   // DESCONECTADO | CONECTANDO | CONECTADO | QR_PENDIENTE
   numero_wa  String?  @db.VarChar(30)
-  creds_json String?  // Baileys auth state encriptado
-  keys_json  String?  // Baileys signal keys encriptado
+  creds_json String?  @db.Text // Baileys auth state encriptado
+  keys_json  String?  @db.Text // Baileys signal keys encriptado
   ultimo_uso DateTime @default(now())
   created_at DateTime @default(now())
   updated_at DateTime @default(now()) @updatedAt
@@ -464,6 +476,7 @@ model wa_mensajes {
   @@index([wa_message_id])
   @@index([estado])
   @@index([enviado_at])
+  @@index([campana_id, estado])
 }
 
 // =============================================
@@ -849,11 +862,18 @@ model pool_gerente {
   // 6 meses desde calificación
   created_at      DateTime  @default(now())
 
+  calificador  usuarios  @relation("PoolCalificador", fields: [calificado_por], references: [id])
+  promotor     usuarios? @relation("PoolGerentePromotor", fields: [asignado_a], references: [id])
+  gerente      usuarios? @relation("PoolGerenteGerente", fields: [asignado_por], references: [id])
+  region       regiones? @relation(fields: [region_id], references: [id])
+
   @@unique([cliente_id, calificado_por])
   @@index([asignado])
   @@index([region_id, asignado])
   @@index([expira_at])
   @@index([calificado_por])
+  @@index([region_id, asignado, expira_at])
+  @@index([asignado_a])
 }
 
 // =============================================
@@ -869,6 +889,8 @@ model recalificaciones_pendientes {
   motivo          String   @default("DEVUELTO_POOL") @db.VarChar(50)
   // DEVUELTO_POOL | TIMER_VENCIDO
   created_at      DateTime @default(now())
+
+  region regiones? @relation(fields: [region_id], references: [id])
 
   @@index([region_id])
 }
@@ -891,6 +913,7 @@ model lotes_supervisor {
 
   @@unique([supervisor_id, fecha])
   @@index([estado])
+  @@index([supervisor_id])
 }
 
 model calificaciones_supervisor {
@@ -928,7 +951,14 @@ model pool_supervisor {
   // 6 meses desde calificación
   created_at      DateTime  @default(now())
 
+  supervisor_rel  usuarios  @relation("PoolSupervisorSup", fields: [supervisor_id], references: [id])
+  promotor        usuarios? @relation("PoolSupervisorPromotor", fields: [asignado_a], references: [id])
+  equipo_rel      equipos?  @relation(fields: [equipo_id], references: [id])
+
   @@unique([cliente_id, supervisor_id])
   @@index([supervisor_id, asignado])
   @@index([expira_at])
+  @@index([supervisor_id, asignado, expira_at])
+  @@index([equipo_id, asignado])
+  @@index([asignado_a])
 }

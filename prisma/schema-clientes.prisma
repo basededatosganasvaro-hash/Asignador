@@ -134,6 +134,16 @@ model clientes {
   unnamed_6             String?
   unnamed_7             String?
   unnamed_8             String?
+
+  @@index([tipo_cliente])
+  @@index([convenio])
+  @@index([estado])
+  @@index([municipio])
+  @@index([nss])
+  @@index([curp])
+  @@index([rfc])
+  @@index([tel_1])
+  @@index([tipo_cliente, convenio, estado])
 }
 
 model catalogo_estados {
