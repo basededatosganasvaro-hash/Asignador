@@ -12,15 +12,15 @@ datasource db {
 // =============================================
 
 model regiones {
-  id         Int        @id @default(autoincrement())
-  nombre     String     @db.VarChar(200)
-  activo     Boolean    @default(true)
-  created_at DateTime   @default(now())
+  id         Int      @id @default(autoincrement())
+  nombre     String   @db.VarChar(200)
+  activo     Boolean  @default(true)
+  created_at DateTime @default(now())
 
-  zonas              zonas[]
-  usuarios           usuarios[]
-  pool_gerente       pool_gerente[]
-  recalificaciones   recalificaciones_pendientes[]
+  zonas            zonas[]
+  usuarios         usuarios[]
+  pool_gerente     pool_gerente[]
+  recalificaciones recalificaciones_pendientes[]
 }
 
 model zonas {
@@ -57,9 +57,9 @@ model equipos {
   supervisor_id Int?
   activo        Boolean @default(true)
 
-  sucursal        sucursales?      @relation(fields: [sucursal_id], references: [id])
-  miembros        usuarios[]       @relation("EquipoMiembros")
-  supervisor      usuarios?        @relation("EquipoSupervisor", fields: [supervisor_id], references: [id])
+  sucursal        sucursales?       @relation(fields: [sucursal_id], references: [id])
+  miembros        usuarios[]        @relation("EquipoMiembros")
+  supervisor      usuarios?         @relation("EquipoSupervisor", fields: [supervisor_id], references: [id])
   pool_supervisor pool_supervisor[]
 
   @@index([sucursal_id])
@@ -71,14 +71,14 @@ model equipos {
 // =============================================
 
 model usuarios {
-  id            Int      @id @default(autoincrement())
-  nombre        String   @db.VarChar(200)
-  username      String   @unique @db.VarChar(50)
+  id            Int    @id @default(autoincrement())
+  nombre        String @db.VarChar(200)
+  username      String @unique @db.VarChar(50)
   password_hash String
-  rol           String   @default("promotor") @db.VarChar(30)
+  rol           String @default("promotor") @db.VarChar(30)
   // admin | gerente_regional | gerente_sucursal | supervisor | promotor | gestor_operaciones | comercial | direccion | asesor_digital | analista
 
-  telegram_id BigInt?  @unique
+  telegram_id BigInt? @unique
 
   equipo_id   Int?
   sucursal_id Int?
@@ -92,36 +92,38 @@ model usuarios {
   created_at DateTime @default(now())
   updated_at DateTime @default(now()) @updatedAt
 
-  equipo                  equipos?    @relation("EquipoMiembros", fields: [equipo_id], references: [id])
-  sucursal                sucursales? @relation(fields: [sucursal_id], references: [id])
-  region                  regiones?   @relation(fields: [region_id], references: [id])
-  equipos_supervisados    equipos[]   @relation("EquipoSupervisor")
+  equipo               equipos?    @relation("EquipoMiembros", fields: [equipo_id], references: [id])
+  sucursal             sucursales? @relation(fields: [sucursal_id], references: [id])
+  region               regiones?   @relation(fields: [region_id], references: [id])
+  equipos_supervisados equipos[]   @relation("EquipoSupervisor")
 
-  lotes                   lotes[]
-  oportunidades           oportunidades[]
-  datos_contacto_editados datos_contacto[]
-  planes_trabajo_creados  planes_trabajo[]
-  historial               historial[]
-  ventas                  ventas[]
-  captaciones             captaciones[]
-  cupo_diario             cupo_diario[]
-  plantillas_whatsapp     plantillas_whatsapp[]
-  wa_sesion               wa_sesiones?
-  wa_campanas             wa_campanas[]
-  ia_conversaciones       ia_conversaciones[]
-  ad_registros            ad_registros[]
-  ad_redes_sociales       ad_redes_sociales[]
-  busquedas_clientes      busquedas_clientes[]
-  busquedas_clientes_logs busquedas_clientes_logs[]
-  lotes_analista          lotes_analista[]
-  calificaciones_analista calificaciones_analista[]
-  lotes_supervisor               lotes_supervisor[]
-  calificaciones_supervisor      calificaciones_supervisor[]
-  pool_gerente_calificados       pool_gerente[]    @relation("PoolCalificador")
-  pool_gerente_asignados         pool_gerente[]    @relation("PoolGerentePromotor")
-  pool_gerente_asignador         pool_gerente[]    @relation("PoolGerenteGerente")
-  pool_supervisor_supervisados   pool_supervisor[] @relation("PoolSupervisorSup")
-  pool_supervisor_asignados      pool_supervisor[] @relation("PoolSupervisorPromotor")
+  lotes                        lotes[]
+  oportunidades                oportunidades[]
+  datos_contacto_editados      datos_contacto[]
+  planes_trabajo_creados       planes_trabajo[]
+  historial                    historial[]
+  ventas                       ventas[]
+  captaciones                  captaciones[]
+  cupo_diario                  cupo_diario[]
+  plantillas_whatsapp          plantillas_whatsapp[]
+  wa_sesion                    wa_sesiones?
+  wa_campanas                  wa_campanas[]
+  ia_conversaciones            ia_conversaciones[]
+  ad_registros                 ad_registros[]
+  ad_redes_sociales            ad_redes_sociales[]
+  busquedas_clientes           busquedas_clientes[]
+  busquedas_clientes_logs      busquedas_clientes_logs[]
+  lotes_analista               lotes_analista[]
+  calificaciones_analista      calificaciones_analista[]
+  lotes_supervisor             lotes_supervisor[]
+  calificaciones_supervisor    calificaciones_supervisor[]
+  pool_gerente_calificados     pool_gerente[]                @relation("PoolCalificador")
+  pool_gerente_asignados       pool_gerente[]                @relation("PoolGerentePromotor")
+  pool_gerente_asignador       pool_gerente[]                @relation("PoolGerenteGerente")
+  pool_supervisor_supervisados pool_supervisor[]             @relation("PoolSupervisorSup")
+  pool_supervisor_asignados    pool_supervisor[]             @relation("PoolSupervisorPromotor")
+  lotes_calificacion_promotor  lotes_calificacion_promotor[]
+  cupo_calificacion_diario     cupo_calificacion_diario[]
 
   @@index([rol])
   @@index([equipo_id])
@@ -154,14 +156,14 @@ model planes_trabajo {
 // =============================================
 
 model embudo_etapas {
-  id          Int     @id @default(autoincrement())
-  nombre      String  @db.VarChar(100)
-  orden       Int
-  tipo        String  @db.VarChar(20)
+  id         Int     @id @default(autoincrement())
+  nombre     String  @db.VarChar(100)
+  orden      Int
+  tipo       String  @db.VarChar(20)
   // AVANCE | SALIDA | FINAL
-  timer_dias  Int?
-  color       String  @db.VarChar(7)
-  activo      Boolean @default(true)
+  timer_dias Int?
+  color      String  @db.VarChar(7)
+  activo     Boolean @default(true)
 
   transiciones_origen  embudo_transiciones[] @relation("TransicionOrigen")
   transiciones_destino embudo_transiciones[] @relation("TransicionDestino")
@@ -210,31 +212,31 @@ model lotes {
 }
 
 model oportunidades {
-  id              Int      @id @default(autoincrement())
-  cliente_id      Int?
+  id                  Int       @id @default(autoincrement())
+  cliente_id          Int?
   // Referencia a clientes.id en BD Clientes (sin FK constraint — DBs separadas)
   // NULL cuando el cliente fue captado y no existe en BD Clientes
-  usuario_id      Int
-  etapa_id        Int?
-  origen          String   @db.VarChar(20)
+  usuario_id          Int
+  etapa_id            Int?
+  origen              String    @db.VarChar(20)
   // POOL | CAPTACION | REASIGNACION
-  lote_id         Int?
-  timer_vence     DateTime?
-  num_operacion        String?  @db.VarChar(100)
-  venta_validada       Boolean  @default(false)
-  escalada_supervisor  Boolean  @default(false)
-  wa_manual_at         DateTime?
-  activo               Boolean  @default(true)
-  created_at      DateTime @default(now())
-  updated_at      DateTime @default(now()) @updatedAt
+  lote_id             Int?
+  timer_vence         DateTime?
+  num_operacion       String?   @db.VarChar(100)
+  venta_validada      Boolean   @default(false)
+  escalada_supervisor Boolean   @default(false)
+  wa_manual_at        DateTime?
+  activo              Boolean   @default(true)
+  created_at          DateTime  @default(now())
+  updated_at          DateTime  @default(now()) @updatedAt
 
-  usuario   usuarios       @relation(fields: [usuario_id], references: [id])
-  lote      lotes?         @relation(fields: [lote_id], references: [id])
-  etapa     embudo_etapas? @relation(fields: [etapa_id], references: [id])
-  historial    historial[]
-  venta        ventas?
-  captacion    captaciones?
-  wa_mensajes  wa_mensajes[]
+  usuario     usuarios       @relation(fields: [usuario_id], references: [id])
+  lote        lotes?         @relation(fields: [lote_id], references: [id])
+  etapa       embudo_etapas? @relation(fields: [etapa_id], references: [id])
+  historial   historial[]
+  venta       ventas?
+  captacion   captaciones?
+  wa_mensajes wa_mensajes[]
 
   @@index([usuario_id, activo])
   @@index([cliente_id, activo])
@@ -424,7 +426,7 @@ model wa_campanas {
   sesion_id      Int
   nombre         String   @db.VarChar(200)
   mensaje_base   String
-  variaciones    Json?    // string[] de variaciones generadas por IA
+  variaciones    Json? // string[] de variaciones generadas por IA
   etapa_filtro   String?  @db.VarChar(50)
   estado         String   @default("CREADA") @db.VarChar(20)
   // CREADA | EN_COLA | ENVIANDO | PAUSADA | COMPLETADA | CANCELADA
@@ -433,7 +435,7 @@ model wa_campanas {
   entregados     Int      @default(0)
   leidos         Int      @default(0)
   fallidos       Int      @default(0)
-  config_json    Json?    // delay ranges, burst sizes, etc.
+  config_json    Json? // delay ranges, burst sizes, etc.
   created_at     DateTime @default(now())
   updated_at     DateTime @default(now()) @updatedAt
 
@@ -452,21 +454,21 @@ model wa_campanas {
 // =============================================
 
 model wa_mensajes {
-  id              Int       @id @default(autoincrement())
-  campana_id      Int
-  oportunidad_id  Int
-  nombre_cliente  String?   @db.VarChar(200)
-  numero_destino  String    @db.VarChar(30)
-  mensaje_texto   String
-  variacion_idx   Int       @default(0)
-  wa_message_id   String?   @db.VarChar(100)
-  estado          String    @default("PENDIENTE") @db.VarChar(20)
+  id             Int       @id @default(autoincrement())
+  campana_id     Int
+  oportunidad_id Int
+  nombre_cliente String?   @db.VarChar(200)
+  numero_destino String    @db.VarChar(30)
+  mensaje_texto  String
+  variacion_idx  Int       @default(0)
+  wa_message_id  String?   @db.VarChar(100)
+  estado         String    @default("PENDIENTE") @db.VarChar(20)
   // PENDIENTE | ENVIANDO | ENVIADO | ENTREGADO | LEIDO | FALLIDO
-  error_detalle   String?
-  enviado_at      DateTime?
-  entregado_at    DateTime?
-  leido_at        DateTime?
-  created_at      DateTime  @default(now())
+  error_detalle  String?
+  enviado_at     DateTime?
+  entregado_at   DateTime?
+  leido_at       DateTime?
+  created_at     DateTime  @default(now())
 
   campana     wa_campanas   @relation(fields: [campana_id], references: [id])
   oportunidad oportunidades @relation(fields: [oportunidad_id], references: [id])
@@ -491,7 +493,7 @@ model ia_conversaciones {
   created_at DateTime @default(now())
   updated_at DateTime @default(now()) @updatedAt
 
-  usuario  usuarios       @relation(fields: [usuario_id], references: [id])
+  usuario  usuarios      @relation(fields: [usuario_id], references: [id])
   mensajes ia_mensajes[]
 
   @@index([usuario_id, activo])
@@ -503,7 +505,7 @@ model ia_mensajes {
   conversacion_id Int
   rol             String   @db.VarChar(20) // "user" | "assistant"
   contenido       String
-  metadata_json   Json?    // { sql_queries, chart, tokens_used, model, duration_ms }
+  metadata_json   Json? // { sql_queries, chart, tokens_used, model, duration_ms }
   created_at      DateTime @default(now())
 
   conversacion ia_conversaciones @relation(fields: [conversacion_id], references: [id], onDelete: Cascade)
@@ -518,13 +520,13 @@ model ia_mensajes {
 model busquedas_clientes {
   id         Int      @id @default(autoincrement())
   usuario_id Int
-  tipo       String   @db.VarChar(20)   // CURP | RFC | TELEFONO
-  valor      String   @db.VarChar(100)  // valor buscado
-  motivo     String   @db.VarChar(50)   // calificacion | tramite | prospeccion | validacion_datos | solicitud_pantalla | solicitud_capacidad
-  resultados Int      @default(0)       // cantidad de resultados encontrados
+  tipo       String   @db.VarChar(20) // CURP | RFC | TELEFONO
+  valor      String   @db.VarChar(100) // valor buscado
+  motivo     String   @db.VarChar(50) // calificacion | tramite | prospeccion | validacion_datos | solicitud_pantalla | solicitud_capacidad
+  resultados Int      @default(0) // cantidad de resultados encontrados
   created_at DateTime @default(now())
 
-  usuario usuarios                @relation(fields: [usuario_id], references: [id])
+  usuario usuarios                  @relation(fields: [usuario_id], references: [id])
   logs    busquedas_clientes_logs[]
 
   @@index([usuario_id, created_at])
@@ -534,8 +536,8 @@ model busquedas_clientes_logs {
   id          Int      @id @default(autoincrement())
   busqueda_id Int
   usuario_id  Int
-  cliente_id  Int      // ID del cliente cuyos datos se copiaron
-  campo       String   @db.VarChar(50)  // campo copiado: tel_1, curp, nss, "todos", etc.
+  cliente_id  Int // ID del cliente cuyos datos se copiaron
+  campo       String   @db.VarChar(50) // campo copiado: tel_1, curp, nss, "todos", etc.
   created_at  DateTime @default(now())
 
   busqueda busquedas_clientes @relation(fields: [busqueda_id], references: [id])
@@ -550,83 +552,83 @@ model busquedas_clientes_logs {
 // =============================================
 
 model resumen_oportunidades {
-  oportunidad_id        Int       @id
-  cliente_id            Int?
-  usuario_id            Int
-  etapa_id              Int?
-  origen                String?   @db.VarChar(20)
-  lote_id               Int?
-  timer_vence           DateTime?
-  num_operacion         String?   @db.VarChar(100)
-  venta_validada        Boolean   @default(false)
-  activo                Boolean   @default(true)
-  oportunidad_created   DateTime?
-  oportunidad_updated   DateTime?
+  oportunidad_id      Int       @id
+  cliente_id          Int?
+  usuario_id          Int
+  etapa_id            Int?
+  origen              String?   @db.VarChar(20)
+  lote_id             Int?
+  timer_vence         DateTime?
+  num_operacion       String?   @db.VarChar(100)
+  venta_validada      Boolean   @default(false)
+  activo              Boolean   @default(true)
+  oportunidad_created DateTime?
+  oportunidad_updated DateTime?
 
-  etapa_nombre          String?   @db.VarChar(100)
-  etapa_tipo            String?   @db.VarChar(20)
-  etapa_orden           Int?
-  etapa_color           String?   @db.VarChar(7)
+  etapa_nombre String? @db.VarChar(100)
+  etapa_tipo   String? @db.VarChar(20)
+  etapa_orden  Int?
+  etapa_color  String? @db.VarChar(7)
 
-  usuario_nombre        String?   @db.VarChar(200)
-  usuario_username      String?   @db.VarChar(50)
-  usuario_rol           String?   @db.VarChar(30)
-  equipo_id             Int?
-  equipo_nombre         String?   @db.VarChar(200)
+  usuario_nombre   String? @db.VarChar(200)
+  usuario_username String? @db.VarChar(50)
+  usuario_rol      String? @db.VarChar(30)
+  equipo_id        Int?
+  equipo_nombre    String? @db.VarChar(200)
 
-  sucursal_id           Int?
-  sucursal_nombre       String?   @db.VarChar(200)
-  zona_id               Int?
-  zona_nombre           String?   @db.VarChar(200)
-  region_id             Int?
-  region_nombre         String?   @db.VarChar(200)
+  sucursal_id     Int?
+  sucursal_nombre String? @db.VarChar(200)
+  zona_id         Int?
+  zona_nombre     String? @db.VarChar(200)
+  region_id       Int?
+  region_nombre   String? @db.VarChar(200)
 
-  cliente_nss           String?
-  cliente_nombres       String?
-  cliente_a_paterno     String?
-  cliente_a_materno     String?
-  cliente_curp          String?
-  cliente_rfc           String?
-  cliente_edad          String?
-  cliente_genero        String?
-  cliente_estado        String?
-  cliente_municipio     String?
-  cliente_cp            String?
-  cliente_convenio      String?
-  cliente_tipo_cliente  String?   @db.VarChar(100)
-  cliente_tipo_pension  String?
-  cliente_capacidad     String?
-  cliente_oferta        String?
-  cliente_plazo_oferta  String?
-  cliente_tasa          String?
-  cliente_financiera    String?
-  cliente_dependencia   String?
-  cliente_estatus       String?
-  cliente_monto         String?
+  cliente_nss                String?
+  cliente_nombres            String?
+  cliente_a_paterno          String?
+  cliente_a_materno          String?
+  cliente_curp               String?
+  cliente_rfc                String?
+  cliente_edad               String?
+  cliente_genero             String?
+  cliente_estado             String?
+  cliente_municipio          String?
+  cliente_cp                 String?
+  cliente_convenio           String?
+  cliente_tipo_cliente       String? @db.VarChar(100)
+  cliente_tipo_pension       String?
+  cliente_capacidad          String?
+  cliente_oferta             String?
+  cliente_plazo_oferta       String?
+  cliente_tasa               String?
+  cliente_financiera         String?
+  cliente_dependencia        String?
+  cliente_estatus            String?
+  cliente_monto              String?
   cliente_monto_comisionable String?
 
-  telefono_efectivo     String?
-  email_efectivo        String?
+  telefono_efectivo String?
+  email_efectivo    String?
 
-  total_interacciones   Int       @default(0)
-  total_llamadas        Int       @default(0)
-  total_whatsapp        Int       @default(0)
-  total_sms             Int       @default(0)
-  total_notas           Int       @default(0)
-  total_cambios_etapa   Int       @default(0)
-  ultima_interaccion    DateTime?
+  total_interacciones Int       @default(0)
+  total_llamadas      Int       @default(0)
+  total_whatsapp      Int       @default(0)
+  total_sms           Int       @default(0)
+  total_notas         Int       @default(0)
+  total_cambios_etapa Int       @default(0)
+  ultima_interaccion  DateTime?
 
-  venta_monto           Decimal?  @db.Decimal(12, 2)
-  venta_fecha           DateTime?
+  venta_monto Decimal?  @db.Decimal(12, 2)
+  venta_fecha DateTime?
 
-  captacion_origen      String?   @db.VarChar(50)
-  captacion_convenio    String?   @db.VarChar(300)
-  captacion_fecha       DateTime?
+  captacion_origen   String?   @db.VarChar(50)
+  captacion_convenio String?   @db.VarChar(300)
+  captacion_fecha    DateTime?
 
-  timer_vencido         Boolean   @default(false)
-  dias_sin_interaccion  Int?
+  timer_vencido        Boolean @default(false)
+  dias_sin_interaccion Int?
 
-  sync_at               DateTime  @default(now())
+  sync_at DateTime @default(now())
 
   @@index([activo])
   @@index([usuario_id, activo])
@@ -642,64 +644,64 @@ model resumen_oportunidades {
 }
 
 model resumen_usuarios {
-  usuario_id            Int       @id
-  nombre                String?   @db.VarChar(200)
-  username              String?   @db.VarChar(50)
-  rol                   String?   @db.VarChar(30)
-  telegram_id           BigInt?
-  activo                Boolean   @default(true)
-  usuario_created       DateTime?
+  usuario_id      Int       @id
+  nombre          String?   @db.VarChar(200)
+  username        String?   @db.VarChar(50)
+  rol             String?   @db.VarChar(30)
+  telegram_id     BigInt?
+  activo          Boolean   @default(true)
+  usuario_created DateTime?
 
-  equipo_id             Int?
-  equipo_nombre         String?   @db.VarChar(200)
-  sucursal_id           Int?
-  sucursal_nombre       String?   @db.VarChar(200)
-  zona_id               Int?
-  zona_nombre           String?   @db.VarChar(200)
-  region_id             Int?
-  region_nombre         String?   @db.VarChar(200)
+  equipo_id       Int?
+  equipo_nombre   String? @db.VarChar(200)
+  sucursal_id     Int?
+  sucursal_nombre String? @db.VarChar(200)
+  zona_id         Int?
+  zona_nombre     String? @db.VarChar(200)
+  region_id       Int?
+  region_nombre   String? @db.VarChar(200)
 
-  oportunidades_total   Int       @default(0)
-  oportunidades_activas Int       @default(0)
-  oportunidades_pool    Int       @default(0)
-  oportunidades_captacion Int     @default(0)
-  oportunidades_etapa_1 Int       @default(0)
-  oportunidades_etapa_2 Int       @default(0)
-  oportunidades_etapa_3 Int       @default(0)
-  oportunidades_etapa_4 Int       @default(0)
-  oportunidades_etapa_5 Int       @default(0)
-  oportunidades_etapa_6 Int       @default(0)
-  oportunidades_etapa_7 Int       @default(0)
-  oportunidades_etapa_8 Int       @default(0)
+  oportunidades_total     Int @default(0)
+  oportunidades_activas   Int @default(0)
+  oportunidades_pool      Int @default(0)
+  oportunidades_captacion Int @default(0)
+  oportunidades_etapa_1   Int @default(0)
+  oportunidades_etapa_2   Int @default(0)
+  oportunidades_etapa_3   Int @default(0)
+  oportunidades_etapa_4   Int @default(0)
+  oportunidades_etapa_5   Int @default(0)
+  oportunidades_etapa_6   Int @default(0)
+  oportunidades_etapa_7   Int @default(0)
+  oportunidades_etapa_8   Int @default(0)
 
-  ventas_total          Int       @default(0)
-  ventas_validadas      Int       @default(0)
-  ventas_monto_total    Decimal   @default(0) @db.Decimal(14, 2)
-  ventas_monto_validado Decimal   @default(0) @db.Decimal(14, 2)
+  ventas_total          Int     @default(0)
+  ventas_validadas      Int     @default(0)
+  ventas_monto_total    Decimal @default(0) @db.Decimal(14, 2)
+  ventas_monto_validado Decimal @default(0) @db.Decimal(14, 2)
 
-  tasa_asignacion_contacto  Decimal @default(0) @db.Decimal(5, 2)
-  tasa_contacto_venta       Decimal @default(0) @db.Decimal(5, 2)
-  tasa_global               Decimal @default(0) @db.Decimal(5, 2)
+  tasa_asignacion_contacto Decimal @default(0) @db.Decimal(5, 2)
+  tasa_contacto_venta      Decimal @default(0) @db.Decimal(5, 2)
+  tasa_global              Decimal @default(0) @db.Decimal(5, 2)
 
-  interacciones_hoy     Int       @default(0)
-  interacciones_semana  Int       @default(0)
-  interacciones_mes     Int       @default(0)
-  llamadas_total        Int       @default(0)
-  whatsapp_total        Int       @default(0)
+  interacciones_hoy    Int @default(0)
+  interacciones_semana Int @default(0)
+  interacciones_mes    Int @default(0)
+  llamadas_total       Int @default(0)
+  whatsapp_total       Int @default(0)
 
-  captaciones_total     Int       @default(0)
-  captaciones_cambaceo  Int       @default(0)
-  captaciones_referido  Int       @default(0)
-  captaciones_redes     Int       @default(0)
+  captaciones_total    Int @default(0)
+  captaciones_cambaceo Int @default(0)
+  captaciones_referido Int @default(0)
+  captaciones_redes    Int @default(0)
 
   solicitudes_imss_total      Int @default(0)
   solicitudes_imss_pendientes Int @default(0)
   solicitudes_imss_resueltas  Int @default(0)
 
-  cupo_hoy_asignado     Int       @default(0)
-  cupo_hoy_limite       Int       @default(300)
+  cupo_hoy_asignado Int @default(0)
+  cupo_hoy_limite   Int @default(300)
 
-  sync_at               DateTime  @default(now())
+  sync_at DateTime @default(now())
 
   @@index([rol])
   @@index([sucursal_id])
@@ -714,43 +716,43 @@ model resumen_usuarios {
 // =============================================
 
 model ad_registros {
-  id              Int       @id @default(autoincrement())
-  usuario_id      Int
-  etapa           String    @db.VarChar(30)
+  id         Int    @id @default(autoincrement())
+  usuario_id Int
+  etapa      String @db.VarChar(30)
   // Leads | Cotizacion | No sujeto a credito | Ventas
 
-  nombre_cliente  String    @db.VarChar(300)
-  fecha           DateTime  @default(now()) @db.Date
-  status          String    @db.VarChar(30)
+  nombre_cliente  String   @db.VarChar(300)
+  fecha           DateTime @default(now()) @db.Date
+  status          String   @db.VarChar(30)
   // Venta | Interesado | Cotizacion | No viable | Proceso | Sin informacion
-  estrategia      String?   @db.VarChar(30)
+  estrategia      String?  @db.VarChar(30)
   // facebook | VoxImplant | Wasapi | WasapiCNCA | WasapiNuevo | Consunomina | Organico
-  flujo           String?   @db.VarChar(20)
+  flujo           String?  @db.VarChar(20)
   // 1 contacto | 2 contactos | 3 contactos
-  numero_telefono String?   @db.VarChar(20)
-  curp            String?   @db.VarChar(18)
-  nss             String?   @db.VarChar(15)
-  rfc             String?   @db.VarChar(13)
-  zona            String?   @db.VarChar(100)
-  campana         String?   @db.VarChar(30)
+  numero_telefono String?  @db.VarChar(20)
+  curp            String?  @db.VarChar(18)
+  nss             String?  @db.VarChar(15)
+  rfc             String?  @db.VarChar(13)
+  zona            String?  @db.VarChar(100)
+  campana         String?  @db.VarChar(30)
   // IMSS Pensionados | SNTE23 | SEIEM | CDMX | SNTE17y36 | GEM | IMSS | Nuevo Leon | SNTE14
-  capacidad       String?   @db.VarChar(100)
-  monto_credito   Decimal?  @db.Decimal(12, 2)
-  tipo_credito    String?   @db.VarChar(30)
+  capacidad       String?  @db.VarChar(100)
+  monto_credito   Decimal? @db.Decimal(12, 2)
+  tipo_credito    String?  @db.VarChar(30)
   // Nuevo | Refinanciamiento | LCOM | CNCA
-  convenio        String?   @db.VarChar(100)
+  convenio        String?  @db.VarChar(100)
   // IMSS Pensionados | GEM | CDMX | IMSS Jubilados | INE | SEIEM | SEP | SNTE23 | Gob Chihuahua | Gob Nuevo Leon | SNTE14 | SEDUC | SNTE21
-  etiqueta        String?   @db.VarChar(20)
+  etiqueta        String?  @db.VarChar(20)
   // Llamada | Whatsapp
-  oferta          String?   @db.VarChar(5)
+  oferta          String?  @db.VarChar(5)
   // Si | No
   motivo          String?
-  id_venta        String?   @db.VarChar(100)
-  viabilidad      String?   @db.VarChar(100)
+  id_venta        String?  @db.VarChar(100)
+  viabilidad      String?  @db.VarChar(100)
 
-  activo          Boolean   @default(true)
-  created_at      DateTime  @default(now())
-  updated_at      DateTime  @default(now()) @updatedAt
+  activo     Boolean  @default(true)
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now()) @updatedAt
 
   usuario usuarios @relation(fields: [usuario_id], references: [id])
 
@@ -768,23 +770,23 @@ model ad_registros {
 // =============================================
 
 model ad_redes_sociales {
-  id              Int       @id @default(autoincrement())
+  id              Int      @id @default(autoincrement())
   usuario_id      Int
-  nombre_cliente  String    @db.VarChar(300)
-  fecha           DateTime  @default(now()) @db.Date
-  estrategia      String    @db.VarChar(30)
+  nombre_cliente  String   @db.VarChar(300)
+  fecha           DateTime @default(now()) @db.Date
+  estrategia      String   @db.VarChar(30)
   // Facebook | Wasapi | Vox implant | Organico | Consunomina
-  numero_telefono String?   @db.VarChar(20)
-  curp            String?   @db.VarChar(18)
-  status          String    @db.VarChar(30)
+  numero_telefono String?  @db.VarChar(20)
+  curp            String?  @db.VarChar(18)
+  status          String   @db.VarChar(30)
   // Venta | Interesado | No interesado | Cotizacion | No localizado | Sin capacidad | En proceso | Sin informacion | No apto | Analisis | Declinó
-  viabilidad      String?   @db.VarChar(20)
+  viabilidad      String?  @db.VarChar(20)
   // Viable | No viable
   motivo          String?
 
-  activo          Boolean   @default(true)
-  created_at      DateTime  @default(now())
-  updated_at      DateTime  @default(now()) @updatedAt
+  activo     Boolean  @default(true)
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now()) @updatedAt
 
   usuario usuarios @relation(fields: [usuario_id], references: [id])
 
@@ -797,17 +799,17 @@ model ad_redes_sociales {
 // =============================================
 
 model lotes_analista {
-  id              Int      @id @default(autoincrement())
-  analista_id     Int
-  fecha           DateTime @default(now()) @db.Date
-  cantidad        Int
-  estado          String   @default("PENDIENTE") @db.VarChar(20)
+  id            Int       @id @default(autoincrement())
+  analista_id   Int
+  fecha         DateTime  @default(now()) @db.Date
+  cantidad      Int
+  estado        String    @default("PENDIENTE") @db.VarChar(20)
   // PENDIENTE | EN_PROCESO | FINALIZADO | LIMPIADO
-  finalizado_at   DateTime?
-  created_at      DateTime @default(now())
+  finalizado_at DateTime?
+  created_at    DateTime  @default(now())
 
-  analista        usuarios                  @relation(fields: [analista_id], references: [id])
-  calificaciones  calificaciones_analista[]
+  analista       usuarios                  @relation(fields: [analista_id], references: [id])
+  calificaciones calificaciones_analista[]
 
   @@unique([analista_id, fecha])
   @@index([analista_id])
@@ -820,19 +822,19 @@ model lotes_analista {
 // =============================================
 
 model calificaciones_analista {
-  id              Int      @id @default(autoincrement())
-  lote_id         Int
-  analista_id     Int
-  cliente_id      Int
+  id          Int      @id @default(autoincrement())
+  lote_id     Int
+  analista_id Int
+  cliente_id  Int
   // Referencia a clientes.id en BD Clientes (sin FK constraint — DBs separadas)
-  calificado      Boolean  @default(false)
-  recalificar     Boolean  @default(false)
+  calificado  Boolean  @default(false)
+  recalificar Boolean  @default(false)
   // true = registro devuelto del promotor, requiere re-calificación
-  created_at      DateTime @default(now())
-  updated_at      DateTime @default(now()) @updatedAt
+  created_at  DateTime @default(now())
+  updated_at  DateTime @default(now()) @updatedAt
 
-  lote      lotes_analista @relation(fields: [lote_id], references: [id])
-  analista  usuarios       @relation(fields: [analista_id], references: [id])
+  lote     lotes_analista @relation(fields: [lote_id], references: [id])
+  analista usuarios       @relation(fields: [analista_id], references: [id])
 
   @@unique([lote_id, cliente_id])
   @@index([analista_id])
@@ -845,27 +847,27 @@ model calificaciones_analista {
 // =============================================
 
 model pool_gerente {
-  id              Int       @id @default(autoincrement())
-  cliente_id      Int
+  id             Int       @id @default(autoincrement())
+  cliente_id     Int
   // Referencia a clientes.id en BD Clientes (sin FK constraint — DBs separadas)
-  calificado_por  Int
+  calificado_por Int
   // analista_id que lo calificó
-  region_id       Int?
+  region_id      Int?
   // Región del analista (para scope del gerente)
-  asignado        Boolean   @default(false)
-  asignado_a      Int?
+  asignado       Boolean   @default(false)
+  asignado_a     Int?
   // promotor_id al que fue asignado
-  asignado_por    Int?
+  asignado_por   Int?
   // gerente_id que lo asignó
-  asignado_at     DateTime?
-  expira_at       DateTime
+  asignado_at    DateTime?
+  expira_at      DateTime
   // 6 meses desde calificación
-  created_at      DateTime  @default(now())
+  created_at     DateTime  @default(now())
 
-  calificador  usuarios  @relation("PoolCalificador", fields: [calificado_por], references: [id])
-  promotor     usuarios? @relation("PoolGerentePromotor", fields: [asignado_a], references: [id])
-  gerente      usuarios? @relation("PoolGerenteGerente", fields: [asignado_por], references: [id])
-  region       regiones? @relation(fields: [region_id], references: [id])
+  calificador usuarios  @relation("PoolCalificador", fields: [calificado_por], references: [id])
+  promotor    usuarios? @relation("PoolGerentePromotor", fields: [asignado_a], references: [id])
+  gerente     usuarios? @relation("PoolGerenteGerente", fields: [asignado_por], references: [id])
+  region      regiones? @relation(fields: [region_id], references: [id])
 
   @@unique([cliente_id, calificado_por])
   @@index([asignado])
@@ -881,14 +883,14 @@ model pool_gerente {
 // =============================================
 
 model recalificaciones_pendientes {
-  id              Int      @id @default(autoincrement())
-  cliente_id      Int      @unique
+  id         Int      @id @default(autoincrement())
+  cliente_id Int      @unique
   // Referencia a clientes.id en BD Clientes (sin FK constraint — DBs separadas)
-  region_id       Int?
+  region_id  Int?
   // Región para scope del CRON (asignar al analista de la misma región)
-  motivo          String   @default("DEVUELTO_POOL") @db.VarChar(50)
+  motivo     String   @default("DEVUELTO_POOL") @db.VarChar(50)
   // DEVUELTO_POOL | TIMER_VENCIDO
-  created_at      DateTime @default(now())
+  created_at DateTime @default(now())
 
   region regiones? @relation(fields: [region_id], references: [id])
 
@@ -900,16 +902,16 @@ model recalificaciones_pendientes {
 // =============================================
 
 model lotes_supervisor {
-  id              Int      @id @default(autoincrement())
-  supervisor_id   Int
-  fecha           DateTime @default(now()) @db.Date
-  cantidad        Int
-  estado          String   @default("PENDIENTE") @db.VarChar(20)
+  id            Int      @id @default(autoincrement())
+  supervisor_id Int
+  fecha         DateTime @default(now()) @db.Date
+  cantidad      Int
+  estado        String   @default("PENDIENTE") @db.VarChar(20)
   // PENDIENTE | EN_PROCESO | FINALIZADO
-  created_at      DateTime @default(now())
+  created_at    DateTime @default(now())
 
-  supervisor      usuarios                    @relation(fields: [supervisor_id], references: [id])
-  calificaciones  calificaciones_supervisor[]
+  supervisor     usuarios                    @relation(fields: [supervisor_id], references: [id])
+  calificaciones calificaciones_supervisor[]
 
   @@unique([supervisor_id, fecha])
   @@index([estado])
@@ -917,14 +919,14 @@ model lotes_supervisor {
 }
 
 model calificaciones_supervisor {
-  id              Int      @id @default(autoincrement())
-  lote_id         Int
-  supervisor_id   Int
-  cliente_id      Int
+  id            Int      @id @default(autoincrement())
+  lote_id       Int
+  supervisor_id Int
+  cliente_id    Int
   // Referencia a clientes.id en BD Clientes (sin FK constraint — DBs separadas)
-  calificado      Boolean  @default(false)
-  created_at      DateTime @default(now())
-  updated_at      DateTime @default(now()) @updatedAt
+  calificado    Boolean  @default(false)
+  created_at    DateTime @default(now())
+  updated_at    DateTime @default(now()) @updatedAt
 
   lote       lotes_supervisor @relation(fields: [lote_id], references: [id])
   supervisor usuarios         @relation(fields: [supervisor_id], references: [id])
@@ -936,24 +938,24 @@ model calificaciones_supervisor {
 }
 
 model pool_supervisor {
-  id              Int       @id @default(autoincrement())
-  cliente_id      Int
+  id            Int       @id @default(autoincrement())
+  cliente_id    Int
   // Referencia a clientes.id en BD Clientes (sin FK constraint — DBs separadas)
-  supervisor_id   Int
+  supervisor_id Int
   // supervisor que lo calificó
-  equipo_id       Int?
+  equipo_id     Int?
   // scope del equipo
-  asignado        Boolean   @default(false)
-  asignado_a      Int?
+  asignado      Boolean   @default(false)
+  asignado_a    Int?
   // promotor_id al que fue asignado
-  asignado_at     DateTime?
-  expira_at       DateTime
+  asignado_at   DateTime?
+  expira_at     DateTime
   // 6 meses desde calificación
-  created_at      DateTime  @default(now())
+  created_at    DateTime  @default(now())
 
-  supervisor_rel  usuarios  @relation("PoolSupervisorSup", fields: [supervisor_id], references: [id])
-  promotor        usuarios? @relation("PoolSupervisorPromotor", fields: [asignado_a], references: [id])
-  equipo_rel      equipos?  @relation(fields: [equipo_id], references: [id])
+  supervisor_rel usuarios  @relation("PoolSupervisorSup", fields: [supervisor_id], references: [id])
+  promotor       usuarios? @relation("PoolSupervisorPromotor", fields: [asignado_a], references: [id])
+  equipo_rel     equipos?  @relation(fields: [equipo_id], references: [id])
 
   @@unique([cliente_id, supervisor_id])
   @@index([supervisor_id, asignado])
@@ -961,4 +963,138 @@ model pool_supervisor {
   @@index([supervisor_id, asignado, expira_at])
   @@index([equipo_id, asignado])
   @@index([asignado_a])
+}
+
+// =============================================
+// CLIENTES CDMX — Importados de Excel
+// =============================================
+
+model clientes_cdmx {
+  id               Int       @id @default(autoincrement())
+  nomina           String?   @db.VarChar(50)
+  institucion      String?   @db.VarChar(200)
+  numero_empleado  Int?
+  rfc              String?   @db.VarChar(20)
+  nombre           String?   @db.VarChar(300)
+  puesto           String?
+  contrato         Int?
+  cod_institucion  String?   @db.VarChar(50)
+  fecha            DateTime?
+  servicio         String?   @db.VarChar(100)
+  clave_descuento  String?   @db.VarChar(50)
+  cuotas_original  Int?
+  cuotas           Int?
+  valor_original   Decimal?  @db.Decimal(12, 2)
+  valor_enviado    Decimal?  @db.Decimal(12, 2)
+  valor_descontado Decimal?  @db.Decimal(12, 2)
+  critica_envio    String?
+  regreso          String?   @db.VarChar(100)
+  periodo_bloqueo  String?   @db.VarChar(50)
+  ultimo_periodo   Int?
+  procesamiento    DateTime?
+  descentralizado  String?   @db.VarChar(10)
+  cambio_manual    String?   @db.VarChar(10)
+  fecha_ingreso    DateTime?
+  eventos          String?
+  created_at       DateTime  @default(now())
+
+  @@index([nombre])
+  @@index([rfc])
+  @@index([numero_empleado])
+}
+
+// =============================================
+// CATÁLOGO RETROALIMENTACIÓN — Calificación promotor
+// =============================================
+
+model catalogo_retroalimentacion {
+  id     Int     @id @default(autoincrement())
+  nombre String  @unique @db.VarChar(50)
+  activo Boolean @default(true)
+
+  calificaciones calificaciones_promotor[]
+}
+
+// =============================================
+// CALIFICACIÓN PROMOTOR — Lotes
+// =============================================
+
+model lotes_calificacion_promotor {
+  id          Int      @id @default(autoincrement())
+  promotor_id Int
+  fecha       DateTime @default(now()) @db.Date
+  tipo        String   @db.VarChar(10)
+  // IEPPO | CDMX
+  cantidad    Int      @default(0)
+  estado      String   @default("PENDIENTE") @db.VarChar(20)
+  // PENDIENTE | EN_PROCESO | DEVUELTO
+  created_at  DateTime @default(now())
+
+  promotor       usuarios                  @relation(fields: [promotor_id], references: [id])
+  calificaciones calificaciones_promotor[]
+
+  @@index([promotor_id, fecha])
+  @@index([estado])
+  @@index([promotor_id, fecha, tipo])
+}
+
+// =============================================
+// CALIFICACIÓN PROMOTOR — Registros individuales
+// =============================================
+
+model calificaciones_promotor {
+  id                   Int      @id @default(autoincrement())
+  lote_id              Int
+  promotor_id          Int
+  cliente_id           Int
+  // IEPPO: referencia a clientes.id en BD Clientes
+  // CDMX: referencia a clientes_cdmx.id en BD Sistema
+  tipo                 String   @db.VarChar(10)
+  // IEPPO | CDMX
+  calificado           Boolean  @default(false)
+  telefono             String?  @db.VarChar(20)
+  capacidad            String?  @db.VarChar(50)
+  retroalimentacion_id Int?
+  ronda                Int      @default(1)
+  created_at           DateTime @default(now())
+  updated_at           DateTime @default(now()) @updatedAt
+
+  lote              lotes_calificacion_promotor @relation(fields: [lote_id], references: [id])
+  retroalimentacion catalogo_retroalimentacion? @relation(fields: [retroalimentacion_id], references: [id])
+
+  @@unique([lote_id, cliente_id, tipo])
+  @@index([promotor_id])
+  @@index([tipo, ronda, cliente_id])
+  @@index([lote_id, calificado])
+  @@index([cliente_id, tipo])
+}
+
+// =============================================
+// CUPO CALIFICACIÓN DIARIO — Separado del cupo de oportunidades
+// =============================================
+
+model cupo_calificacion_diario {
+  id             Int      @id @default(autoincrement())
+  usuario_id     Int
+  fecha          DateTime @db.Date
+  total_asignado Int      @default(0)
+  limite         Int      @default(300)
+  created_at     DateTime @default(now())
+
+  usuario usuarios @relation(fields: [usuario_id], references: [id])
+
+  @@unique([usuario_id, fecha])
+  @@index([fecha])
+}
+
+// =============================================
+// RONDAS CALIFICACIÓN — Controla ciclos de asignación
+// =============================================
+
+model rondas_calificacion {
+  id           Int      @id @default(autoincrement())
+  tipo         String   @unique @db.VarChar(10)
+  // IEPPO | CDMX
+  ronda_actual Int      @default(1)
+  updated_at   DateTime @default(now()) @updatedAt
 }

@@ -190,6 +190,7 @@ function SidebarContent({
         ) : isPromotor ? (
           <>
             <NavItem label="Mi Asignación" href="/promotor/oportunidades" icon={<TrendingUp className="w-5 h-5" />} pathname={pathname} showLabels={showLabels} />
+            <NavItem label="Calificación" href="/promotor/calificacion" icon={<ClipboardCheck className="w-5 h-5" />} pathname={pathname} showLabels={showLabels} exact />
             <NavItem label="Busqueda" href="/promotor/busqueda" icon={<Search className="w-5 h-5" />} pathname={pathname} showLabels={showLabels} exact />
             <NavItem label="WhatsApp" href="/promotor/whatsapp" icon={<WhatsAppIcon />} pathname={pathname} showLabels={showLabels} exact />
             <NavItem label="Analítica WA" href="/promotor/whatsapp/analitica" icon={<BarChart3 className="w-5 h-5" />} pathname={pathname} showLabels={showLabels} exact />
