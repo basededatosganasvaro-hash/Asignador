@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 
 const calificarSchema = z.object({
-  telefono: z.string().min(7, "Mínimo 7 dígitos").optional().or(z.literal("")),
+  telefono: z.string().min(7, "Mínimo 7 dígitos").optional().or(z.literal("")).or(z.literal("Sin registro")),
   capacidad: z.string().min(1, "Capacidad requerida"),
   retroalimentacion_id: z.number().int().positive("Selecciona retroalimentación"),
 });

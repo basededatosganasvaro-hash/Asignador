@@ -36,31 +36,23 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "No se encontro lote activo" }, { status: 404 });
   }
 
-  const calificados = lote.calificaciones.filter((c) => c.calificado).length;
+  // No permitir liberar si hay registros sin calificar
   const pendientes = lote.calificaciones.filter((c) => !c.calificado).length;
+  if (pendientes > 0) {
+    return NextResponse.json(
+      { error: `Faltan ${pendientes} registros por calificar` },
+      { status: 400 }
+    );
+  }
 
-  await prisma.$transaction(async (tx) => {
-    // Eliminar calificaciones no completadas para liberar esos cliente_ids
-    await tx.calificaciones_promotor.deleteMany({
-      where: {
-        lote_id: lote.id,
-        calificado: false,
-      },
-    });
-
-    // Marcar lote como DEVUELTO
-    await tx.lotes_calificacion_promotor.update({
-      where: { id: lote.id },
-      data: {
-        estado: "DEVUELTO",
-        cantidad: calificados,
-      },
-    });
+  // Marcar lote como DEVUELTO — las calificaciones se conservan como historico
+  await prisma.lotes_calificacion_promotor.update({
+    where: { id: lote.id },
+    data: { estado: "DEVUELTO" },
   });
 
   return NextResponse.json({
     ok: true,
-    calificados,
-    liberados: pendientes,
+    calificados: lote.calificaciones.length,
   });
 }

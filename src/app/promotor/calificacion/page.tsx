@@ -10,7 +10,7 @@ import { Dialog, DialogHeader, DialogBody, DialogFooter } from "@/components/ui/
 import { useToast } from "@/components/ui/Toast";
 import { DataTable } from "@/components/ui/DataTable";
 import { ColumnDef } from "@tanstack/react-table";
-import { ClipboardCheck, FileSpreadsheet, Download, Undo2 } from "lucide-react";
+import { ClipboardCheck, FileSpreadsheet, Download } from "lucide-react";
 
 // ─── Types ───
 
@@ -185,7 +185,7 @@ function TabContent({
       if (res.ok) {
         const data = await res.json();
         toast(
-          `Lote liberado: ${data.calificados} calificados, ${data.liberados} devueltos`,
+          `Lote liberado: ${data.calificados} registros calificados`,
           "success"
         );
         setConfirmLiberar(false);
@@ -398,13 +398,17 @@ function TabContent({
     <div>
       {/* Header con botón liberar */}
       <div className="flex justify-end mb-3">
-        <Button
-          variant="ghost"
+        <button
           onClick={() => setConfirmLiberar(true)}
+          disabled={lote.total_pendientes > 0}
+          className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all ${
+            lote.total_pendientes > 0
+              ? "bg-slate-700/30 text-slate-500 border border-slate-700/40 cursor-not-allowed"
+              : "bg-red-500/15 text-red-400 border border-red-500/30 hover:bg-red-500/25 hover:border-red-500/50"
+          }`}
         >
-          <Undo2 className="w-4 h-4 mr-2" />
           Liberar Lote
-        </Button>
+        </button>
       </div>
 
       {/* KPIs */}
@@ -440,16 +444,11 @@ function TabContent({
         </DialogHeader>
         <DialogBody>
           <p className="text-sm text-slate-300">
-            Se devolveran <strong className="text-amber-400">{lote.total_pendientes}</strong> registros
-            pendientes al pool de asignacion.
+            Se liberaran <strong className="text-emerald-400">{lote.total_calificados}</strong> registros
+            calificados de vuelta al pool de asignacion.
           </p>
-          {lote.total_calificados > 0 && (
-            <p className="text-sm text-slate-400 mt-2">
-              Los <strong className="text-emerald-400">{lote.total_calificados}</strong> registros ya calificados se conservaran.
-            </p>
-          )}
           <p className="text-sm text-slate-500 mt-2">
-            Esta accion no se puede deshacer.
+            La calificacion y retroalimentacion quedaran en el historico. Esta accion no se puede deshacer.
           </p>
         </DialogBody>
         <DialogFooter>
@@ -539,30 +538,22 @@ function CalificarDialog({
   const [capacidad, setCapacidad] = useState(item.capacidad ?? "");
   const [retroId, setRetroId] = useState(item.retroalimentacion_id?.toString() ?? "");
   const [saving, setSaving] = useState(false);
+  const [showSinRegistro, setShowSinRegistro] = useState(false);
 
   const clienteNombre = tipo === "IEPPO"
     ? `${(item.cliente as Record<string, unknown>)?.nombres ?? ""} ${(item.cliente as Record<string, unknown>)?.a_paterno ?? ""}`.trim()
     : String((item.cliente as Record<string, unknown>)?.nombre ?? "Sin nombre");
 
-  const handleSave = async () => {
-    if (!capacidad.trim()) {
-      toast("La capacidad es requerida", "error");
-      return;
-    }
-    if (!retroId) {
-      toast("Selecciona retroalimentación", "error");
-      return;
-    }
-
+  const doSave = async (tel: string, cap: string, retro: number) => {
     setSaving(true);
     try {
       const res = await fetch(`/api/promotor/calificacion/${item.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          telefono,
-          capacidad,
-          retroalimentacion_id: Number(retroId),
+          telefono: tel,
+          capacidad: cap,
+          retroalimentacion_id: retro,
         }),
       });
       const data = await res.json();
@@ -573,11 +564,74 @@ function CalificarDialog({
       toast("Registro calificado", "success");
       onSaved();
     } catch {
-      toast("Error de conexión", "error");
+      toast("Error de conexion", "error");
     } finally {
       setSaving(false);
     }
   };
+
+  const handleSave = async () => {
+    if (!retroId) {
+      toast("Selecciona retroalimentacion", "error");
+      return;
+    }
+
+    // Si no hay telefono, preguntar si no encontro el dato
+    if (!telefono.trim()) {
+      setShowSinRegistro(true);
+      return;
+    }
+
+    if (!capacidad.trim()) {
+      toast("La capacidad es requerida", "error");
+      return;
+    }
+
+    await doSave(telefono, capacidad, Number(retroId));
+  };
+
+  const handleSinRegistro = async () => {
+    // Buscar "No localizado" en catalogo para auto-asignar retro
+    const noLoc = catalogo.find((c) => c.nombre.toLowerCase().includes("no localizado"));
+    const retro = retroId ? Number(retroId) : noLoc ? noLoc.id : null;
+    if (!retro) {
+      toast("Selecciona retroalimentacion", "error");
+      setShowSinRegistro(false);
+      return;
+    }
+    await doSave("Sin registro", capacidad.trim() || "Sin registro", retro);
+  };
+
+  // Sub-dialog: sin registro
+  if (showSinRegistro) {
+    return (
+      <Dialog open onClose={() => setShowSinRegistro(false)} maxWidth="sm">
+        <DialogHeader onClose={() => setShowSinRegistro(false)}>
+          Sin numero de telefono
+        </DialogHeader>
+        <DialogBody>
+          <p className="text-sm text-slate-300">
+            No ingresaste un numero de telefono para este registro.
+          </p>
+          <p className="text-sm text-slate-400 mt-2">
+            ¿Calificaste el dato o no encontraste la informacion?
+          </p>
+        </DialogBody>
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => setShowSinRegistro(false)} disabled={saving}>
+            Volver
+          </Button>
+          <Button
+            variant="primary"
+            onClick={handleSinRegistro}
+            loading={saving}
+          >
+            No encontre el dato
+          </Button>
+        </DialogFooter>
+      </Dialog>
+    );
+  }
 
   return (
     <Dialog open onClose={onClose}>
@@ -595,8 +649,8 @@ function CalificarDialog({
           ) : (
             <>
               <p><span className="text-slate-500">RFC:</span> {String((item.cliente as Record<string, unknown>)?.rfc ?? "—")}</p>
-              <p><span className="text-slate-500">Institución:</span> {String((item.cliente as Record<string, unknown>)?.institucion ?? "—")}</p>
-              <p><span className="text-slate-500">Nómina:</span> {String((item.cliente as Record<string, unknown>)?.nomina ?? "—")}</p>
+              <p><span className="text-slate-500">Institucion:</span> {String((item.cliente as Record<string, unknown>)?.institucion ?? "—")}</p>
+              <p><span className="text-slate-500">Nomina:</span> {String((item.cliente as Record<string, unknown>)?.nomina ?? "—")}</p>
               <p><span className="text-slate-500">Servicio:</span> {String((item.cliente as Record<string, unknown>)?.servicio ?? "—")}</p>
             </>
           )}
@@ -605,7 +659,7 @@ function CalificarDialog({
         {/* Campos de calificación */}
         <div className="space-y-3">
           <Input
-            label="Teléfono"
+            label="Telefono"
             type="tel"
             placeholder="Ej: 5512345678"
             value={telefono}
@@ -619,7 +673,7 @@ function CalificarDialog({
             onChange={(e) => setCapacidad(e.target.value)}
           />
           <Select
-            label="Retroalimentación"
+            label="Retroalimentacion"
             value={retroId}
             onChange={(e) => setRetroId(e.target.value)}
             options={[
