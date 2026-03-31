@@ -978,7 +978,7 @@ model clientes_cdmx {
   nombre           String?   @db.VarChar(300)
   puesto           String?
   contrato         Int?
-  cod_institucion  String?   @db.VarChar(50)
+  cod_institucion  String?   @db.VarChar(100)
   fecha            DateTime?
   servicio         String?   @db.VarChar(100)
   clave_descuento  String?   @db.VarChar(50)

@@ -10,7 +10,7 @@ import { Dialog, DialogHeader, DialogBody, DialogFooter } from "@/components/ui/
 import { useToast } from "@/components/ui/Toast";
 import { DataTable } from "@/components/ui/DataTable";
 import { ColumnDef } from "@tanstack/react-table";
-import { ClipboardCheck, FileSpreadsheet, Download } from "lucide-react";
+import { ClipboardCheck, FileSpreadsheet, Download, Undo2 } from "lucide-react";
 
 // ─── Types ───
 
@@ -170,6 +170,35 @@ function TabContent({
   const [cantidad, setCantidad] = useState("50");
   const [submitting, setSubmitting] = useState(false);
   const [editItem, setEditItem] = useState<CalificacionItem | null>(null);
+  const [confirmLiberar, setConfirmLiberar] = useState(false);
+  const [liberando, setLiberando] = useState(false);
+
+  const handleLiberar = async () => {
+    if (!lote) return;
+    setLiberando(true);
+    try {
+      const res = await fetch("/api/promotor/calificacion/liberar-lote", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lote_id: lote.id }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        toast(
+          `Lote liberado: ${data.calificados} calificados, ${data.liberados} devueltos`,
+          "success"
+        );
+        setConfirmLiberar(false);
+        onRefresh();
+      } else {
+        const data = await res.json();
+        toast(data.error || "Error al liberar", "error");
+      }
+    } catch {
+      toast("Error de conexion", "error");
+    }
+    setLiberando(false);
+  };
 
   const solicitarLote = async () => {
     const cant = Math.min(Number(cantidad) || 50, cupo?.disponible ?? 0);
@@ -367,6 +396,17 @@ function TabContent({
 
   return (
     <div>
+      {/* Header con botón liberar */}
+      <div className="flex justify-end mb-3">
+        <Button
+          variant="ghost"
+          onClick={() => setConfirmLiberar(true)}
+        >
+          <Undo2 className="w-4 h-4 mr-2" />
+          Liberar Lote
+        </Button>
+      </div>
+
       {/* KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
         <KpiCard label="Total" value={lote.cantidad} />
@@ -392,6 +432,35 @@ function TabContent({
           }}
         />
       )}
+
+      {/* Dialog confirmar liberar lote */}
+      <Dialog open={confirmLiberar} onClose={() => setConfirmLiberar(false)} maxWidth="sm">
+        <DialogHeader onClose={() => setConfirmLiberar(false)}>
+          Liberar Lote {tipo}
+        </DialogHeader>
+        <DialogBody>
+          <p className="text-sm text-slate-300">
+            Se devolveran <strong className="text-amber-400">{lote.total_pendientes}</strong> registros
+            pendientes al pool de asignacion.
+          </p>
+          {lote.total_calificados > 0 && (
+            <p className="text-sm text-slate-400 mt-2">
+              Los <strong className="text-emerald-400">{lote.total_calificados}</strong> registros ya calificados se conservaran.
+            </p>
+          )}
+          <p className="text-sm text-slate-500 mt-2">
+            Esta accion no se puede deshacer.
+          </p>
+        </DialogBody>
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => setConfirmLiberar(false)} disabled={liberando}>
+            Cancelar
+          </Button>
+          <Button variant="primary" onClick={handleLiberar} loading={liberando}>
+            Confirmar
+          </Button>
+        </DialogFooter>
+      </Dialog>
     </div>
   );
 }

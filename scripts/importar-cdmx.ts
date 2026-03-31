@@ -40,7 +40,7 @@ async function main() {
 
   const wb = new ExcelJS.Workbook();
   await wb.xlsx.readFile(filePath);
-  const ws = wb.getWorksheet(1);
+  const ws = wb.getWorksheet("Base Cobranza") || wb.worksheets[0];
   if (!ws) throw new Error("No se encontró la hoja de cálculo");
 
   console.log(`Filas totales: ${ws.rowCount}`);
