@@ -738,6 +738,7 @@ function CdmxSelector({
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [submitting, setSubmitting] = useState(false);
+  const [detailId, setDetailId] = useState<number | null>(null);
   const limit = 25;
 
   // Debounce search
@@ -922,7 +923,14 @@ function CdmxSelector({
                           className="w-4 h-4 rounded border-slate-700 bg-slate-800/50 text-amber-500 focus:ring-amber-500/40"
                         />
                       </td>
-                      <td className="px-4 py-3 text-slate-200">{c.nombre ?? "—"}</td>
+                      <td className="px-4 py-3">
+                        <button
+                          className="text-amber-400 hover:underline text-left"
+                          onClick={(e) => { e.stopPropagation(); setDetailId(c.id); }}
+                        >
+                          {c.nombre ?? "—"}
+                        </button>
+                      </td>
                       <td className="px-4 py-3 text-slate-400">{c.rfc ?? "—"}</td>
                       <td className="px-4 py-3 text-slate-400">{c.institucion ?? "—"}</td>
                       <td className="px-4 py-3 text-slate-400 max-w-[200px] truncate">{c.puesto ?? "—"}</td>
@@ -984,7 +992,174 @@ function CdmxSelector({
           </Button>
         </div>
       )}
+
+      {/* Detail dialog */}
+      {detailId !== null && (
+        <CdmxDetailDialog
+          clienteId={detailId}
+          isSelected={selected.has(detailId)}
+          onToggleSelect={() => toggleSelect(detailId)}
+          onClose={() => setDetailId(null)}
+          toast={toast}
+        />
+      )}
     </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// CDMX Detail Dialog
+// ═══════════════════════════════════════════════════════════════════════════════
+
+interface CdmxClienteDetalle {
+  id: number;
+  nombre: string | null;
+  rfc: string | null;
+  nomina: string | null;
+  institucion: string | null;
+  numero_empleado: number | null;
+  puesto: string | null;
+  contrato: number | null;
+  cod_institucion: string | null;
+  fecha: string | null;
+  servicio: string | null;
+  clave_descuento: string | null;
+  cuotas_original: number | null;
+  cuotas: number | null;
+  valor_original: string | null;
+  valor_enviado: string | null;
+  valor_descontado: string | null;
+  critica_envio: string | null;
+  regreso: string | null;
+  periodo_bloqueo: string | null;
+  ultimo_periodo: number | null;
+  procesamiento: string | null;
+  descentralizado: string | null;
+  cambio_manual: string | null;
+  fecha_ingreso: string | null;
+  eventos: string | null;
+}
+
+const DETAIL_FIELDS: { key: keyof CdmxClienteDetalle; label: string }[] = [
+  { key: "nombre", label: "Nombre" },
+  { key: "rfc", label: "RFC" },
+  { key: "nomina", label: "Nómina" },
+  { key: "institucion", label: "Institución" },
+  { key: "numero_empleado", label: "No. Empleado" },
+  { key: "puesto", label: "Puesto" },
+  { key: "contrato", label: "Contrato" },
+  { key: "cod_institucion", label: "Cód. Institución" },
+  { key: "servicio", label: "Servicio" },
+  { key: "clave_descuento", label: "Clave Descuento" },
+  { key: "cuotas_original", label: "Cuotas Original" },
+  { key: "cuotas", label: "Cuotas" },
+  { key: "valor_original", label: "Valor Original" },
+  { key: "valor_enviado", label: "Valor Enviado" },
+  { key: "valor_descontado", label: "Valor Descontado" },
+  { key: "critica_envio", label: "Crítica Envío" },
+  { key: "regreso", label: "Regreso" },
+  { key: "periodo_bloqueo", label: "Periodo Bloqueo" },
+  { key: "ultimo_periodo", label: "Último Periodo" },
+  { key: "fecha", label: "Fecha" },
+  { key: "procesamiento", label: "Procesamiento" },
+  { key: "fecha_ingreso", label: "Fecha Ingreso" },
+  { key: "descentralizado", label: "Descentralizado" },
+  { key: "cambio_manual", label: "Cambio Manual" },
+  { key: "eventos", label: "Eventos" },
+];
+
+function CdmxDetailDialog({
+  clienteId,
+  isSelected,
+  onToggleSelect,
+  onClose,
+  toast,
+}: {
+  clienteId: number;
+  isSelected: boolean;
+  onToggleSelect: () => void;
+  onClose: () => void;
+  toast: ReturnType<typeof useToast>["toast"];
+}) {
+  const [data, setData] = useState<CdmxClienteDetalle | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    const fetchDetail = async () => {
+      setLoading(true);
+      try {
+        const res = await fetch(`/api/promotor/calificacion/cdmx-disponibles/${clienteId}`);
+        if (res.ok && !cancelled) {
+          setData(await res.json());
+        } else if (!cancelled) {
+          toast("Error al cargar detalle del cliente", "error");
+          onClose();
+        }
+      } catch {
+        if (!cancelled) {
+          toast("Error de conexión", "error");
+          onClose();
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    fetchDetail();
+    return () => { cancelled = true; };
+  }, [clienteId, toast, onClose]);
+
+  const formatValue = (key: string, val: unknown): string => {
+    if (val === null || val === undefined || val === "") return "—";
+    if (key === "fecha" || key === "procesamiento" || key === "fecha_ingreso") {
+      try {
+        return new Date(String(val)).toLocaleDateString("es-MX");
+      } catch {
+        return String(val);
+      }
+    }
+    if (key === "valor_original" || key === "valor_enviado" || key === "valor_descontado") {
+      const num = Number(val);
+      if (!isNaN(num)) return `$${num.toLocaleString("es-MX", { minimumFractionDigits: 2 })}`;
+    }
+    return String(val);
+  };
+
+  return (
+    <Dialog open onClose={onClose} maxWidth="lg">
+      <DialogHeader onClose={onClose}>
+        Detalle del Cliente CDMX
+      </DialogHeader>
+      <DialogBody>
+        {loading ? (
+          <div className="flex justify-center py-12">
+            <Spinner size="lg" />
+          </div>
+        ) : data ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2">
+            {DETAIL_FIELDS.map(({ key, label }) => (
+              <div key={key} className="py-2 border-b border-slate-800/30">
+                <span className="text-xs text-slate-500 uppercase tracking-wider">{label}</span>
+                <p className="text-sm text-slate-200 mt-0.5 break-words">
+                  {formatValue(key, data[key])}
+                </p>
+              </div>
+            ))}
+          </div>
+        ) : null}
+      </DialogBody>
+      <DialogFooter>
+        <Button variant="ghost" onClick={onClose}>
+          Cerrar
+        </Button>
+        <Button
+          variant={isSelected ? "ghost" : "primary"}
+          onClick={() => { onToggleSelect(); onClose(); }}
+        >
+          {isSelected ? "Quitar selección" : "Seleccionar cliente"}
+        </Button>
+      </DialogFooter>
+    </Dialog>
   );
 }
 
