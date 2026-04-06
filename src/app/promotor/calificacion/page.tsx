@@ -10,7 +10,7 @@ import { Dialog, DialogHeader, DialogBody, DialogFooter } from "@/components/ui/
 import { useToast } from "@/components/ui/Toast";
 import { DataTable } from "@/components/ui/DataTable";
 import { ColumnDef } from "@tanstack/react-table";
-import { ClipboardCheck, FileSpreadsheet, Download } from "lucide-react";
+import { ClipboardCheck, FileSpreadsheet, Download, Search, ChevronLeft, ChevronRight } from "lucide-react";
 
 // ─── Types ───
 
@@ -358,7 +358,18 @@ function TabContent({
   }, [tipo]);
 
   if (!lote) {
-    // No hay lote — mostrar botón para solicitar
+    // CDMX: mostrar selector de clientes
+    if (tipo === "CDMX") {
+      return (
+        <CdmxSelector
+          cupo={cupo}
+          toast={toast}
+          onRefresh={onRefresh}
+        />
+      );
+    }
+
+    // IEPPO: flujo original con cantidad
     return (
       <Card className="p-8 text-center">
         <div className="text-slate-400 mb-4">
@@ -692,6 +703,288 @@ function CalificarDialog({
         </Button>
       </DialogFooter>
     </Dialog>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// CDMX Client Selector (server-side paginated)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+interface CdmxCliente {
+  id: number;
+  nombre: string | null;
+  rfc: string | null;
+  institucion: string | null;
+  puesto: string | null;
+  nomina: string | null;
+  servicio: string | null;
+}
+
+function CdmxSelector({
+  cupo,
+  toast,
+  onRefresh,
+}: {
+  cupo: CupoInfo | null;
+  toast: ReturnType<typeof useToast>["toast"];
+  onRefresh: () => void;
+}) {
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [clientes, setClientes] = useState<CdmxCliente[]>([]);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [submitting, setSubmitting] = useState(false);
+  const limit = 25;
+
+  // Debounce search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(1);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  // Fetch clients
+  useEffect(() => {
+    let cancelled = false;
+    const fetchClientes = async () => {
+      setLoading(true);
+      try {
+        const params = new URLSearchParams({
+          page: String(page),
+          limit: String(limit),
+        });
+        if (debouncedSearch) params.set("search", debouncedSearch);
+
+        const res = await fetch(`/api/promotor/calificacion/cdmx-disponibles?${params}`);
+        if (res.ok && !cancelled) {
+          const data = await res.json();
+          setClientes(data.clientes);
+          setTotal(data.total);
+          setTotalPages(data.totalPages);
+        }
+      } catch {
+        if (!cancelled) toast("Error al cargar clientes CDMX", "error");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    fetchClientes();
+    return () => { cancelled = true; };
+  }, [page, debouncedSearch, toast]);
+
+  const toggleSelect = (id: number) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const togglePageAll = () => {
+    const pageIds = clientes.map((c) => c.id);
+    const allSelected = pageIds.every((id) => selected.has(id));
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (allSelected) {
+        pageIds.forEach((id) => next.delete(id));
+      } else {
+        pageIds.forEach((id) => next.add(id));
+      }
+      return next;
+    });
+  };
+
+  const handleSolicitar = async () => {
+    if (selected.size === 0) {
+      toast("Selecciona al menos un cliente", "error");
+      return;
+    }
+    if (cupo && selected.size > cupo.disponible) {
+      toast(`Solo tienes cupo para ${cupo.disponible} registros`, "error");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/promotor/calificacion/solicitar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tipo: "CDMX", cliente_ids: Array.from(selected) }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast(data.error || "Error al solicitar", "error");
+        return;
+      }
+      toast(`Se asignaron ${data.cantidad} registros CDMX`, "success");
+      onRefresh();
+    } catch {
+      toast("Error de conexión", "error");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const pageIds = clientes.map((c) => c.id);
+  const allPageSelected = pageIds.length > 0 && pageIds.every((id) => selected.has(id));
+
+  const maxSelectable = cupo?.disponible ?? 0;
+
+  if (cupo && cupo.disponible <= 0) {
+    return (
+      <Card className="p-8 text-center">
+        <div className="text-slate-400">
+          No tienes un lote CDMX activo. Tu cupo diario está agotado.
+        </div>
+      </Card>
+    );
+  }
+
+  return (
+    <div>
+      {/* Header */}
+      <div className="flex items-center justify-between mb-3 gap-3 flex-wrap">
+        <div className="relative flex-1 min-w-[200px] max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+          <input
+            type="text"
+            placeholder="Buscar por nombre, RFC o institución..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-slate-200 placeholder:text-slate-500 outline-none focus:border-amber-500/50 transition-colors"
+          />
+        </div>
+        <div className="flex items-center gap-3">
+          <Badge color={selected.size > 0 ? "amber" : "slate"}>
+            {selected.size} seleccionados
+          </Badge>
+          {maxSelectable > 0 && (
+            <span className="text-xs text-slate-500">Máx: {maxSelectable}</span>
+          )}
+        </div>
+      </div>
+
+      {/* Table */}
+      <div className="bg-surface rounded-xl border border-slate-800/60 overflow-hidden">
+        <div className="overflow-auto scrollbar-thin max-h-[60vh]">
+          <table className="w-full text-sm">
+            <thead className="bg-slate-800/40 border-b border-slate-800/40 sticky top-0 z-10">
+              <tr>
+                <th className="px-4 py-3 text-left w-10">
+                  <input
+                    type="checkbox"
+                    checked={allPageSelected}
+                    onChange={togglePageAll}
+                    className="w-4 h-4 rounded border-slate-700 bg-slate-800/50 text-amber-500 focus:ring-amber-500/40"
+                  />
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Nombre</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">RFC</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Institución</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Puesto</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Servicio</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-800/40">
+              {loading ? (
+                <tr>
+                  <td colSpan={6} className="py-16 text-center">
+                    <Spinner className="mx-auto" />
+                  </td>
+                </tr>
+              ) : clientes.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="py-16 text-center text-slate-500 text-sm">
+                    No se encontraron clientes
+                  </td>
+                </tr>
+              ) : (
+                clientes.map((c) => {
+                  const isSelected = selected.has(c.id);
+                  return (
+                    <tr
+                      key={c.id}
+                      className={`hover:bg-surface-hover transition-colors cursor-pointer ${isSelected ? "bg-amber-500/5" : ""}`}
+                      onClick={() => toggleSelect(c.id)}
+                    >
+                      <td className="px-4 py-3">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleSelect(c.id)}
+                          onClick={(e) => e.stopPropagation()}
+                          className="w-4 h-4 rounded border-slate-700 bg-slate-800/50 text-amber-500 focus:ring-amber-500/40"
+                        />
+                      </td>
+                      <td className="px-4 py-3 text-slate-200">{c.nombre ?? "—"}</td>
+                      <td className="px-4 py-3 text-slate-400">{c.rfc ?? "—"}</td>
+                      <td className="px-4 py-3 text-slate-400">{c.institucion ?? "—"}</td>
+                      <td className="px-4 py-3 text-slate-400 max-w-[200px] truncate">{c.puesto ?? "—"}</td>
+                      <td className="px-4 py-3 text-slate-400">{c.servicio ?? "—"}</td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Pagination */}
+        {total > 0 && (
+          <div className="px-4 py-3 border-t border-slate-800/40 flex items-center justify-between">
+            <span className="text-xs text-slate-500">
+              {(page - 1) * limit + 1}-{Math.min(page * limit, total)} de {total.toLocaleString()}
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page <= 1}
+                className="inline-flex items-center gap-1 px-3 py-1.5 text-sm border border-slate-700 text-slate-300 rounded-lg disabled:opacity-30 hover:bg-surface-hover transition-colors font-medium"
+              >
+                <ChevronLeft className="w-4 h-4" />
+                Anterior
+              </button>
+              <span className="text-sm text-slate-500 px-3">
+                {page} de {totalPages}
+              </span>
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page >= totalPages}
+                className="inline-flex items-center gap-1 px-3 py-1.5 text-sm border border-slate-700 text-slate-300 rounded-lg disabled:opacity-30 hover:bg-surface-hover transition-colors font-medium"
+              >
+                Siguiente
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Sticky bottom bar */}
+      {selected.size > 0 && (
+        <div className="sticky bottom-0 mt-3 p-3 bg-slate-900/95 backdrop-blur border border-slate-800/60 rounded-xl flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Badge color="amber">{selected.size} clientes seleccionados</Badge>
+            <button
+              onClick={() => setSelected(new Set())}
+              className="text-xs text-slate-500 hover:text-slate-300 transition-colors"
+            >
+              Limpiar selección
+            </button>
+          </div>
+          <Button onClick={handleSolicitar} loading={submitting}>
+            <Download className="w-4 h-4 mr-2" />
+            Solicitar Lote CDMX
+          </Button>
+        </div>
+      )}
+    </div>
   );
 }
 

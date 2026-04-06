@@ -4,10 +4,16 @@ import { prisma } from "@/lib/prisma";
 import { prismaClientes } from "@/lib/prisma-clientes";
 import { z } from "zod";
 
-const solicitarSchema = z.object({
-  tipo: z.enum(["IEPPO", "CDMX"]),
-  cantidad: z.number().int().min(1).max(300),
-});
+const solicitarSchema = z.discriminatedUnion("tipo", [
+  z.object({
+    tipo: z.literal("IEPPO"),
+    cantidad: z.number().int().min(1).max(300),
+  }),
+  z.object({
+    tipo: z.literal("CDMX"),
+    cliente_ids: z.array(z.number().int().positive()).min(1).max(300),
+  }),
+]);
 
 export async function POST(req: Request) {
   const { session, error } = await requirePromotor();
@@ -19,7 +25,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Datos inválidos", details: parsed.error.flatten() }, { status: 400 });
   }
 
-  const { tipo, cantidad } = parsed.data;
+  const { tipo } = parsed.data;
   const userId = Number(session.user.id);
   const hoy = new Date();
   hoy.setHours(0, 0, 0, 0);
@@ -35,8 +41,6 @@ export async function POST(req: Request) {
   if (disponible <= 0) {
     return NextResponse.json({ error: "Cupo diario agotado" }, { status: 400 });
   }
-
-  const cantidadReal = Math.min(cantidad, disponible);
 
   // Verificar que no tenga un lote activo del mismo tipo hoy
   const loteExistente = await prisma.lotes_calificacion_promotor.findFirst({
@@ -58,31 +62,50 @@ export async function POST(req: Request) {
     ronda = await prisma.rondas_calificacion.create({ data: { tipo, ronda_actual: 1 } });
   }
 
-  // Buscar registros no asignados en la ronda actual
   let clienteIds: number[] = [];
 
-  if (tipo === "IEPPO") {
-    clienteIds = await obtenerIdsIEPPO(ronda.ronda_actual, cantidadReal);
-  } else {
-    clienteIds = await obtenerIdsCDMX(ronda.ronda_actual, cantidadReal);
-  }
+  if (tipo === "CDMX") {
+    // CDMX: el promotor seleccionó clientes específicos
+    const requestedIds = parsed.data.cliente_ids;
+    const cantidadReal = Math.min(requestedIds.length, disponible);
+    const idsToUse = requestedIds.slice(0, cantidadReal);
 
-  // Si no hay registros disponibles, incrementar ronda y reintentar
-  if (clienteIds.length === 0) {
-    const nuevaRonda = ronda.ronda_actual + 1;
-    await prisma.rondas_calificacion.update({
-      where: { tipo },
-      data: { ronda_actual: nuevaRonda },
+    // Validar que los IDs existen en clientes_cdmx
+    const existentes = await prisma.clientes_cdmx.findMany({
+      where: { id: { in: idsToUse } },
+      select: { id: true },
     });
+    const existentesSet = new Set(existentes.map((c) => c.id));
 
-    if (tipo === "IEPPO") {
-      clienteIds = await obtenerIdsIEPPO(nuevaRonda, cantidadReal);
-    } else {
-      clienteIds = await obtenerIdsCDMX(nuevaRonda, cantidadReal);
-    }
+    // Filtrar ya asignados en esta ronda
+    const yaAsignados = await prisma.calificaciones_promotor.findMany({
+      where: { tipo: "CDMX", ronda: ronda.ronda_actual, cliente_id: { in: idsToUse } },
+      select: { cliente_id: true },
+    });
+    const yaAsignadosSet = new Set(yaAsignados.map((a) => a.cliente_id));
+
+    clienteIds = idsToUse.filter((id) => existentesSet.has(id) && !yaAsignadosSet.has(id));
 
     if (clienteIds.length === 0) {
-      return NextResponse.json({ error: "No hay registros disponibles para asignar" }, { status: 400 });
+      return NextResponse.json({ error: "Ninguno de los clientes seleccionados está disponible" }, { status: 400 });
+    }
+  } else {
+    // IEPPO: asignación por cantidad (flujo original)
+    const cantidadReal = Math.min(parsed.data.cantidad, disponible);
+    clienteIds = await obtenerIdsIEPPO(ronda.ronda_actual, cantidadReal);
+
+    // Si no hay registros disponibles, incrementar ronda y reintentar
+    if (clienteIds.length === 0) {
+      const nuevaRonda = ronda.ronda_actual + 1;
+      await prisma.rondas_calificacion.update({
+        where: { tipo },
+        data: { ronda_actual: nuevaRonda },
+      });
+      clienteIds = await obtenerIdsIEPPO(nuevaRonda, cantidadReal);
+
+      if (clienteIds.length === 0) {
+        return NextResponse.json({ error: "No hay registros disponibles para asignar" }, { status: 400 });
+      }
     }
   }
 
@@ -147,23 +170,3 @@ async function obtenerIdsIEPPO(ronda: number, cantidad: number): Promise<number[
   return clientes.map((c) => c.id);
 }
 
-async function obtenerIdsCDMX(ronda: number, cantidad: number): Promise<number[]> {
-  // IDs ya asignados en esta ronda
-  const asignados = await prisma.calificaciones_promotor.findMany({
-    where: { tipo: "CDMX", ronda },
-    select: { cliente_id: true },
-  });
-  const idsAsignados = asignados.map((a) => a.cliente_id);
-
-  // Buscar clientes CDMX en tabla local que no estén asignados
-  const clientes = await prisma.clientes_cdmx.findMany({
-    where: {
-      ...(idsAsignados.length > 0 ? { id: { notIn: idsAsignados } } : {}),
-    },
-    select: { id: true },
-    take: cantidad,
-    orderBy: { id: "asc" },
-  });
-
-  return clientes.map((c) => c.id);
-}
