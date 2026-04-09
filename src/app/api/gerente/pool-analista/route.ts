@@ -58,6 +58,7 @@ export async function GET() {
       convenio: true,
       estado: true,
       municipio: true,
+      filiacion: true,
     },
   });
 

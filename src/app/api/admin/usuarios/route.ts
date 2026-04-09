@@ -62,6 +62,16 @@ export async function POST(request: Request) {
     );
   }
 
+  if (telegram_id) {
+    const existingTelegram = await prisma.usuarios.findUnique({ where: { telegram_id: BigInt(telegram_id) } });
+    if (existingTelegram) {
+      return NextResponse.json(
+        { error: `El Telegram ID ya está asignado al usuario "${existingTelegram.nombre}"` },
+        { status: 409 }
+      );
+    }
+  }
+
   // Auto-derivar sucursal_id y region_id desde la jerarquía del equipo
   if (equipo_id) {
     const equipo = await prisma.equipos.findUnique({

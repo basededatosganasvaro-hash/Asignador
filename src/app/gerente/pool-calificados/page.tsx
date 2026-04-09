@@ -21,6 +21,7 @@ interface ClienteData {
   capacidad_actualizada?: string;
   percepciones_fijas?: string;
   descuentos_terceros?: string;
+  filiacion?: string;
   convenio?: string;
   estado?: string;
   municipio?: string;
@@ -179,6 +180,12 @@ export default function PoolCalificadosPage() {
       header: "NSS",
       size: 120,
       accessorFn: (row) => row.cliente?.nss ?? "—",
+    },
+    {
+      id: "filiacion",
+      header: "Filiación",
+      size: 130,
+      accessorFn: (row) => row.cliente?.filiacion ?? "—",
     },
     {
       id: "convenio",
