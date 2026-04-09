@@ -9,27 +9,32 @@ export async function GET() {
   const { error } = await requireAdmin();
   if (error) return error;
 
-  const usuarios = await prisma.usuarios.findMany({
-    select: {
-      id: true,
-      nombre: true,
-      username: true,
-      rol: true,
-      activo: true,
-      created_at: true,
-      equipo_id: true,
-      sucursal_id: true,
-      region_id: true,
-      telegram_id: true,
-      equipo: { select: { id: true, nombre: true } },
-      sucursal: { select: { id: true, nombre: true } },
-      region: { select: { id: true, nombre: true } },
-      _count: { select: { lotes: true, oportunidades: true } },
-    },
-    orderBy: { created_at: "desc" },
-  });
+  try {
+    const usuarios = await prisma.usuarios.findMany({
+      select: {
+        id: true,
+        nombre: true,
+        username: true,
+        rol: true,
+        activo: true,
+        created_at: true,
+        equipo_id: true,
+        sucursal_id: true,
+        region_id: true,
+        telegram_id: true,
+        equipo: { select: { id: true, nombre: true } },
+        sucursal: { select: { id: true, nombre: true } },
+        region: { select: { id: true, nombre: true } },
+        _count: { select: { lotes: true, oportunidades: true } },
+      },
+      orderBy: { created_at: "desc" },
+    });
 
-  return NextResponse.json(serializeBigInt(usuarios));
+    return NextResponse.json(serializeBigInt(usuarios));
+  } catch (err) {
+    console.error("GET /api/admin/usuarios error:", err);
+    return NextResponse.json({ error: "Error al obtener usuarios", details: String(err) }, { status: 500 });
+  }
 }
 
 export async function POST(request: Request) {
@@ -69,23 +74,28 @@ export async function POST(request: Request) {
     }
   }
 
-  const password_hash = await bcrypt.hash(password, 10);
+  try {
+    const password_hash = await bcrypt.hash(password, 10);
 
-  const usuario = await prisma.usuarios.create({
-    data: { nombre, username, password_hash, rol, equipo_id, sucursal_id: sucursal_id ?? null, region_id: region_id ?? null, telegram_id: telegram_id ? BigInt(telegram_id) : null, debe_cambiar_password: true },
-    select: {
-      id: true,
-      nombre: true,
-      username: true,
-      rol: true,
-      activo: true,
-      created_at: true,
-      equipo_id: true,
-      sucursal_id: true,
-      region_id: true,
-      telegram_id: true,
-    },
-  });
+    const usuario = await prisma.usuarios.create({
+      data: { nombre, username, password_hash, rol, equipo_id, sucursal_id: sucursal_id ?? null, region_id: region_id ?? null, telegram_id: telegram_id ? BigInt(telegram_id) : null, debe_cambiar_password: true },
+      select: {
+        id: true,
+        nombre: true,
+        username: true,
+        rol: true,
+        activo: true,
+        created_at: true,
+        equipo_id: true,
+        sucursal_id: true,
+        region_id: true,
+        telegram_id: true,
+      },
+    });
 
-  return NextResponse.json(serializeBigInt(usuario), { status: 201 });
+    return NextResponse.json(serializeBigInt(usuario), { status: 201 });
+  } catch (err) {
+    console.error("POST /api/admin/usuarios error:", err);
+    return NextResponse.json({ error: "Error al crear usuario", details: String(err) }, { status: 500 });
+  }
 }
