@@ -166,9 +166,6 @@ function TabContent({
   toast: ReturnType<typeof useToast>["toast"];
   onRefresh: () => void;
 }) {
-  const [showSolicitar, setShowSolicitar] = useState(false);
-  const [cantidad, setCantidad] = useState("50");
-  const [submitting, setSubmitting] = useState(false);
   const [editItem, setEditItem] = useState<CalificacionItem | null>(null);
   const [confirmLiberar, setConfirmLiberar] = useState(false);
   const [liberando, setLiberando] = useState(false);
@@ -198,34 +195,6 @@ function TabContent({
       toast("Error de conexion", "error");
     }
     setLiberando(false);
-  };
-
-  const solicitarLote = async () => {
-    const cant = Math.min(Number(cantidad) || 50, cupo?.disponible ?? 0);
-    if (cant <= 0) {
-      toast("Cupo agotado", "error");
-      return;
-    }
-    setSubmitting(true);
-    try {
-      const res = await fetch("/api/promotor/calificacion/solicitar", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tipo, cantidad: cant }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        toast(data.error || "Error al solicitar", "error");
-        return;
-      }
-      toast(`Se asignaron ${data.cantidad} registros ${tipo}`, "success");
-      setShowSolicitar(false);
-      onRefresh();
-    } catch {
-      toast("Error de conexión", "error");
-    } finally {
-      setSubmitting(false);
-    }
   };
 
   // Columns vary by tipo
@@ -358,45 +327,13 @@ function TabContent({
   }, [tipo]);
 
   if (!lote) {
-    // CDMX: mostrar selector de clientes
     if (tipo === "CDMX") {
       return (
-        <CdmxSelector
-          cupo={cupo}
-          toast={toast}
-          onRefresh={onRefresh}
-        />
+        <CdmxSelector cupo={cupo} toast={toast} onRefresh={onRefresh} />
       );
     }
-
-    // IEPPO: flujo original con cantidad
     return (
-      <Card className="p-8 text-center">
-        <div className="text-slate-400 mb-4">
-          No tienes un lote {tipo} activo.
-          {cupo && cupo.disponible > 0
-            ? ` Puedes solicitar hasta ${cupo.disponible} registros.`
-            : " Tu cupo diario está agotado."}
-        </div>
-        {cupo && cupo.disponible > 0 && (
-          <>
-            <Button onClick={() => setShowSolicitar(true)}>
-              <Download className="w-4 h-4 mr-2" />
-              Solicitar Lote {tipo}
-            </Button>
-            <SolicitarDialog
-              open={showSolicitar}
-              onClose={() => setShowSolicitar(false)}
-              tipo={tipo}
-              maxCantidad={cupo.disponible}
-              cantidad={cantidad}
-              setCantidad={setCantidad}
-              submitting={submitting}
-              onSubmit={solicitarLote}
-            />
-          </>
-        )}
-      </Card>
+      <IeppoSelector cupo={cupo} toast={toast} onRefresh={onRefresh} />
     );
   }
 
@@ -472,57 +409,6 @@ function TabContent({
         </DialogFooter>
       </Dialog>
     </div>
-  );
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// Solicitar Dialog
-// ═══════════════════════════════════════════════════════════════════════════════
-
-function SolicitarDialog({
-  open,
-  onClose,
-  tipo,
-  maxCantidad,
-  cantidad,
-  setCantidad,
-  submitting,
-  onSubmit,
-}: {
-  open: boolean;
-  onClose: () => void;
-  tipo: string;
-  maxCantidad: number;
-  cantidad: string;
-  setCantidad: (v: string) => void;
-  submitting: boolean;
-  onSubmit: () => void;
-}) {
-  return (
-    <Dialog open={open} onClose={onClose}>
-      <DialogHeader>Solicitar Lote {tipo}</DialogHeader>
-      <DialogBody>
-        <p className="text-sm text-slate-400 mb-3">
-          Indica cuántos registros deseas calificar. Máximo disponible: <strong>{maxCantidad}</strong>
-        </p>
-        <Input
-          label="Cantidad"
-          type="number"
-          min={1}
-          max={maxCantidad}
-          value={cantidad}
-          onChange={(e) => setCantidad(e.target.value)}
-        />
-      </DialogBody>
-      <DialogFooter>
-        <Button variant="ghost" onClick={onClose} disabled={submitting}>
-          Cancelar
-        </Button>
-        <Button onClick={onSubmit} loading={submitting}>
-          Solicitar
-        </Button>
-      </DialogFooter>
-    </Dialog>
   );
 }
 
@@ -708,6 +594,369 @@ function CalificarDialog({
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // CDMX Client Selector (server-side paginated)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// IEPPO Selector
+// ═══════════════════════════════════════════════════════════════════════════════
+
+interface IeppoCliente {
+  id: number;
+  nombres: string | null;
+  a_paterno: string | null;
+  a_materno: string | null;
+  curp: string | null;
+  convenio: string | null;
+  estado: string | null;
+}
+
+interface IeppoFilterState {
+  convenio: string[];
+  estado: string[];
+}
+
+interface IeppoFilterOptions {
+  convenio: string[];
+  estado: string[];
+}
+
+type IeppoFilterKey = keyof IeppoFilterState;
+
+function IeppoSelector({
+  cupo,
+  toast,
+  onRefresh,
+}: {
+  cupo: CupoInfo | null;
+  toast: ReturnType<typeof useToast>["toast"];
+  onRefresh: () => void;
+}) {
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [clientes, setClientes] = useState<IeppoCliente[]>([]);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [submitting, setSubmitting] = useState(false);
+  const [columnFilters, setColumnFilters] = useState<IeppoFilterState>({
+    convenio: [],
+    estado: [],
+  });
+  const [filterOptions, setFilterOptions] = useState<IeppoFilterOptions>({
+    convenio: [],
+    estado: [],
+  });
+  const limit = 25;
+
+  // Fetch filter options once
+  useEffect(() => {
+    const fetchFilterOptions = async () => {
+      try {
+        const res = await fetch("/api/promotor/calificacion/ieppo-disponibles/filtros");
+        if (res.ok) {
+          setFilterOptions(await res.json());
+        }
+      } catch {
+        // silently fail
+      }
+    };
+    fetchFilterOptions();
+  }, []);
+
+  // Debounce search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(1);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  // Fetch clients
+  useEffect(() => {
+    let cancelled = false;
+    const fetchClientes = async () => {
+      setLoading(true);
+      try {
+        const params = new URLSearchParams({
+          page: String(page),
+          limit: String(limit),
+        });
+        if (debouncedSearch) params.set("search", debouncedSearch);
+        if (columnFilters.convenio.length > 0) params.set("filter_convenio", columnFilters.convenio.join(","));
+        if (columnFilters.estado.length > 0) params.set("filter_estado", columnFilters.estado.join(","));
+
+        const res = await fetch(`/api/promotor/calificacion/ieppo-disponibles?${params}`);
+        if (res.ok && !cancelled) {
+          const data = await res.json();
+          setClientes(data.clientes);
+          setTotal(data.total);
+          setTotalPages(data.totalPages);
+        }
+      } catch {
+        if (!cancelled) toast("Error al cargar clientes IEPPO", "error");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    fetchClientes();
+    return () => { cancelled = true; };
+  }, [page, debouncedSearch, columnFilters, toast]);
+
+  const toggleSelect = (id: number) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const togglePageAll = () => {
+    const pageIds = clientes.map((c) => c.id);
+    const allSelected = pageIds.every((id) => selected.has(id));
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (allSelected) {
+        pageIds.forEach((id) => next.delete(id));
+      } else {
+        pageIds.forEach((id) => next.add(id));
+      }
+      return next;
+    });
+  };
+
+  const handleSolicitar = async () => {
+    if (selected.size === 0) {
+      toast("Selecciona al menos un cliente", "error");
+      return;
+    }
+    if (cupo && selected.size > cupo.disponible) {
+      toast(`Solo tienes cupo para ${cupo.disponible} registros`, "error");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/promotor/calificacion/solicitar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tipo: "IEPPO", cliente_ids: Array.from(selected) }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast(data.error || "Error al solicitar", "error");
+        return;
+      }
+      toast(`Se asignaron ${data.cantidad} registros IEPPO`, "success");
+      onRefresh();
+    } catch {
+      toast("Error de conexión", "error");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const applyColumnFilter = (key: IeppoFilterKey, values: string[]) => {
+    setColumnFilters((prev) => ({ ...prev, [key]: values }));
+    setPage(1);
+  };
+
+  const activeFilterCount = columnFilters.convenio.length + columnFilters.estado.length;
+
+  const clearAllFilters = () => {
+    setColumnFilters({ convenio: [], estado: [] });
+    setPage(1);
+  };
+
+  const pageIds = clientes.map((c) => c.id);
+  const allPageSelected = pageIds.length > 0 && pageIds.every((id) => selected.has(id));
+
+  const maxSelectable = cupo?.disponible ?? 0;
+
+  if (cupo && cupo.disponible <= 0) {
+    return (
+      <Card className="p-8 text-center">
+        <div className="text-slate-400">
+          No tienes un lote IEPPO activo. Tu cupo diario está agotado.
+        </div>
+      </Card>
+    );
+  }
+
+  return (
+    <div>
+      {/* Header */}
+      <div className="flex items-center justify-between mb-3 gap-3 flex-wrap">
+        <div className="relative flex-1 min-w-[200px] max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+          <input
+            type="text"
+            placeholder="Buscar por nombre, CURP o convenio..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-slate-200 placeholder:text-slate-500 outline-none focus:border-amber-500/50 transition-colors"
+          />
+        </div>
+        <div className="flex items-center gap-3">
+          {activeFilterCount > 0 && (
+            <button
+              onClick={clearAllFilters}
+              className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded-lg hover:bg-amber-500/20 transition-colors"
+            >
+              <X className="w-3 h-3" />
+              {activeFilterCount} filtro{activeFilterCount > 1 ? "s" : ""} activo{activeFilterCount > 1 ? "s" : ""}
+            </button>
+          )}
+          <Badge color={selected.size > 0 ? "amber" : "slate"}>
+            {selected.size} seleccionados
+          </Badge>
+          {maxSelectable > 0 && (
+            <span className="text-xs text-slate-500">Máx: {maxSelectable}</span>
+          )}
+        </div>
+      </div>
+
+      {/* Table */}
+      <div className="bg-surface rounded-xl border border-slate-800/60 overflow-hidden">
+        <div className="overflow-auto scrollbar-thin max-h-[60vh]">
+          <table className="w-full text-sm">
+            <thead className="bg-slate-800/40 border-b border-slate-800/40 sticky top-0 z-20">
+              <tr>
+                <th className="px-4 py-3 text-left w-10">
+                  <input
+                    type="checkbox"
+                    checked={allPageSelected}
+                    onChange={togglePageAll}
+                    className="w-4 h-4 rounded border-slate-700 bg-slate-800/50 text-amber-500 focus:ring-amber-500/40"
+                  />
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Nombre</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">CURP</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                  <span className="inline-flex items-center">
+                    Convenio
+                    <ColumnFilterDropdown
+                      label="Convenio"
+                      options={filterOptions.convenio}
+                      selected={columnFilters.convenio}
+                      onApply={(v) => applyColumnFilter("convenio", v)}
+                    />
+                  </span>
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                  <span className="inline-flex items-center">
+                    Estado
+                    <ColumnFilterDropdown
+                      label="Estado"
+                      options={filterOptions.estado}
+                      selected={columnFilters.estado}
+                      onApply={(v) => applyColumnFilter("estado", v)}
+                    />
+                  </span>
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-800/40">
+              {loading ? (
+                <tr>
+                  <td colSpan={5} className="py-16 text-center">
+                    <Spinner className="mx-auto" />
+                  </td>
+                </tr>
+              ) : clientes.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="py-16 text-center text-slate-500 text-sm">
+                    No se encontraron clientes
+                  </td>
+                </tr>
+              ) : (
+                clientes.map((c) => {
+                  const isSelected = selected.has(c.id);
+                  const nombre = `${c.nombres ?? ""} ${c.a_paterno ?? ""} ${c.a_materno ?? ""}`.trim() || "—";
+                  return (
+                    <tr
+                      key={c.id}
+                      className={`hover:bg-surface-hover transition-colors cursor-pointer ${isSelected ? "bg-amber-500/5" : ""}`}
+                      onClick={() => toggleSelect(c.id)}
+                    >
+                      <td className="px-4 py-3">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleSelect(c.id)}
+                          onClick={(e) => e.stopPropagation()}
+                          className="w-4 h-4 rounded border-slate-700 bg-slate-800/50 text-amber-500 focus:ring-amber-500/40"
+                        />
+                      </td>
+                      <td className="px-4 py-3 text-slate-200">{nombre}</td>
+                      <td className="px-4 py-3 text-slate-400">{c.curp ?? "—"}</td>
+                      <td className="px-4 py-3 text-slate-400">{c.convenio ?? "—"}</td>
+                      <td className="px-4 py-3 text-slate-400">{c.estado ?? "—"}</td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Pagination */}
+        {total > 0 && (
+          <div className="px-4 py-3 border-t border-slate-800/40 flex items-center justify-between">
+            <span className="text-xs text-slate-500">
+              {(page - 1) * limit + 1}-{Math.min(page * limit, total)} de {total.toLocaleString()}
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page <= 1}
+                className="inline-flex items-center gap-1 px-3 py-1.5 text-sm border border-slate-700 text-slate-300 rounded-lg disabled:opacity-30 hover:bg-surface-hover transition-colors font-medium"
+              >
+                <ChevronLeft className="w-4 h-4" />
+                Anterior
+              </button>
+              <span className="text-sm text-slate-500 px-3">
+                {page} de {totalPages}
+              </span>
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page >= totalPages}
+                className="inline-flex items-center gap-1 px-3 py-1.5 text-sm border border-slate-700 text-slate-300 rounded-lg disabled:opacity-30 hover:bg-surface-hover transition-colors font-medium"
+              >
+                Siguiente
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Sticky bottom bar */}
+      {selected.size > 0 && (
+        <div className="sticky bottom-0 mt-3 p-3 bg-slate-900/95 backdrop-blur border border-slate-800/60 rounded-xl flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Badge color="amber">{selected.size} clientes seleccionados</Badge>
+            <button
+              onClick={() => setSelected(new Set())}
+              className="text-xs text-slate-500 hover:text-slate-300 transition-colors"
+            >
+              Limpiar selección
+            </button>
+          </div>
+          <Button onClick={handleSolicitar} loading={submitting}>
+            <Download className="w-4 h-4 mr-2" />
+            Solicitar Lote IEPPO
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// CDMX Types + Selector
 // ═══════════════════════════════════════════════════════════════════════════════
 
 interface CdmxCliente {

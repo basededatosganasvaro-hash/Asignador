@@ -7,7 +7,7 @@ import { z } from "zod";
 const solicitarSchema = z.discriminatedUnion("tipo", [
   z.object({
     tipo: z.literal("IEPPO"),
-    cantidad: z.number().int().min(1).max(300),
+    cliente_ids: z.array(z.number().int().positive()).min(1).max(300),
   }),
   z.object({
     tipo: z.literal("CDMX"),
@@ -64,12 +64,11 @@ export async function POST(req: Request) {
 
   let clienteIds: number[] = [];
 
-  if (tipo === "CDMX") {
-    // CDMX: el promotor seleccionó clientes específicos
-    const requestedIds = parsed.data.cliente_ids;
-    const cantidadReal = Math.min(requestedIds.length, disponible);
-    const idsToUse = requestedIds.slice(0, cantidadReal);
+  const requestedIds = parsed.data.cliente_ids;
+  const cantidadReal = Math.min(requestedIds.length, disponible);
+  const idsToUse = requestedIds.slice(0, cantidadReal);
 
+  if (tipo === "CDMX") {
     // Validar que los IDs existen en clientes_cdmx
     const existentes = await prisma.clientes_cdmx.findMany({
       where: { id: { in: idsToUse } },
@@ -85,28 +84,26 @@ export async function POST(req: Request) {
     const yaAsignadosSet = new Set(yaAsignados.map((a) => a.cliente_id));
 
     clienteIds = idsToUse.filter((id) => existentesSet.has(id) && !yaAsignadosSet.has(id));
-
-    if (clienteIds.length === 0) {
-      return NextResponse.json({ error: "Ninguno de los clientes seleccionados está disponible" }, { status: 400 });
-    }
   } else {
-    // IEPPO: asignación por cantidad (flujo original)
-    const cantidadReal = Math.min(parsed.data.cantidad, disponible);
-    clienteIds = await obtenerIdsIEPPO(ronda.ronda_actual, cantidadReal);
+    // IEPPO: validar que los IDs existen en BD Clientes
+    const existentes = await prismaClientes.clientes.findMany({
+      where: { id: { in: idsToUse }, tipo_cliente: "Cartera para calificar IEPPO" },
+      select: { id: true },
+    });
+    const existentesSet = new Set(existentes.map((c) => c.id));
 
-    // Si no hay registros disponibles, incrementar ronda y reintentar
-    if (clienteIds.length === 0) {
-      const nuevaRonda = ronda.ronda_actual + 1;
-      await prisma.rondas_calificacion.update({
-        where: { tipo },
-        data: { ronda_actual: nuevaRonda },
-      });
-      clienteIds = await obtenerIdsIEPPO(nuevaRonda, cantidadReal);
+    // Filtrar ya asignados en esta ronda
+    const yaAsignados = await prisma.calificaciones_promotor.findMany({
+      where: { tipo: "IEPPO", ronda: ronda.ronda_actual, cliente_id: { in: idsToUse } },
+      select: { cliente_id: true },
+    });
+    const yaAsignadosSet = new Set(yaAsignados.map((a) => a.cliente_id));
 
-      if (clienteIds.length === 0) {
-        return NextResponse.json({ error: "No hay registros disponibles para asignar" }, { status: 400 });
-      }
-    }
+    clienteIds = idsToUse.filter((id) => existentesSet.has(id) && !yaAsignadosSet.has(id));
+  }
+
+  if (clienteIds.length === 0) {
+    return NextResponse.json({ error: "Ninguno de los clientes seleccionados está disponible" }, { status: 400 });
   }
 
   // Crear lote + calificaciones en transacción
@@ -148,25 +145,4 @@ export async function POST(req: Request) {
   });
 }
 
-async function obtenerIdsIEPPO(ronda: number, cantidad: number): Promise<number[]> {
-  // IDs ya asignados en esta ronda
-  const asignados = await prisma.calificaciones_promotor.findMany({
-    where: { tipo: "IEPPO", ronda },
-    select: { cliente_id: true },
-  });
-  const idsAsignados = asignados.map((a) => a.cliente_id);
-
-  // Buscar clientes IEPPO en BD Clientes que no estén asignados
-  const clientes = await prismaClientes.clientes.findMany({
-    where: {
-      tipo_cliente: "Cartera para calificar IEPPO",
-      ...(idsAsignados.length > 0 ? { id: { notIn: idsAsignados } } : {}),
-    },
-    select: { id: true },
-    take: cantidad,
-    orderBy: { id: "asc" },
-  });
-
-  return clientes.map((c) => c.id);
-}
 
