@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { ReactNode } from "react";
+import { useSession } from "next-auth/react";
 
 // WhatsApp SVG icon (brand icon - not in Lucide)
 function WhatsAppIcon({ className = "w-5 h-5" }: { className?: string }) {
@@ -24,12 +25,11 @@ const DRAWER_COLLAPSED = 72; // w-[72px]
 
 interface SidebarProps {
   rol: string;
-  permisosCalificacion?: string[];
   open: boolean;
   onToggle: () => void;
 }
 
-export default function Sidebar({ rol, permisosCalificacion, open, onToggle }: SidebarProps) {
+export default function Sidebar({ rol, open, onToggle }: SidebarProps) {
   const pathname = usePathname();
 
   const isOperaciones = rol === "gestor_operaciones";
@@ -57,7 +57,7 @@ export default function Sidebar({ rol, permisosCalificacion, open, onToggle }: S
           isGerente={isGerente}
           isAnalista={isAnalista}
           isPromotor={isPromotor}
-          permisosCalificacion={permisosCalificacion}
+
           onToggle={onToggle}
         />
       </aside>
@@ -84,7 +84,7 @@ export default function Sidebar({ rol, permisosCalificacion, open, onToggle }: S
               isGerente={isGerente}
               isAnalista={isAnalista}
               isPromotor={isPromotor}
-              permisosCalificacion={permisosCalificacion}
+    
               onToggle={onToggle}
             />
           </aside>
@@ -104,7 +104,6 @@ function SidebarContent({
   isGerente,
   isAnalista,
   isPromotor,
-  permisosCalificacion,
   onToggle,
 }: {
   showLabels: boolean;
@@ -116,9 +115,10 @@ function SidebarContent({
   isGerente: boolean;
   isAnalista: boolean;
   isPromotor: boolean;
-  permisosCalificacion?: string[];
   onToggle: () => void;
 }) {
+  const { data: session } = useSession();
+  const permisosCalificacion = session?.user?.permisos_calificacion;
   return (
     <>
       {/* Header */}
