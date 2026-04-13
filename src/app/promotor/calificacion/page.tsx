@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
@@ -10,7 +10,7 @@ import { Dialog, DialogHeader, DialogBody, DialogFooter } from "@/components/ui/
 import { useToast } from "@/components/ui/Toast";
 import { DataTable } from "@/components/ui/DataTable";
 import { ColumnDef } from "@tanstack/react-table";
-import { ClipboardCheck, FileSpreadsheet, Download, Search, ChevronLeft, ChevronRight } from "lucide-react";
+import { ClipboardCheck, FileSpreadsheet, Download, Search, ChevronLeft, ChevronRight, Filter, X, Check } from "lucide-react";
 
 // ─── Types ───
 
@@ -720,6 +720,180 @@ interface CdmxCliente {
   servicio: string | null;
 }
 
+interface ColumnFilterState {
+  institucion: string[];
+  puesto: string[];
+  servicio: string[];
+}
+
+interface FilterOptions {
+  institucion: string[];
+  puesto: string[];
+  servicio: string[];
+}
+
+type FilterKey = keyof ColumnFilterState;
+
+function ColumnFilterDropdown({
+  label,
+  options,
+  selected,
+  onApply,
+}: {
+  label: string;
+  options: string[];
+  selected: string[];
+  onApply: (values: string[]) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [filterSearch, setFilterSearch] = useState("");
+  const [localSelected, setLocalSelected] = useState<Set<string>>(new Set(selected));
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Sync local state when selected changes externally
+  useEffect(() => {
+    setLocalSelected(new Set(selected));
+  }, [selected]);
+
+  // Close on outside click
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  const filtered = filterSearch
+    ? options.filter((o) => o.toLowerCase().includes(filterSearch.toLowerCase()))
+    : options;
+
+  const toggleValue = (val: string) => {
+    setLocalSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(val)) next.delete(val);
+      else next.add(val);
+      return next;
+    });
+  };
+
+  const handleApply = () => {
+    onApply(Array.from(localSelected));
+    setOpen(false);
+  };
+
+  const handleClear = () => {
+    setLocalSelected(new Set());
+    onApply([]);
+    setOpen(false);
+  };
+
+  const isActive = selected.length > 0;
+
+  return (
+    <div className="relative inline-flex items-center" ref={dropdownRef}>
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          setOpen(!open);
+          setFilterSearch("");
+        }}
+        className={`ml-1 p-0.5 rounded transition-colors ${
+          isActive
+            ? "text-amber-400 bg-amber-500/20"
+            : "text-slate-500 hover:text-slate-300"
+        }`}
+        title={`Filtrar ${label}`}
+      >
+        <Filter className="w-3 h-3" />
+      </button>
+      {open && (
+        <div
+          className="absolute top-full left-0 mt-1 w-64 bg-slate-900 border border-slate-700 rounded-lg shadow-xl z-50"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Search within filter */}
+          <div className="p-2 border-b border-slate-800">
+            <div className="relative">
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
+              <input
+                type="text"
+                placeholder="Buscar..."
+                value={filterSearch}
+                onChange={(e) => setFilterSearch(e.target.value)}
+                className="w-full pl-7 pr-3 py-1.5 text-xs bg-slate-800/50 border border-slate-700 rounded text-slate-200 placeholder:text-slate-500 outline-none focus:border-amber-500/50"
+                autoFocus
+              />
+            </div>
+          </div>
+
+          {/* Options list */}
+          <div className="max-h-48 overflow-y-auto scrollbar-thin">
+            {filtered.length === 0 ? (
+              <div className="px-3 py-4 text-xs text-slate-500 text-center">
+                Sin resultados
+              </div>
+            ) : (
+              filtered.map((opt) => {
+                const isChecked = localSelected.has(opt);
+                return (
+                  <label
+                    key={opt}
+                    className="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-800/50 cursor-pointer text-xs"
+                  >
+                    <div
+                      className={`w-3.5 h-3.5 rounded border flex items-center justify-center flex-shrink-0 ${
+                        isChecked
+                          ? "bg-amber-500 border-amber-500"
+                          : "border-slate-600 bg-slate-800/50"
+                      }`}
+                    >
+                      {isChecked && <Check className="w-2.5 h-2.5 text-slate-900" />}
+                    </div>
+                    <span className="text-slate-300 truncate" title={opt}>
+                      {opt}
+                    </span>
+                    <input
+                      type="checkbox"
+                      checked={isChecked}
+                      onChange={() => toggleValue(opt)}
+                      className="sr-only"
+                    />
+                  </label>
+                );
+              })
+            )}
+          </div>
+
+          {/* Actions */}
+          <div className="p-2 border-t border-slate-800 flex items-center justify-between gap-2">
+            <button
+              onClick={handleClear}
+              className="text-xs text-slate-500 hover:text-slate-300 transition-colors"
+            >
+              Limpiar
+            </button>
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-slate-500">
+                {localSelected.size} de {options.length}
+              </span>
+              <button
+                onClick={handleApply}
+                className="px-3 py-1 text-xs font-medium bg-amber-500 text-slate-900 rounded hover:bg-amber-400 transition-colors"
+              >
+                Aplicar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function CdmxSelector({
   cupo,
   toast,
@@ -739,7 +913,33 @@ function CdmxSelector({
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [submitting, setSubmitting] = useState(false);
   const [detailId, setDetailId] = useState<number | null>(null);
+  const [columnFilters, setColumnFilters] = useState<ColumnFilterState>({
+    institucion: [],
+    puesto: [],
+    servicio: [],
+  });
+  const [filterOptions, setFilterOptions] = useState<FilterOptions>({
+    institucion: [],
+    puesto: [],
+    servicio: [],
+  });
   const limit = 25;
+
+  // Fetch filter options once
+  useEffect(() => {
+    const fetchFilterOptions = async () => {
+      try {
+        const res = await fetch("/api/promotor/calificacion/cdmx-disponibles/filtros");
+        if (res.ok) {
+          const data = await res.json();
+          setFilterOptions(data);
+        }
+      } catch {
+        // silently fail — filters will just be empty
+      }
+    };
+    fetchFilterOptions();
+  }, []);
 
   // Debounce search
   useEffect(() => {
@@ -761,6 +961,9 @@ function CdmxSelector({
           limit: String(limit),
         });
         if (debouncedSearch) params.set("search", debouncedSearch);
+        if (columnFilters.institucion.length > 0) params.set("filter_institucion", columnFilters.institucion.join(","));
+        if (columnFilters.puesto.length > 0) params.set("filter_puesto", columnFilters.puesto.join(","));
+        if (columnFilters.servicio.length > 0) params.set("filter_servicio", columnFilters.servicio.join(","));
 
         const res = await fetch(`/api/promotor/calificacion/cdmx-disponibles?${params}`);
         if (res.ok && !cancelled) {
@@ -777,7 +980,7 @@ function CdmxSelector({
     };
     fetchClientes();
     return () => { cancelled = true; };
-  }, [page, debouncedSearch, toast]);
+  }, [page, debouncedSearch, columnFilters, toast]);
 
   const toggleSelect = (id: number) => {
     setSelected((prev) => {
@@ -832,6 +1035,18 @@ function CdmxSelector({
     }
   };
 
+  const applyColumnFilter = (key: FilterKey, values: string[]) => {
+    setColumnFilters((prev) => ({ ...prev, [key]: values }));
+    setPage(1);
+  };
+
+  const activeFilterCount = columnFilters.institucion.length + columnFilters.puesto.length + columnFilters.servicio.length;
+
+  const clearAllFilters = () => {
+    setColumnFilters({ institucion: [], puesto: [], servicio: [] });
+    setPage(1);
+  };
+
   const pageIds = clientes.map((c) => c.id);
   const allPageSelected = pageIds.length > 0 && pageIds.every((id) => selected.has(id));
 
@@ -862,6 +1077,15 @@ function CdmxSelector({
           />
         </div>
         <div className="flex items-center gap-3">
+          {activeFilterCount > 0 && (
+            <button
+              onClick={clearAllFilters}
+              className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded-lg hover:bg-amber-500/20 transition-colors"
+            >
+              <X className="w-3 h-3" />
+              {activeFilterCount} filtro{activeFilterCount > 1 ? "s" : ""} activo{activeFilterCount > 1 ? "s" : ""}
+            </button>
+          )}
           <Badge color={selected.size > 0 ? "amber" : "slate"}>
             {selected.size} seleccionados
           </Badge>
@@ -875,7 +1099,7 @@ function CdmxSelector({
       <div className="bg-surface rounded-xl border border-slate-800/60 overflow-hidden">
         <div className="overflow-auto scrollbar-thin max-h-[60vh]">
           <table className="w-full text-sm">
-            <thead className="bg-slate-800/40 border-b border-slate-800/40 sticky top-0 z-10">
+            <thead className="bg-slate-800/40 border-b border-slate-800/40 sticky top-0 z-20">
               <tr>
                 <th className="px-4 py-3 text-left w-10">
                   <input
@@ -887,9 +1111,39 @@ function CdmxSelector({
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Nombre</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">RFC</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Institución</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Puesto</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Servicio</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                  <span className="inline-flex items-center">
+                    Institución
+                    <ColumnFilterDropdown
+                      label="Institución"
+                      options={filterOptions.institucion}
+                      selected={columnFilters.institucion}
+                      onApply={(v) => applyColumnFilter("institucion", v)}
+                    />
+                  </span>
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                  <span className="inline-flex items-center">
+                    Puesto
+                    <ColumnFilterDropdown
+                      label="Puesto"
+                      options={filterOptions.puesto}
+                      selected={columnFilters.puesto}
+                      onApply={(v) => applyColumnFilter("puesto", v)}
+                    />
+                  </span>
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                  <span className="inline-flex items-center">
+                    Servicio
+                    <ColumnFilterDropdown
+                      label="Servicio"
+                      options={filterOptions.servicio}
+                      selected={columnFilters.servicio}
+                      onApply={(v) => applyColumnFilter("servicio", v)}
+                    />
+                  </span>
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/40">

@@ -23,6 +23,11 @@ export async function GET(req: NextRequest) {
   });
   const idsAsignados = asignados.map((a) => a.cliente_id);
 
+  // Column filters (comma-separated values)
+  const filterInstitucion = url.get("filter_institucion")?.trim() ?? "";
+  const filterPuesto = url.get("filter_puesto")?.trim() ?? "";
+  const filterServicio = url.get("filter_servicio")?.trim() ?? "";
+
   // Build where clause
   const where: Record<string, unknown> = {};
   if (idsAsignados.length > 0) {
@@ -34,6 +39,15 @@ export async function GET(req: NextRequest) {
       { rfc: { contains: search, mode: "insensitive" } },
       { institucion: { contains: search, mode: "insensitive" } },
     ];
+  }
+  if (filterInstitucion) {
+    where.institucion = { in: filterInstitucion.split(",") };
+  }
+  if (filterPuesto) {
+    where.puesto = { in: filterPuesto.split(",") };
+  }
+  if (filterServicio) {
+    where.servicio = { in: filterServicio.split(",") };
   }
 
   const [clientes, total] = await Promise.all([
