@@ -10,7 +10,7 @@ import { Dialog, DialogHeader, DialogBody, DialogFooter } from "@/components/ui/
 import { useToast } from "@/components/ui/Toast";
 import { DataTable } from "@/components/ui/DataTable";
 import { ColumnDef } from "@tanstack/react-table";
-import { ClipboardCheck, FileSpreadsheet, Download, Search, ChevronLeft, ChevronRight, Filter, X, Check } from "lucide-react";
+import { ClipboardCheck, FileSpreadsheet, Download, Search, ChevronLeft, ChevronRight, Filter, X, Check, Users } from "lucide-react";
 
 // ─── Types ───
 
@@ -52,6 +52,7 @@ interface CupoInfo {
 const TABS = [
   { key: "IEPPO", label: "IEPPO", icon: <ClipboardCheck className="w-4 h-4" /> },
   { key: "CDMX", label: "CDMX", icon: <FileSpreadsheet className="w-4 h-4" /> },
+  { key: "PENSIONADOS", label: "Pensionados", icon: <Users className="w-4 h-4" /> },
 ] as const;
 
 type TabKey = (typeof TABS)[number]["key"];
@@ -60,9 +61,10 @@ type TabKey = (typeof TABS)[number]["key"];
 
 export default function PromotorCalificacionPage() {
   const [tab, setTab] = useState<TabKey>("IEPPO");
-  const [lotes, setLotes] = useState<{ IEPPO: LoteData | null; CDMX: LoteData | null }>({
+  const [lotes, setLotes] = useState<{ IEPPO: LoteData | null; CDMX: LoteData | null; PENSIONADOS: LoteData | null }>({
     IEPPO: null,
     CDMX: null,
+    PENSIONADOS: null,
   });
   const [cupo, setCupo] = useState<CupoInfo | null>(null);
   const [catalogo, setCatalogo] = useState<RetroItem[]>([]);
@@ -241,8 +243,7 @@ function TabContent({
           size: 120,
         }
       );
-    } else {
-      // CDMX
+    } else if (tipo === "CDMX") {
       base.push(
         {
           header: "Nombre",
@@ -275,6 +276,41 @@ function TabContent({
             return s.length > 40 ? s.substring(0, 40) + "…" : s;
           },
           size: 200,
+        }
+      );
+    } else {
+      // PENSIONADOS
+      base.push(
+        {
+          header: "Nombre",
+          accessorFn: (row) => {
+            const c = row.cliente as Record<string, unknown>;
+            if (!c) return "—";
+            return `${c.nombre ?? ""} ${c.a_paterno ?? ""} ${c.a_materno ?? ""}`.trim();
+          },
+          cell: ({ row, getValue }) => (
+            <button
+              className="text-amber-400 hover:underline text-left"
+              onClick={() => setEditItem(row.original)}
+            >
+              {getValue() as string}
+            </button>
+          ),
+        },
+        {
+          header: "CURP",
+          accessorFn: (row) => (row.cliente as Record<string, unknown>)?.curp ?? "—",
+          size: 180,
+        },
+        {
+          header: "NSS",
+          accessorFn: (row) => (row.cliente as Record<string, unknown>)?.nss ?? "—",
+          size: 120,
+        },
+        {
+          header: "Zona",
+          accessorFn: (row) => (row.cliente as Record<string, unknown>)?.zona ?? "—",
+          size: 100,
         }
       );
     }
@@ -328,13 +364,12 @@ function TabContent({
 
   if (!lote) {
     if (tipo === "CDMX") {
-      return (
-        <CdmxSelector cupo={cupo} toast={toast} onRefresh={onRefresh} />
-      );
+      return <CdmxSelector cupo={cupo} toast={toast} onRefresh={onRefresh} />;
     }
-    return (
-      <IeppoSelector cupo={cupo} toast={toast} onRefresh={onRefresh} />
-    );
+    if (tipo === "PENSIONADOS") {
+      return <PensionadosSelector cupo={cupo} toast={toast} onRefresh={onRefresh} />;
+    }
+    return <IeppoSelector cupo={cupo} toast={toast} onRefresh={onRefresh} />;
   }
 
   // Hay lote activo
@@ -437,9 +472,12 @@ function CalificarDialog({
   const [saving, setSaving] = useState(false);
   const [showSinRegistro, setShowSinRegistro] = useState(false);
 
+  const c = item.cliente as Record<string, unknown>;
   const clienteNombre = tipo === "IEPPO"
-    ? `${(item.cliente as Record<string, unknown>)?.nombres ?? ""} ${(item.cliente as Record<string, unknown>)?.a_paterno ?? ""}`.trim()
-    : String((item.cliente as Record<string, unknown>)?.nombre ?? "Sin nombre");
+    ? `${c?.nombres ?? ""} ${c?.a_paterno ?? ""}`.trim()
+    : tipo === "PENSIONADOS"
+    ? `${c?.nombre ?? ""} ${c?.a_paterno ?? ""} ${c?.a_materno ?? ""}`.trim() || "Sin nombre"
+    : String(c?.nombre ?? "Sin nombre");
 
   const doSave = async (tel: string, cap: string, retro: number) => {
     setSaving(true);
@@ -948,6 +986,374 @@ function IeppoSelector({
           <Button onClick={handleSolicitar} loading={submitting}>
             <Download className="w-4 h-4 mr-2" />
             Solicitar Lote IEPPO
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PENSIONADOS Selector
+// ═══════════════════════════════════════════════════════════════════════════════
+
+interface PensionadoCliente {
+  id: number;
+  nombre: string | null;
+  a_paterno: string | null;
+  a_materno: string | null;
+  curp: string | null;
+  nss: string | null;
+  zona: string | null;
+  id_movimiento: string | null;
+  imp_saldo_pendiente: string | null;
+}
+
+interface PensionadosFilterState {
+  zona: string[];
+  id_movimiento: string[];
+}
+
+interface PensionadosFilterOptions {
+  zona: string[];
+  id_movimiento: string[];
+}
+
+type PensionadosFilterKey = keyof PensionadosFilterState;
+
+function PensionadosSelector({
+  cupo,
+  toast,
+  onRefresh,
+}: {
+  cupo: CupoInfo | null;
+  toast: ReturnType<typeof useToast>["toast"];
+  onRefresh: () => void;
+}) {
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [clientes, setClientes] = useState<PensionadoCliente[]>([]);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [submitting, setSubmitting] = useState(false);
+  const [columnFilters, setColumnFilters] = useState<PensionadosFilterState>({
+    zona: [],
+    id_movimiento: [],
+  });
+  const [filterOptions, setFilterOptions] = useState<PensionadosFilterOptions>({
+    zona: [],
+    id_movimiento: [],
+  });
+  const limit = 25;
+
+  // Fetch filter options once
+  useEffect(() => {
+    const fetchFilterOptions = async () => {
+      try {
+        const res = await fetch("/api/promotor/calificacion/pensionados-disponibles/filtros");
+        if (res.ok) {
+          setFilterOptions(await res.json());
+        }
+      } catch {
+        // silently fail
+      }
+    };
+    fetchFilterOptions();
+  }, []);
+
+  // Debounce search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(1);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  // Fetch clients
+  useEffect(() => {
+    let cancelled = false;
+    const fetchClientes = async () => {
+      setLoading(true);
+      try {
+        const params = new URLSearchParams({
+          page: String(page),
+          limit: String(limit),
+        });
+        if (debouncedSearch) params.set("search", debouncedSearch);
+        if (columnFilters.zona.length > 0) params.set("filter_zona", columnFilters.zona.join(","));
+        if (columnFilters.id_movimiento.length > 0) params.set("filter_id_movimiento", columnFilters.id_movimiento.join(","));
+
+        const res = await fetch(`/api/promotor/calificacion/pensionados-disponibles?${params}`);
+        if (res.ok && !cancelled) {
+          const data = await res.json();
+          setClientes(data.clientes);
+          setTotal(data.total);
+          setTotalPages(data.totalPages);
+        }
+      } catch {
+        if (!cancelled) toast("Error al cargar pensionados", "error");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    fetchClientes();
+    return () => { cancelled = true; };
+  }, [page, debouncedSearch, columnFilters, toast]);
+
+  const toggleSelect = (id: number) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const togglePageAll = () => {
+    const pageIds = clientes.map((c) => c.id);
+    const allSelected = pageIds.every((id) => selected.has(id));
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (allSelected) {
+        pageIds.forEach((id) => next.delete(id));
+      } else {
+        pageIds.forEach((id) => next.add(id));
+      }
+      return next;
+    });
+  };
+
+  const handleSolicitar = async () => {
+    if (selected.size === 0) {
+      toast("Selecciona al menos un cliente", "error");
+      return;
+    }
+    if (cupo && selected.size > cupo.disponible) {
+      toast(`Solo tienes cupo para ${cupo.disponible} registros`, "error");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/promotor/calificacion/solicitar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tipo: "PENSIONADOS", cliente_ids: Array.from(selected) }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast(data.error || "Error al solicitar", "error");
+        return;
+      }
+      toast(`Se asignaron ${data.cantidad} registros Pensionados`, "success");
+      onRefresh();
+    } catch {
+      toast("Error de conexión", "error");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const applyColumnFilter = (key: PensionadosFilterKey, values: string[]) => {
+    setColumnFilters((prev) => ({ ...prev, [key]: values }));
+    setPage(1);
+  };
+
+  const activeFilterCount = columnFilters.zona.length + columnFilters.id_movimiento.length;
+
+  const clearAllFilters = () => {
+    setColumnFilters({ zona: [], id_movimiento: [] });
+    setPage(1);
+  };
+
+  const pageIds = clientes.map((c) => c.id);
+  const allPageSelected = pageIds.length > 0 && pageIds.every((id) => selected.has(id));
+
+  const maxSelectable = cupo?.disponible ?? 0;
+
+  if (cupo && cupo.disponible <= 0) {
+    return (
+      <Card className="p-8 text-center">
+        <div className="text-slate-400">
+          No tienes un lote Pensionados activo. Tu cupo diario está agotado.
+        </div>
+      </Card>
+    );
+  }
+
+  return (
+    <div>
+      {/* Header */}
+      <div className="flex items-center justify-between mb-3 gap-3 flex-wrap">
+        <div className="relative flex-1 min-w-[200px] max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+          <input
+            type="text"
+            placeholder="Buscar por nombre, CURP o NSS..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-slate-200 placeholder:text-slate-500 outline-none focus:border-amber-500/50 transition-colors"
+          />
+        </div>
+        <div className="flex items-center gap-3">
+          {activeFilterCount > 0 && (
+            <button
+              onClick={clearAllFilters}
+              className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded-lg hover:bg-amber-500/20 transition-colors"
+            >
+              <X className="w-3 h-3" />
+              {activeFilterCount} filtro{activeFilterCount > 1 ? "s" : ""} activo{activeFilterCount > 1 ? "s" : ""}
+            </button>
+          )}
+          <Badge color={selected.size > 0 ? "amber" : "slate"}>
+            {selected.size} seleccionados
+          </Badge>
+          {maxSelectable > 0 && (
+            <span className="text-xs text-slate-500">Máx: {maxSelectable}</span>
+          )}
+        </div>
+      </div>
+
+      {/* Table */}
+      <div className="bg-surface rounded-xl border border-slate-800/60 overflow-hidden">
+        <div className="overflow-auto scrollbar-thin max-h-[60vh]">
+          <table className="w-full text-sm">
+            <thead className="bg-slate-800/40 border-b border-slate-800/40 sticky top-0 z-20">
+              <tr>
+                <th className="px-4 py-3 text-left w-10">
+                  <input
+                    type="checkbox"
+                    checked={allPageSelected}
+                    onChange={togglePageAll}
+                    className="w-4 h-4 rounded border-slate-700 bg-slate-800/50 text-amber-500 focus:ring-amber-500/40"
+                  />
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Nombre</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">CURP</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">NSS</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                  <span className="inline-flex items-center">
+                    Zona
+                    <ColumnFilterDropdown
+                      label="Zona"
+                      options={filterOptions.zona}
+                      selected={columnFilters.zona}
+                      onApply={(v) => applyColumnFilter("zona", v)}
+                    />
+                  </span>
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                  <span className="inline-flex items-center">
+                    Movimiento
+                    <ColumnFilterDropdown
+                      label="Movimiento"
+                      options={filterOptions.id_movimiento}
+                      selected={columnFilters.id_movimiento}
+                      onApply={(v) => applyColumnFilter("id_movimiento", v)}
+                    />
+                  </span>
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Saldo Pend.</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-800/40">
+              {loading ? (
+                <tr>
+                  <td colSpan={7} className="py-16 text-center">
+                    <Spinner className="mx-auto" />
+                  </td>
+                </tr>
+              ) : clientes.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="py-16 text-center text-slate-500 text-sm">
+                    No se encontraron pensionados
+                  </td>
+                </tr>
+              ) : (
+                clientes.map((c) => {
+                  const isSelected = selected.has(c.id);
+                  const nombre = `${c.nombre ?? ""} ${c.a_paterno ?? ""} ${c.a_materno ?? ""}`.trim() || "—";
+                  const saldo = c.imp_saldo_pendiente
+                    ? `$${Number(c.imp_saldo_pendiente).toLocaleString("es-MX", { minimumFractionDigits: 2 })}`
+                    : "—";
+                  return (
+                    <tr
+                      key={c.id}
+                      className={`hover:bg-surface-hover transition-colors cursor-pointer ${isSelected ? "bg-amber-500/5" : ""}`}
+                      onClick={() => toggleSelect(c.id)}
+                    >
+                      <td className="px-4 py-3">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleSelect(c.id)}
+                          onClick={(e) => e.stopPropagation()}
+                          className="w-4 h-4 rounded border-slate-700 bg-slate-800/50 text-amber-500 focus:ring-amber-500/40"
+                        />
+                      </td>
+                      <td className="px-4 py-3 text-slate-200">{nombre}</td>
+                      <td className="px-4 py-3 text-slate-400">{c.curp ?? "—"}</td>
+                      <td className="px-4 py-3 text-slate-400">{c.nss ?? "—"}</td>
+                      <td className="px-4 py-3 text-slate-400">{c.zona ?? "—"}</td>
+                      <td className="px-4 py-3 text-slate-400">{c.id_movimiento ?? "—"}</td>
+                      <td className="px-4 py-3 text-slate-400">{saldo}</td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Pagination */}
+        {total > 0 && (
+          <div className="px-4 py-3 border-t border-slate-800/40 flex items-center justify-between">
+            <span className="text-xs text-slate-500">
+              {(page - 1) * limit + 1}-{Math.min(page * limit, total)} de {total.toLocaleString()}
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page <= 1}
+                className="inline-flex items-center gap-1 px-3 py-1.5 text-sm border border-slate-700 text-slate-300 rounded-lg disabled:opacity-30 hover:bg-surface-hover transition-colors font-medium"
+              >
+                <ChevronLeft className="w-4 h-4" />
+                Anterior
+              </button>
+              <span className="text-sm text-slate-500 px-3">
+                {page} de {totalPages}
+              </span>
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page >= totalPages}
+                className="inline-flex items-center gap-1 px-3 py-1.5 text-sm border border-slate-700 text-slate-300 rounded-lg disabled:opacity-30 hover:bg-surface-hover transition-colors font-medium"
+              >
+                Siguiente
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Sticky bottom bar */}
+      {selected.size > 0 && (
+        <div className="sticky bottom-0 mt-3 p-3 bg-slate-900/95 backdrop-blur border border-slate-800/60 rounded-xl flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Badge color="amber">{selected.size} clientes seleccionados</Badge>
+            <button
+              onClick={() => setSelected(new Set())}
+              className="text-xs text-slate-500 hover:text-slate-300 transition-colors"
+            >
+              Limpiar selección
+            </button>
+          </div>
+          <Button onClick={handleSolicitar} loading={submitting}>
+            <Download className="w-4 h-4 mr-2" />
+            Solicitar Lote Pensionados
           </Button>
         </div>
       )}

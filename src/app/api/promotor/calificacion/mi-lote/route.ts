@@ -27,10 +27,10 @@ export async function GET() {
   });
 
   if (lotes.length === 0) {
-    return NextResponse.json({ lotes: { IEPPO: null, CDMX: null } });
+    return NextResponse.json({ lotes: { IEPPO: null, CDMX: null, PENSIONADOS: null } });
   }
 
-  const resultado: Record<string, unknown> = { IEPPO: null, CDMX: null };
+  const resultado: Record<string, unknown> = { IEPPO: null, CDMX: null, PENSIONADOS: null };
 
   for (const lote of lotes) {
     const clienteIds = lote.calificaciones.map((c) => c.cliente_id);
@@ -88,6 +88,28 @@ export async function GET() {
             valor_original: c.valor_original?.toString() ?? null,
             valor_enviado: c.valor_enviado?.toString() ?? null,
             valor_descontado: c.valor_descontado?.toString() ?? null,
+          },
+        ])
+      );
+    } else if (lote.tipo === "PENSIONADOS" && clienteIds.length > 0) {
+      // Obtener datos de tabla local clientes_pensionados
+      const clientes = await prisma.clientes_pensionados.findMany({
+        where: { id: { in: clienteIds } },
+      });
+
+      clientesData = Object.fromEntries(
+        clientes.map((c) => [
+          c.id,
+          {
+            ...c,
+            imp_prestamo: c.imp_prestamo?.toString() ?? null,
+            imp_mensual: c.imp_mensual?.toString() ?? null,
+            imp_saldo_pendiente: c.imp_saldo_pendiente?.toString() ?? null,
+            imp_real_prestamo: c.imp_real_prestamo?.toString() ?? null,
+            num_tasa_int_anual: c.num_tasa_int_anual?.toString() ?? null,
+            cat_prestamo: c.cat_prestamo?.toString() ?? null,
+            tasa_efectiva: c.tasa_efectiva?.toString() ?? null,
+            tasa_efec_redondeada: c.tasa_efec_redondeada?.toString() ?? null,
           },
         ])
       );

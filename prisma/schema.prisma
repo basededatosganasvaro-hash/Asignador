@@ -1004,6 +1004,45 @@ model clientes_cdmx {
 }
 
 // =============================================
+// CLIENTES PENSIONADOS JALISCO — Tabla local BD Sistema
+// =============================================
+
+model clientes_pensionados {
+  id                     Int       @id @default(autoincrement())
+  id_sol_pr_financiero   Int?
+  id_inst_financiera     Int?
+  zona                   String?   @db.VarChar(50)
+  nss                    String?   @db.VarChar(20)
+  id_grupo_familiar      Int?
+  id_movimiento          String?   @db.VarChar(10)
+  curp                   String?   @db.VarChar(20)
+  nombre                 String?   @db.VarChar(100)
+  a_paterno              String?   @db.VarChar(100)
+  a_materno              String?   @db.VarChar(100)
+  num_clabe              String?   @db.VarChar(20)
+  imp_prestamo           Decimal?  @db.Decimal(16, 2)
+  num_meses              Int?
+  fec_alta               DateTime?
+  fec_modificacion       DateTime?
+  imp_mensual            Decimal?  @db.Decimal(16, 2)
+  fec_inicio_prestamo    String?   @db.VarChar(60)
+  fec_term_prestamo      String?   @db.VarChar(60)
+  imp_saldo_pendiente    Decimal?  @db.Decimal(16, 2)
+  num_tasa_int_anual     Decimal?  @db.Decimal(8, 4)
+  cat_prestamo           Decimal?  @db.Decimal(8, 2)
+  imp_real_prestamo      Decimal?  @db.Decimal(16, 2)
+  ind_carta_instruccion  String?   @db.VarChar(5)
+  tasa_efectiva          Decimal?  @db.Decimal(10, 7)
+  tasa_efec_redondeada   Decimal?  @db.Decimal(10, 4)
+  created_at             DateTime  @default(now())
+
+  @@index([nombre])
+  @@index([curp])
+  @@index([nss])
+  @@index([zona])
+}
+
+// =============================================
 // CATÁLOGO RETROALIMENTACIÓN — Calificación promotor
 // =============================================
 
@@ -1023,8 +1062,8 @@ model lotes_calificacion_promotor {
   id          Int      @id @default(autoincrement())
   promotor_id Int
   fecha       DateTime @default(now()) @db.Date
-  tipo        String   @db.VarChar(10)
-  // IEPPO | CDMX
+  tipo        String   @db.VarChar(20)
+  // IEPPO | CDMX | PENSIONADOS
   cantidad    Int      @default(0)
   estado      String   @default("PENDIENTE") @db.VarChar(20)
   // PENDIENTE | EN_PROCESO | DEVUELTO
@@ -1049,8 +1088,8 @@ model calificaciones_promotor {
   cliente_id           Int
   // IEPPO: referencia a clientes.id en BD Clientes
   // CDMX: referencia a clientes_cdmx.id en BD Sistema
-  tipo                 String   @db.VarChar(10)
-  // IEPPO | CDMX
+  tipo                 String   @db.VarChar(20)
+  // IEPPO | CDMX | PENSIONADOS
   calificado           Boolean  @default(false)
   telefono             String?  @db.VarChar(20)
   capacidad            String?  @db.VarChar(50)
@@ -1093,8 +1132,8 @@ model cupo_calificacion_diario {
 
 model rondas_calificacion {
   id           Int      @id @default(autoincrement())
-  tipo         String   @unique @db.VarChar(10)
-  // IEPPO | CDMX
+  tipo         String   @unique @db.VarChar(20)
+  // IEPPO | CDMX | PENSIONADOS
   ronda_actual Int      @default(1)
   updated_at   DateTime @default(now()) @updatedAt
 }

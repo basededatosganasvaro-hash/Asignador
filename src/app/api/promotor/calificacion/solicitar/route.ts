@@ -13,6 +13,10 @@ const solicitarSchema = z.discriminatedUnion("tipo", [
     tipo: z.literal("CDMX"),
     cliente_ids: z.array(z.number().int().positive()).min(1).max(50),
   }),
+  z.object({
+    tipo: z.literal("PENSIONADOS"),
+    cliente_ids: z.array(z.number().int().positive()).min(1).max(50),
+  }),
 ]);
 
 export async function POST(req: Request) {
@@ -68,39 +72,38 @@ export async function POST(req: Request) {
   const cantidadReal = Math.min(requestedIds.length, disponible);
   const idsToUse = requestedIds.slice(0, cantidadReal);
 
+  // Validar que los IDs existen en la tabla correspondiente
+  let existentesSet: Set<number>;
+
   if (tipo === "CDMX") {
-    // Validar que los IDs existen en clientes_cdmx
     const existentes = await prisma.clientes_cdmx.findMany({
       where: { id: { in: idsToUse } },
       select: { id: true },
     });
-    const existentesSet = new Set(existentes.map((c) => c.id));
-
-    // Filtrar ya asignados en esta ronda
-    const yaAsignados = await prisma.calificaciones_promotor.findMany({
-      where: { tipo: "CDMX", ronda: ronda.ronda_actual, cliente_id: { in: idsToUse } },
-      select: { cliente_id: true },
+    existentesSet = new Set(existentes.map((c) => c.id));
+  } else if (tipo === "PENSIONADOS") {
+    const existentes = await prisma.clientes_pensionados.findMany({
+      where: { id: { in: idsToUse } },
+      select: { id: true },
     });
-    const yaAsignadosSet = new Set(yaAsignados.map((a) => a.cliente_id));
-
-    clienteIds = idsToUse.filter((id) => existentesSet.has(id) && !yaAsignadosSet.has(id));
+    existentesSet = new Set(existentes.map((c) => c.id));
   } else {
-    // IEPPO: validar que los IDs existen en BD Clientes
+    // IEPPO: BD Clientes
     const existentes = await prismaClientes.clientes.findMany({
       where: { id: { in: idsToUse }, tipo_cliente: "Cartera para calificar IEPPO" },
       select: { id: true },
     });
-    const existentesSet = new Set(existentes.map((c) => c.id));
-
-    // Filtrar ya asignados en esta ronda
-    const yaAsignados = await prisma.calificaciones_promotor.findMany({
-      where: { tipo: "IEPPO", ronda: ronda.ronda_actual, cliente_id: { in: idsToUse } },
-      select: { cliente_id: true },
-    });
-    const yaAsignadosSet = new Set(yaAsignados.map((a) => a.cliente_id));
-
-    clienteIds = idsToUse.filter((id) => existentesSet.has(id) && !yaAsignadosSet.has(id));
+    existentesSet = new Set(existentes.map((c) => c.id));
   }
+
+  // Filtrar ya asignados en esta ronda
+  const yaAsignados = await prisma.calificaciones_promotor.findMany({
+    where: { tipo, ronda: ronda.ronda_actual, cliente_id: { in: idsToUse } },
+    select: { cliente_id: true },
+  });
+  const yaAsignadosSet = new Set(yaAsignados.map((a) => a.cliente_id));
+
+  clienteIds = idsToUse.filter((id) => existentesSet.has(id) && !yaAsignadosSet.has(id));
 
   if (clienteIds.length === 0) {
     return NextResponse.json({ error: "Ninguno de los clientes seleccionados está disponible" }, { status: 400 });
