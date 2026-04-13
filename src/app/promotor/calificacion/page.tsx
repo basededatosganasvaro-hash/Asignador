@@ -1039,6 +1039,7 @@ function PensionadosSelector({
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [submitting, setSubmitting] = useState(false);
+  const [detailId, setDetailId] = useState<number | null>(null);
   const [columnFilters, setColumnFilters] = useState<PensionadosFilterState>({
     zona: [],
     id_movimiento: [],
@@ -1294,7 +1295,14 @@ function PensionadosSelector({
                           className="w-4 h-4 rounded border-slate-700 bg-slate-800/50 text-amber-500 focus:ring-amber-500/40"
                         />
                       </td>
-                      <td className="px-4 py-3 text-slate-200">{nombre}</td>
+                      <td className="px-4 py-3">
+                        <button
+                          className="text-amber-400 hover:underline text-left"
+                          onClick={(e) => { e.stopPropagation(); setDetailId(c.id); }}
+                        >
+                          {nombre}
+                        </button>
+                      </td>
                       <td className="px-4 py-3 text-slate-400">{c.curp ?? "—"}</td>
                       <td className="px-4 py-3 text-slate-400">{c.nss ?? "—"}</td>
                       <td className="px-4 py-3 text-slate-400">{c.zona ?? "—"}</td>
@@ -1357,7 +1365,178 @@ function PensionadosSelector({
           </Button>
         </div>
       )}
+
+      {/* Detail dialog */}
+      {detailId !== null && (
+        <PensionadosDetailDialog
+          clienteId={detailId}
+          isSelected={selected.has(detailId)}
+          onToggleSelect={() => toggleSelect(detailId)}
+          onClose={() => setDetailId(null)}
+          toast={toast}
+        />
+      )}
     </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Pensionados Detail Dialog
+// ═══════════════════════════════════════════════════════════════════════════════
+
+interface PensionadoDetalle {
+  id: number;
+  id_sol_pr_financiero: number | null;
+  id_inst_financiera: number | null;
+  zona: string | null;
+  nss: string | null;
+  id_grupo_familiar: number | null;
+  id_movimiento: string | null;
+  curp: string | null;
+  nombre: string | null;
+  a_paterno: string | null;
+  a_materno: string | null;
+  num_clabe: string | null;
+  imp_prestamo: string | null;
+  num_meses: number | null;
+  fec_alta: string | null;
+  fec_modificacion: string | null;
+  imp_mensual: string | null;
+  fec_inicio_prestamo: string | null;
+  fec_term_prestamo: string | null;
+  imp_saldo_pendiente: string | null;
+  num_tasa_int_anual: string | null;
+  cat_prestamo: string | null;
+  imp_real_prestamo: string | null;
+  ind_carta_instruccion: string | null;
+  tasa_efectiva: string | null;
+  tasa_efec_redondeada: string | null;
+}
+
+const PENSIONADO_DETAIL_FIELDS: { key: keyof PensionadoDetalle; label: string }[] = [
+  { key: "nombre", label: "Nombre" },
+  { key: "a_paterno", label: "Apellido Paterno" },
+  { key: "a_materno", label: "Apellido Materno" },
+  { key: "curp", label: "CURP" },
+  { key: "nss", label: "NSS" },
+  { key: "zona", label: "Zona" },
+  { key: "id_movimiento", label: "Movimiento" },
+  { key: "id_sol_pr_financiero", label: "ID Sol. Pr. Financiero" },
+  { key: "id_inst_financiera", label: "ID Inst. Financiera" },
+  { key: "id_grupo_familiar", label: "Grupo Familiar" },
+  { key: "num_clabe", label: "CLABE" },
+  { key: "imp_prestamo", label: "Imp. Préstamo" },
+  { key: "imp_real_prestamo", label: "Imp. Real Préstamo" },
+  { key: "imp_mensual", label: "Imp. Mensual" },
+  { key: "imp_saldo_pendiente", label: "Saldo Pendiente" },
+  { key: "num_meses", label: "Meses" },
+  { key: "num_tasa_int_anual", label: "Tasa Int. Anual" },
+  { key: "cat_prestamo", label: "CAT Préstamo" },
+  { key: "tasa_efectiva", label: "Tasa Efectiva" },
+  { key: "tasa_efec_redondeada", label: "Tasa Efec. Redondeada" },
+  { key: "fec_alta", label: "Fecha Alta" },
+  { key: "fec_modificacion", label: "Fecha Modificación" },
+  { key: "fec_inicio_prestamo", label: "Fecha Inicio Préstamo" },
+  { key: "fec_term_prestamo", label: "Fecha Term. Préstamo" },
+  { key: "ind_carta_instruccion", label: "Carta Instrucción" },
+];
+
+function PensionadosDetailDialog({
+  clienteId,
+  isSelected,
+  onToggleSelect,
+  onClose,
+  toast,
+}: {
+  clienteId: number;
+  isSelected: boolean;
+  onToggleSelect: () => void;
+  onClose: () => void;
+  toast: ReturnType<typeof useToast>["toast"];
+}) {
+  const [data, setData] = useState<PensionadoDetalle | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    const fetchDetail = async () => {
+      setLoading(true);
+      try {
+        const res = await fetch(`/api/promotor/calificacion/pensionados-disponibles/${clienteId}`);
+        if (res.ok && !cancelled) {
+          setData(await res.json());
+        } else if (!cancelled) {
+          toast("Error al cargar detalle del pensionado", "error");
+          onClose();
+        }
+      } catch {
+        if (!cancelled) {
+          toast("Error de conexión", "error");
+          onClose();
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    fetchDetail();
+    return () => { cancelled = true; };
+  }, [clienteId, toast, onClose]);
+
+  const formatValue = (key: string, val: unknown): string => {
+    if (val === null || val === undefined || val === "") return "—";
+    if (key === "fec_alta" || key === "fec_modificacion") {
+      try {
+        return new Date(String(val)).toLocaleDateString("es-MX");
+      } catch {
+        return String(val);
+      }
+    }
+    if (key === "imp_prestamo" || key === "imp_real_prestamo" || key === "imp_mensual" || key === "imp_saldo_pendiente") {
+      const num = Number(val);
+      if (!isNaN(num)) return `$${num.toLocaleString("es-MX", { minimumFractionDigits: 2 })}`;
+    }
+    if (key === "num_tasa_int_anual" || key === "cat_prestamo" || key === "tasa_efectiva" || key === "tasa_efec_redondeada") {
+      const num = Number(val);
+      if (!isNaN(num)) return `${num}%`;
+    }
+    return String(val);
+  };
+
+  return (
+    <Dialog open onClose={onClose} maxWidth="lg">
+      <DialogHeader onClose={onClose}>
+        Detalle del Pensionado
+      </DialogHeader>
+      <DialogBody>
+        {loading ? (
+          <div className="flex justify-center py-12">
+            <Spinner size="lg" />
+          </div>
+        ) : data ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2">
+            {PENSIONADO_DETAIL_FIELDS.map(({ key, label }) => (
+              <div key={key} className="py-2 border-b border-slate-800/30">
+                <span className="text-xs text-slate-500 uppercase tracking-wider">{label}</span>
+                <p className="text-sm text-slate-200 mt-0.5 break-words">
+                  {formatValue(key, data[key])}
+                </p>
+              </div>
+            ))}
+          </div>
+        ) : null}
+      </DialogBody>
+      <DialogFooter>
+        <Button variant="ghost" onClick={onClose}>
+          Cerrar
+        </Button>
+        <Button
+          variant={isSelected ? "ghost" : "primary"}
+          onClick={() => { onToggleSelect(); onClose(); }}
+        >
+          {isSelected ? "Quitar selección" : "Seleccionar cliente"}
+        </Button>
+      </DialogFooter>
+    </Dialog>
   );
 }
 
