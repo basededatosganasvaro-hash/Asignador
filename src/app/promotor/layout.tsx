@@ -16,7 +16,7 @@ export default async function PromotorLayout({
   }
 
   return (
-    <LayoutShell rol="promotor">
+    <LayoutShell rol="promotor" permisosCalificacion={session.user.permisos_calificacion}>
       <HorarioGuard>{children}</HorarioGuard>
     </LayoutShell>
   );

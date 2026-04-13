@@ -59,6 +59,19 @@ export async function requirePromotor() {
   return { session: session!, error: null };
 }
 
+export async function requireCalificacion(tipo: string) {
+  const { session, error } = await getSessionOrError();
+  if (error) return { session: null, error };
+  if (session!.user.rol !== "promotor") {
+    return { session: null, error: NextResponse.json({ error: "Acceso denegado" }, { status: 403 }) };
+  }
+  const permisos = session!.user.permisos_calificacion ?? [];
+  if (!permisos.includes(tipo)) {
+    return { session: null, error: NextResponse.json({ error: `No tienes permiso para calificar ${tipo}` }, { status: 403 }) };
+  }
+  return { session: session!, error: null };
+}
+
 export async function requireGestorOperaciones() {
   const { session, error } = await getSessionOrError();
   if (error) return { session: null, error };

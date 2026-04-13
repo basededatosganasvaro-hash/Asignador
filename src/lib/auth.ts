@@ -82,6 +82,7 @@ export const authOptions: NextAuthOptions = {
           debe_cambiar_password: user.debe_cambiar_password,
           region_id: user.region_id,
           sucursal_id: user.sucursal_id,
+          permisos_calificacion: user.permisos_calificacion,
         };
       },
     }),
@@ -99,6 +100,7 @@ export const authOptions: NextAuthOptions = {
         token.debe_cambiar_password = (user as { debe_cambiar_password: boolean }).debe_cambiar_password;
         token.region_id = (user as { region_id?: number | null }).region_id ?? null;
         token.sucursal_id = (user as { sucursal_id?: number | null }).sucursal_id ?? null;
+        token.permisos_calificacion = (user as { permisos_calificacion?: string[] }).permisos_calificacion ?? [];
         token.lastRefresh = Date.now();
       } else if (token.id) {
         // Refrescar debe_cambiar_password cada 5 minutos o inmediatamente si update() fue llamado
@@ -108,7 +110,7 @@ export const authOptions: NextAuthOptions = {
           try {
             const dbUser = await prisma.usuarios.findUnique({
               where: { id: parseInt(token.id as string) },
-              select: { debe_cambiar_password: true, region_id: true, sucursal_id: true, rol: true, activo: true, bloqueado_hasta: true },
+              select: { debe_cambiar_password: true, region_id: true, sucursal_id: true, rol: true, activo: true, bloqueado_hasta: true, permisos_calificacion: true },
             });
             if (!dbUser || !dbUser.activo || (dbUser.bloqueado_hasta && dbUser.bloqueado_hasta > new Date())) {
               // Usuario desactivado o bloqueado: invalidar sesión
@@ -119,6 +121,7 @@ export const authOptions: NextAuthOptions = {
               token.region_id = dbUser.region_id ?? null;
               token.sucursal_id = dbUser.sucursal_id ?? null;
               token.rol = dbUser.rol;
+              token.permisos_calificacion = dbUser.permisos_calificacion ?? [];
             }
             token.lastRefresh = Date.now();
           } catch {
@@ -140,6 +143,7 @@ export const authOptions: NextAuthOptions = {
         session.user.debe_cambiar_password = token.debe_cambiar_password as boolean;
         session.user.region_id = token.region_id as number | null | undefined;
         session.user.sucursal_id = token.sucursal_id as number | null | undefined;
+        session.user.permisos_calificacion = (token.permisos_calificacion as string[]) ?? [];
       }
       return session;
     },

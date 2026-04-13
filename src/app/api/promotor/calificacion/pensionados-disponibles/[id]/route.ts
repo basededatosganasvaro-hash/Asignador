@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
-import { requirePromotor } from "@/lib/auth-utils";
+import { requireCalificacion } from "@/lib/auth-utils";
 import { prisma } from "@/lib/prisma";
 
 export async function GET(
   _req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { error } = await requirePromotor();
+  const { error } = await requireCalificacion("PENSIONADOS");
   if (error) return error;
 
   const { id } = await params;

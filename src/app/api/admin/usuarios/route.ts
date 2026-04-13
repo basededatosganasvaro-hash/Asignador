@@ -22,6 +22,7 @@ export async function GET() {
         sucursal_id: true,
         region_id: true,
         telegram_id: true,
+        permisos_calificacion: true,
         equipo: { select: { id: true, nombre: true } },
         sucursal: { select: { id: true, nombre: true } },
         region: { select: { id: true, nombre: true } },
@@ -51,7 +52,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const { nombre, username, password, rol, equipo_id, telegram_id } = parsed.data;
+  const { nombre, username, password, rol, equipo_id, telegram_id, permisos_calificacion } = parsed.data;
   let { sucursal_id, region_id } = parsed.data;
 
   const existingUsername = await prisma.usuarios.findUnique({ where: { username } });
@@ -88,7 +89,7 @@ export async function POST(request: Request) {
     const password_hash = await bcrypt.hash(password, 10);
 
     const usuario = await prisma.usuarios.create({
-      data: { nombre, username, password_hash, rol, equipo_id, sucursal_id: sucursal_id ?? null, region_id: region_id ?? null, telegram_id: telegram_id ? BigInt(telegram_id) : null, debe_cambiar_password: true },
+      data: { nombre, username, password_hash, rol, equipo_id, sucursal_id: sucursal_id ?? null, region_id: region_id ?? null, telegram_id: telegram_id ? BigInt(telegram_id) : null, debe_cambiar_password: true, permisos_calificacion: permisos_calificacion ?? [] },
       select: {
         id: true,
         nombre: true,

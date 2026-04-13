@@ -5,6 +5,8 @@ export type Rol = typeof ROLES[number];
 
 // ============ USUARIOS ============
 
+const TIPOS_CALIFICACION = ["IEPPO", "CDMX", "PENSIONADOS"] as const;
+
 export const createUserSchema = z.object({
   nombre: z.string().min(2, "El nombre debe tener al menos 2 caracteres"),
   username: z.string().min(4, "El usuario debe tener al menos 4 caracteres").max(50).regex(/^[a-zA-Z0-9._-]+$/, "Solo letras, numeros, puntos, guiones"),
@@ -14,6 +16,7 @@ export const createUserSchema = z.object({
   sucursal_id: z.number().int().positive().optional().nullable(),
   region_id: z.number().int().positive().optional().nullable(),
   telegram_id: z.number().int().positive().optional().nullable(),
+  permisos_calificacion: z.array(z.enum(TIPOS_CALIFICACION)).optional(),
 });
 
 export const updateUserSchema = z.object({
@@ -26,6 +29,7 @@ export const updateUserSchema = z.object({
   sucursal_id: z.number().int().positive().optional().nullable(),
   region_id: z.number().int().positive().optional().nullable(),
   telegram_id: z.number().int().positive().optional().nullable(),
+  permisos_calificacion: z.array(z.enum(TIPOS_CALIFICACION)).optional(),
 });
 
 // ============ CONFIGURACION ============

@@ -11,6 +11,7 @@ import { useToast } from "@/components/ui/Toast";
 import { DataTable } from "@/components/ui/DataTable";
 import { ColumnDef } from "@tanstack/react-table";
 import { ClipboardCheck, FileSpreadsheet, Download, Search, ChevronLeft, ChevronRight, Filter, X, Check, Users } from "lucide-react";
+import { useSession } from "next-auth/react";
 
 // ─── Types ───
 
@@ -60,6 +61,10 @@ type TabKey = (typeof TABS)[number]["key"];
 // ─── Page ───
 
 export default function PromotorCalificacionPage() {
+  const { data: session } = useSession();
+  const permisos = session?.user?.permisos_calificacion ?? [];
+  const allowedTabs = useMemo(() => TABS.filter((t) => permisos.includes(t.key)), [permisos]);
+
   const [tab, setTab] = useState<TabKey>("IEPPO");
   const [lotes, setLotes] = useState<{ IEPPO: LoteData | null; CDMX: LoteData | null; PENSIONADOS: LoteData | null }>({
     IEPPO: null,
@@ -70,6 +75,13 @@ export default function PromotorCalificacionPage() {
   const [catalogo, setCatalogo] = useState<RetroItem[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+
+  // Set initial tab to first allowed
+  useEffect(() => {
+    if (allowedTabs.length > 0 && !permisos.includes(tab)) {
+      setTab(allowedTabs[0].key);
+    }
+  }, [allowedTabs, permisos, tab]);
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
@@ -120,31 +132,41 @@ export default function PromotorCalificacionPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 mb-6 border-b border-slate-800/60 pb-1">
-        {TABS.map((t) => (
-          <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
-            className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
-              tab === t.key
-                ? "text-amber-400 bg-slate-800/50 border-b-2 border-amber-400"
-                : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/30"
-            }`}
-          >
-            {t.icon}
-            {t.label}
-          </button>
-        ))}
-      </div>
+      {allowedTabs.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-20 text-slate-500">
+          <ClipboardCheck className="w-12 h-12 mb-3 text-slate-600" />
+          <p className="text-lg font-medium text-slate-400">Sin permisos de calificación</p>
+          <p className="text-sm mt-1">No tienes permisos asignados para calificar. Contacta a tu administrador.</p>
+        </div>
+      ) : (
+        <>
+          <div className="flex gap-1 mb-6 border-b border-slate-800/60 pb-1">
+            {allowedTabs.map((t) => (
+              <button
+                key={t.key}
+                onClick={() => setTab(t.key)}
+                className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
+                  tab === t.key
+                    ? "text-amber-400 bg-slate-800/50 border-b-2 border-amber-400"
+                    : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/30"
+                }`}
+              >
+                {t.icon}
+                {t.label}
+              </button>
+            ))}
+          </div>
 
-      <TabContent
-        tipo={tab}
-        lote={lotes[tab]}
-        cupo={cupo}
-        catalogo={catalogo}
-        toast={toast}
-        onRefresh={fetchAll}
-      />
+          <TabContent
+            tipo={tab}
+            lote={lotes[tab]}
+            cupo={cupo}
+            catalogo={catalogo}
+            toast={toast}
+            onRefresh={fetchAll}
+          />
+        </>
+      )}
     </div>
   );
 }

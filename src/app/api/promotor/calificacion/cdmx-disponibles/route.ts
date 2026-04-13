@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requirePromotor } from "@/lib/auth-utils";
+import { requireCalificacion } from "@/lib/auth-utils";
 import { prisma } from "@/lib/prisma";
 
 export async function GET(req: NextRequest) {
-  const { error } = await requirePromotor();
+  const { error } = await requireCalificacion("CDMX");
   if (error) return error;
 
   const url = req.nextUrl.searchParams;

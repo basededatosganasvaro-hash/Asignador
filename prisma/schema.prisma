@@ -84,6 +84,9 @@ model usuarios {
   sucursal_id Int?
   region_id   Int?
 
+  permisos_calificacion String[]  @default([])
+  // Array de tipos permitidos: "IEPPO", "CDMX", "PENSIONADOS"
+
   intentos_fallidos     Int       @default(0)
   bloqueado_hasta       DateTime?
   debe_cambiar_password Boolean   @default(false)

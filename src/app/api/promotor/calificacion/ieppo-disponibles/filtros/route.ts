@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { requirePromotor } from "@/lib/auth-utils";
+import { requireCalificacion } from "@/lib/auth-utils";
 import { prisma } from "@/lib/prisma";
 import { prismaClientes } from "@/lib/prisma-clientes";
 
 export async function GET() {
-  const { error } = await requirePromotor();
+  const { error } = await requireCalificacion("IEPPO");
   if (error) return error;
 
   // Get current round for IEPPO

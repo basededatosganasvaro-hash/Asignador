@@ -26,6 +26,7 @@ export async function GET(
       equipo_id: true,
       sucursal_id: true,
       region_id: true,
+      permisos_calificacion: true,
       equipo: { select: { id: true, nombre: true } },
       sucursal: { select: { id: true, nombre: true } },
       region: { select: { id: true, nombre: true } },
@@ -65,6 +66,7 @@ export async function PUT(
   if (parsed.data.equipo_id !== undefined) data.equipo_id = parsed.data.equipo_id;
   if (parsed.data.sucursal_id !== undefined) data.sucursal_id = parsed.data.sucursal_id;
   if (parsed.data.region_id !== undefined) data.region_id = parsed.data.region_id;
+  if (parsed.data.permisos_calificacion !== undefined) data.permisos_calificacion = parsed.data.permisos_calificacion;
   if (parsed.data.telegram_id !== undefined) {
     if (parsed.data.telegram_id) {
       try {

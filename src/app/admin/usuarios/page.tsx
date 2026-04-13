@@ -22,6 +22,7 @@ interface Usuario {
   sucursal: { id: number; nombre: string } | null;
   equipo: { id: number; nombre: string } | null;
   telegram_id: string | null;
+  permisos_calificacion: string[];
   _count: { lotes: number; oportunidades: number };
 }
 
@@ -109,6 +110,7 @@ export default function UsuariosPage() {
     sucursal_id: "",
     equipo_id: "",
     telegram_id: "",
+    permisos_calificacion: [] as string[],
   });
 
   const fetchUsers = useCallback(async () => {
@@ -146,7 +148,7 @@ export default function UsuariosPage() {
 
   const handleOpenCreate = async () => {
     setEditingUser(null);
-    setFormData({ nombre: "", username: "", password: "", rol: "promotor", region_id: "", sucursal_id: "", equipo_id: "", telegram_id: "" });
+    setFormData({ nombre: "", username: "", password: "", rol: "promotor", region_id: "", sucursal_id: "", equipo_id: "", telegram_id: "", permisos_calificacion: [] });
     const ok = await fetchOrgData();
     if (ok) setDialogOpen(true);
   };
@@ -162,6 +164,7 @@ export default function UsuariosPage() {
       sucursal_id: user.sucursal?.id ? String(user.sucursal.id) : "",
       equipo_id: user.equipo?.id ? String(user.equipo.id) : "",
       telegram_id: user.telegram_id ? String(user.telegram_id) : "",
+      permisos_calificacion: user.permisos_calificacion ?? [],
     });
     const ok = await fetchOrgData();
     if (ok) setDialogOpen(true);
@@ -171,7 +174,7 @@ export default function UsuariosPage() {
     const url = editingUser ? `/api/admin/usuarios/${editingUser.id}` : "/api/admin/usuarios";
     const method = editingUser ? "PUT" : "POST";
 
-    const body: Record<string, string | number | null> = {
+    const body: Record<string, string | number | string[] | null> = {
       nombre: formData.nombre,
       username: formData.username,
       rol: formData.rol,
@@ -179,6 +182,7 @@ export default function UsuariosPage() {
       sucursal_id: formData.sucursal_id ? Number(formData.sucursal_id) : null,
       equipo_id: formData.equipo_id ? Number(formData.equipo_id) : null,
       telegram_id: formData.telegram_id ? Number(formData.telegram_id) : null,
+      permisos_calificacion: formData.permisos_calificacion,
     };
     if (formData.password) body.password = formData.password;
 
@@ -487,6 +491,33 @@ export default function UsuariosPage() {
             type="number"
             helperText="ID de Telegram del usuario (para vincular capacidades)"
           />
+          {formData.rol === "promotor" && (
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-2">Permisos de Calificación</label>
+              <div className="flex flex-wrap gap-3">
+                {(["IEPPO", "CDMX", "PENSIONADOS"] as const).map((tipo) => (
+                  <label key={tipo} className="flex items-center gap-2 cursor-pointer text-sm text-slate-300">
+                    <input
+                      type="checkbox"
+                      checked={formData.permisos_calificacion.includes(tipo)}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        setFormData((prev) => ({
+                          ...prev,
+                          permisos_calificacion: checked
+                            ? [...prev.permisos_calificacion, tipo]
+                            : prev.permisos_calificacion.filter((p) => p !== tipo),
+                        }));
+                      }}
+                      className="rounded border-slate-600 bg-slate-800 text-amber-500 focus:ring-amber-500/30"
+                    />
+                    {tipo}
+                  </label>
+                ))}
+              </div>
+              <p className="text-xs text-slate-500 mt-1">Selecciona los tipos de calificación que puede realizar este promotor.</p>
+            </div>
+          )}
           <Select
             label="Region (opcional)"
             value={formData.region_id}

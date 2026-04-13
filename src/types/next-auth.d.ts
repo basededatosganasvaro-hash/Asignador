@@ -9,6 +9,7 @@ declare module "next-auth" {
     debe_cambiar_password?: boolean;
     region_id?: number | null;
     sucursal_id?: number | null;
+    permisos_calificacion?: string[];
   }
 
   interface Session {
@@ -21,6 +22,7 @@ declare module "next-auth" {
       debe_cambiar_password?: boolean;
       region_id?: number | null;
       sucursal_id?: number | null;
+      permisos_calificacion?: string[];
     };
   }
 }
@@ -33,5 +35,6 @@ declare module "next-auth/jwt" {
     debe_cambiar_password?: boolean;
     region_id?: number | null;
     sucursal_id?: number | null;
+    permisos_calificacion?: string[];
   }
 }

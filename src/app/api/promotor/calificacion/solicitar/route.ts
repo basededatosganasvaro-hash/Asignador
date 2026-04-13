@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requirePromotor } from "@/lib/auth-utils";
+import { requireCalificacion } from "@/lib/auth-utils";
 import { prisma } from "@/lib/prisma";
 import { prismaClientes } from "@/lib/prisma-clientes";
 import { z } from "zod";
@@ -20,9 +20,6 @@ const solicitarSchema = z.discriminatedUnion("tipo", [
 ]);
 
 export async function POST(req: Request) {
-  const { session, error } = await requirePromotor();
-  if (error) return error;
-
   const body = await req.json();
   const parsed = solicitarSchema.safeParse(body);
   if (!parsed.success) {
@@ -30,6 +27,9 @@ export async function POST(req: Request) {
   }
 
   const { tipo } = parsed.data;
+
+  const { session, error } = await requireCalificacion(tipo);
+  if (error) return error;
   const userId = Number(session.user.id);
   const hoy = new Date();
   hoy.setHours(0, 0, 0, 0);
