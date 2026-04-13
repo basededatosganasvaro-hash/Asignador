@@ -330,7 +330,7 @@ model cupo_diario {
   usuario_id     Int
   fecha          DateTime @db.Date
   total_asignado Int      @default(0)
-  limite         Int      @default(300)
+  limite         Int      @default(50)
   created_at     DateTime @default(now())
 
   usuario usuarios @relation(fields: [usuario_id], references: [id])
@@ -699,7 +699,7 @@ model resumen_usuarios {
   solicitudes_imss_resueltas  Int @default(0)
 
   cupo_hoy_asignado Int @default(0)
-  cupo_hoy_limite   Int @default(300)
+  cupo_hoy_limite   Int @default(50)
 
   sync_at DateTime @default(now())
 
@@ -1078,7 +1078,7 @@ model cupo_calificacion_diario {
   usuario_id     Int
   fecha          DateTime @db.Date
   total_asignado Int      @default(0)
-  limite         Int      @default(300)
+  limite         Int      @default(50)
   created_at     DateTime @default(now())
 
   usuario usuarios @relation(fields: [usuario_id], references: [id])

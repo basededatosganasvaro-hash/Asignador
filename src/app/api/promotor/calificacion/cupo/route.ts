@@ -15,7 +15,7 @@ export async function GET() {
   });
 
   const totalAsignado = cupo?.total_asignado ?? 0;
-  const limite = cupo?.limite ?? 300;
+  const limite = cupo?.limite ?? 50;
 
   return NextResponse.json({
     total_asignado: totalAsignado,

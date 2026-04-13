@@ -7,11 +7,11 @@ import { z } from "zod";
 const solicitarSchema = z.discriminatedUnion("tipo", [
   z.object({
     tipo: z.literal("IEPPO"),
-    cliente_ids: z.array(z.number().int().positive()).min(1).max(300),
+    cliente_ids: z.array(z.number().int().positive()).min(1).max(50),
   }),
   z.object({
     tipo: z.literal("CDMX"),
-    cliente_ids: z.array(z.number().int().positive()).min(1).max(300),
+    cliente_ids: z.array(z.number().int().positive()).min(1).max(50),
   }),
 ]);
 
@@ -34,7 +34,7 @@ export async function POST(req: Request) {
   const cupo = await prisma.cupo_calificacion_diario.upsert({
     where: { usuario_id_fecha: { usuario_id: userId, fecha: hoy } },
     update: {},
-    create: { usuario_id: userId, fecha: hoy, total_asignado: 0, limite: 300 },
+    create: { usuario_id: userId, fecha: hoy, total_asignado: 0, limite: 50 },
   });
 
   const disponible = cupo.limite - cupo.total_asignado;
