@@ -591,7 +591,7 @@ function CalificarDialog({
   }
 
   return (
-    <Dialog open onClose={onClose}>
+    <Dialog open onClose={onClose} maxWidth={tipo === "CDMX" ? "lg" : undefined}>
       <DialogHeader>Calificar — {clienteNombre}</DialogHeader>
       <DialogBody>
         {/* Datos del cliente (solo lectura) */}
@@ -603,6 +603,17 @@ function CalificarDialog({
               <p><span className="text-slate-500">Estado:</span> {String((item.cliente as Record<string, unknown>)?.estado ?? "—")}</p>
               <p><span className="text-slate-500">Capacidad original:</span> {String((item.cliente as Record<string, unknown>)?.capacidad ?? "—")}</p>
             </>
+          ) : tipo === "CDMX" ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2">
+              {DETAIL_FIELDS.map(({ key, label }) => (
+                <div key={key} className="py-1 border-b border-slate-800/30">
+                  <span className="text-xs text-slate-500 uppercase tracking-wider">{label}</span>
+                  <p className="text-sm text-slate-200 mt-0.5 break-words">
+                    {formatCdmxValue(key, (item.cliente as Record<string, unknown>)?.[key])}
+                  </p>
+                </div>
+              ))}
+            </div>
           ) : (
             <>
               <p><span className="text-slate-500">RFC:</span> {String((item.cliente as Record<string, unknown>)?.rfc ?? "—")}</p>
@@ -2150,6 +2161,22 @@ interface CdmxClienteDetalle {
   eventos: string | null;
 }
 
+function formatCdmxValue(key: string, val: unknown): string {
+  if (val === null || val === undefined || val === "") return "—";
+  if (key === "fecha" || key === "procesamiento" || key === "fecha_ingreso") {
+    try {
+      return new Date(String(val)).toLocaleDateString("es-MX");
+    } catch {
+      return String(val);
+    }
+  }
+  if (key === "valor_original" || key === "valor_enviado" || key === "valor_descontado") {
+    const num = Number(val);
+    if (!isNaN(num)) return `$${num.toLocaleString("es-MX", { minimumFractionDigits: 2 })}`;
+  }
+  return String(val);
+}
+
 const DETAIL_FIELDS: { key: keyof CdmxClienteDetalle; label: string }[] = [
   { key: "nombre", label: "Nombre" },
   { key: "rfc", label: "RFC" },
@@ -2219,22 +2246,6 @@ function CdmxDetailDialog({
     return () => { cancelled = true; };
   }, [clienteId, toast, onClose]);
 
-  const formatValue = (key: string, val: unknown): string => {
-    if (val === null || val === undefined || val === "") return "—";
-    if (key === "fecha" || key === "procesamiento" || key === "fecha_ingreso") {
-      try {
-        return new Date(String(val)).toLocaleDateString("es-MX");
-      } catch {
-        return String(val);
-      }
-    }
-    if (key === "valor_original" || key === "valor_enviado" || key === "valor_descontado") {
-      const num = Number(val);
-      if (!isNaN(num)) return `$${num.toLocaleString("es-MX", { minimumFractionDigits: 2 })}`;
-    }
-    return String(val);
-  };
-
   return (
     <Dialog open onClose={onClose} maxWidth="lg">
       <DialogHeader onClose={onClose}>
@@ -2251,7 +2262,7 @@ function CdmxDetailDialog({
               <div key={key} className="py-2 border-b border-slate-800/30">
                 <span className="text-xs text-slate-500 uppercase tracking-wider">{label}</span>
                 <p className="text-sm text-slate-200 mt-0.5 break-words">
-                  {formatValue(key, data[key])}
+                  {formatCdmxValue(key, data[key])}
                 </p>
               </div>
             ))}
