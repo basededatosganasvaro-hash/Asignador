@@ -207,6 +207,7 @@ function SidebarContent({
           <>
             <NavItem label="Dashboard" href="/admin" icon={<LayoutDashboard className="w-5 h-5" />} pathname={pathname} showLabels={showLabels} exact />
             <NavItem label="Bandeja" href="/admin/bandeja" icon={<Inbox className="w-5 h-5" />} pathname={pathname} showLabels={showLabels} />
+            <NavItem label="Avance Calificación" href="/admin/calificacion-avance" icon={<ClipboardCheck className="w-5 h-5" />} pathname={pathname} showLabels={showLabels} exact />
             <NavItem label="Usuarios" href="/admin/usuarios" icon={<Users className="w-5 h-5" />} pathname={pathname} showLabels={showLabels} exact />
             <NavItem label="Embudo" href="/admin/embudo" icon={<Filter className="w-5 h-5" />} pathname={pathname} showLabels={showLabels} exact />
             <NavItem label="Convenio Reglas" href="/admin/convenio-reglas" icon={<Scale className="w-5 h-5" />} pathname={pathname} showLabels={showLabels} exact />
