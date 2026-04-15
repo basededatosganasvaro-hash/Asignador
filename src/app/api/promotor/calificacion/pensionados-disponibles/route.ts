@@ -15,6 +15,8 @@ export async function GET(req: NextRequest) {
   // Column filters
   const filterZona = url.get("filter_zona")?.trim() ?? "";
   const filterMovimiento = url.get("filter_id_movimiento")?.trim() ?? "";
+  const filterFechaDesde = url.get("filter_fec_inicio_desde")?.trim() ?? "";
+  const filterFechaHasta = url.get("filter_fec_inicio_hasta")?.trim() ?? "";
 
   // Get current round for PENSIONADOS
   const ronda = await prisma.rondas_calificacion.findUnique({ where: { tipo: "PENSIONADOS" } });
@@ -47,6 +49,12 @@ export async function GET(req: NextRequest) {
   if (filterMovimiento) {
     where.id_movimiento = { in: filterMovimiento.split(",") };
   }
+  if (filterFechaDesde || filterFechaHasta) {
+    const cond: Record<string, string> = {};
+    if (filterFechaDesde) cond.gte = filterFechaDesde;
+    if (filterFechaHasta) cond.lte = filterFechaHasta;
+    where.fec_inicio_prestamo = cond;
+  }
 
   const [clientes, total] = await Promise.all([
     prisma.clientes_pensionados.findMany({
@@ -61,6 +69,7 @@ export async function GET(req: NextRequest) {
         zona: true,
         id_movimiento: true,
         imp_saldo_pendiente: true,
+        fec_inicio_prestamo: true,
       },
       orderBy: { id: "asc" },
       skip,

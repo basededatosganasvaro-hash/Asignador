@@ -599,7 +599,7 @@ function CalificarDialog({
   }
 
   return (
-    <Dialog open onClose={onClose} maxWidth={tipo === "CDMX" || tipo === "IEPPO" ? "lg" : undefined}>
+    <Dialog open onClose={onClose} maxWidth={tipo === "CDMX" || tipo === "IEPPO" || tipo === "PENSIONADOS" ? "lg" : undefined}>
       <DialogHeader>Calificar — {clienteNombre}</DialogHeader>
       <DialogBody>
         {/* Datos del cliente (solo lectura) */}
@@ -627,12 +627,16 @@ function CalificarDialog({
               ))}
             </div>
           ) : (
-            <>
-              <p><span className="text-slate-500">RFC:</span> {String((item.cliente as Record<string, unknown>)?.rfc ?? "—")}</p>
-              <p><span className="text-slate-500">Institucion:</span> {String((item.cliente as Record<string, unknown>)?.institucion ?? "—")}</p>
-              <p><span className="text-slate-500">Nomina:</span> {String((item.cliente as Record<string, unknown>)?.nomina ?? "—")}</p>
-              <p><span className="text-slate-500">Servicio:</span> {String((item.cliente as Record<string, unknown>)?.servicio ?? "—")}</p>
-            </>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2">
+              {PENSIONADO_CALIFICAR_FIELDS.map(({ key, label }) => (
+                <div key={key} className="py-1 border-b border-slate-800/30">
+                  <span className="text-xs text-slate-500 uppercase tracking-wider">{label}</span>
+                  <p className="text-sm text-slate-200 mt-0.5 break-words">
+                    {formatPensionadoValue(key, (item.cliente as Record<string, unknown>)?.[key])}
+                  </p>
+                </div>
+              ))}
+            </div>
           )}
         </div>
 
@@ -1062,6 +1066,7 @@ interface PensionadoCliente {
   zona: string | null;
   id_movimiento: string | null;
   imp_saldo_pendiente: string | null;
+  fec_inicio_prestamo: string | null;
 }
 
 interface PensionadosFilterState {
@@ -1103,6 +1108,8 @@ function PensionadosSelector({
     zona: [],
     id_movimiento: [],
   });
+  const [fechaDesde, setFechaDesde] = useState("");
+  const [fechaHasta, setFechaHasta] = useState("");
   const limit = 25;
 
   // Fetch filter options once
@@ -1142,6 +1149,8 @@ function PensionadosSelector({
         if (debouncedSearch) params.set("search", debouncedSearch);
         if (columnFilters.zona.length > 0) params.set("filter_zona", columnFilters.zona.join(","));
         if (columnFilters.id_movimiento.length > 0) params.set("filter_id_movimiento", columnFilters.id_movimiento.join(","));
+        if (fechaDesde) params.set("filter_fec_inicio_desde", fechaDesde);
+        if (fechaHasta) params.set("filter_fec_inicio_hasta", fechaHasta);
 
         const res = await fetch(`/api/promotor/calificacion/pensionados-disponibles?${params}`);
         if (res.ok && !cancelled) {
@@ -1158,7 +1167,7 @@ function PensionadosSelector({
     };
     fetchClientes();
     return () => { cancelled = true; };
-  }, [page, debouncedSearch, columnFilters, toast]);
+  }, [page, debouncedSearch, columnFilters, fechaDesde, fechaHasta, toast]);
 
   const toggleSelect = (id: number) => {
     setSelected((prev) => {
@@ -1218,10 +1227,21 @@ function PensionadosSelector({
     setPage(1);
   };
 
-  const activeFilterCount = columnFilters.zona.length + columnFilters.id_movimiento.length;
+  const activeFilterCount =
+    columnFilters.zona.length +
+    columnFilters.id_movimiento.length +
+    (fechaDesde || fechaHasta ? 1 : 0);
 
   const clearAllFilters = () => {
     setColumnFilters({ zona: [], id_movimiento: [] });
+    setFechaDesde("");
+    setFechaHasta("");
+    setPage(1);
+  };
+
+  const applyFechaFilter = (desde: string, hasta: string) => {
+    setFechaDesde(desde);
+    setFechaHasta(hasta);
     setPage(1);
   };
 
@@ -1312,19 +1332,30 @@ function PensionadosSelector({
                     />
                   </span>
                 </th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                  <span className="inline-flex items-center">
+                    Fecha Inicio Préstamo
+                    <DateRangeFilterDropdown
+                      label="Fecha Inicio Préstamo"
+                      desde={fechaDesde}
+                      hasta={fechaHasta}
+                      onApply={applyFechaFilter}
+                    />
+                  </span>
+                </th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Saldo Pend.</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/40">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="py-16 text-center">
+                  <td colSpan={8} className="py-16 text-center">
                     <Spinner className="mx-auto" />
                   </td>
                 </tr>
               ) : clientes.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-16 text-center text-slate-500 text-sm">
+                  <td colSpan={8} className="py-16 text-center text-slate-500 text-sm">
                     No se encontraron pensionados
                   </td>
                 </tr>
@@ -1362,6 +1393,7 @@ function PensionadosSelector({
                       <td className="px-4 py-3 text-slate-400">{c.nss ?? "—"}</td>
                       <td className="px-4 py-3 text-slate-400">{c.zona ?? "—"}</td>
                       <td className="px-4 py-3 text-slate-400">{c.id_movimiento ?? "—"}</td>
+                      <td className="px-4 py-3 text-slate-400">{formatFechaInicio(c.fec_inicio_prestamo)}</td>
                       <td className="px-4 py-3 text-slate-400">{saldo}</td>
                     </tr>
                   );
@@ -1475,25 +1507,11 @@ const PENSIONADO_DETAIL_FIELDS: { key: keyof PensionadoDetalle; label: string }[
   { key: "curp", label: "CURP" },
   { key: "nss", label: "NSS" },
   { key: "zona", label: "Zona" },
-  { key: "id_movimiento", label: "Movimiento" },
-  { key: "id_sol_pr_financiero", label: "ID Sol. Pr. Financiero" },
-  { key: "id_inst_financiera", label: "ID Inst. Financiera" },
-  { key: "id_grupo_familiar", label: "Grupo Familiar" },
-  { key: "num_clabe", label: "CLABE" },
-  { key: "imp_prestamo", label: "Imp. Préstamo" },
   { key: "imp_real_prestamo", label: "Imp. Real Préstamo" },
   { key: "imp_mensual", label: "Imp. Mensual" },
-  { key: "imp_saldo_pendiente", label: "Saldo Pendiente" },
-  { key: "num_meses", label: "Meses" },
-  { key: "num_tasa_int_anual", label: "Tasa Int. Anual" },
   { key: "cat_prestamo", label: "CAT Préstamo" },
-  { key: "tasa_efectiva", label: "Tasa Efectiva" },
-  { key: "tasa_efec_redondeada", label: "Tasa Efec. Redondeada" },
-  { key: "fec_alta", label: "Fecha Alta" },
-  { key: "fec_modificacion", label: "Fecha Modificación" },
+  { key: "num_tasa_int_anual", label: "Tasa Int. Anual" },
   { key: "fec_inicio_prestamo", label: "Fecha Inicio Préstamo" },
-  { key: "fec_term_prestamo", label: "Fecha Term. Préstamo" },
-  { key: "ind_carta_instruccion", label: "Carta Instrucción" },
 ];
 
 function PensionadosDetailDialog({
@@ -1622,6 +1640,120 @@ interface FilterOptions {
 }
 
 type FilterKey = keyof ColumnFilterState;
+
+function formatFechaInicio(val: string | null): string {
+  if (!val) return "—";
+  const d = new Date(val);
+  if (isNaN(d.getTime())) return val;
+  return d.toLocaleDateString("es-MX");
+}
+
+function DateRangeFilterDropdown({
+  label,
+  desde,
+  hasta,
+  onApply,
+}: {
+  label: string;
+  desde: string;
+  hasta: string;
+  onApply: (desde: string, hasta: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [localDesde, setLocalDesde] = useState(desde);
+  const [localHasta, setLocalHasta] = useState(hasta);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setLocalDesde(desde);
+    setLocalHasta(hasta);
+  }, [desde, hasta]);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  const handleApply = () => {
+    onApply(localDesde, localHasta);
+    setOpen(false);
+  };
+
+  const handleClear = () => {
+    setLocalDesde("");
+    setLocalHasta("");
+    onApply("", "");
+    setOpen(false);
+  };
+
+  const isActive = !!(desde || hasta);
+
+  return (
+    <div className="relative inline-flex items-center" ref={dropdownRef}>
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          setOpen(!open);
+        }}
+        className={`ml-1 p-0.5 rounded transition-colors ${
+          isActive
+            ? "text-amber-400 bg-amber-500/20"
+            : "text-slate-500 hover:text-slate-300"
+        }`}
+        title={`Filtrar ${label}`}
+      >
+        <Filter className="w-3 h-3" />
+      </button>
+      {open && (
+        <div
+          className="absolute top-full left-0 mt-1 w-64 bg-slate-900 border border-slate-700 rounded-lg shadow-xl z-50"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="p-3 space-y-2">
+            <div>
+              <label className="block text-xs text-slate-500 uppercase tracking-wider mb-1">Desde</label>
+              <input
+                type="date"
+                value={localDesde}
+                onChange={(e) => setLocalDesde(e.target.value)}
+                className="w-full px-2 py-1.5 text-xs bg-slate-800/50 border border-slate-700 rounded text-slate-200 outline-none focus:border-amber-500/50"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-slate-500 uppercase tracking-wider mb-1">Hasta</label>
+              <input
+                type="date"
+                value={localHasta}
+                onChange={(e) => setLocalHasta(e.target.value)}
+                className="w-full px-2 py-1.5 text-xs bg-slate-800/50 border border-slate-700 rounded text-slate-200 outline-none focus:border-amber-500/50"
+              />
+            </div>
+          </div>
+          <div className="p-2 border-t border-slate-800 flex items-center justify-between gap-2">
+            <button
+              onClick={handleClear}
+              className="text-xs text-slate-500 hover:text-slate-300 transition-colors"
+            >
+              Limpiar
+            </button>
+            <button
+              onClick={handleApply}
+              className="px-3 py-1 text-xs font-medium bg-amber-500 text-slate-900 rounded hover:bg-amber-400 transition-colors"
+            >
+              Aplicar
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function ColumnFilterDropdown({
   label,
@@ -2203,6 +2335,40 @@ function formatIeppoValue(val: unknown): string {
   if (val === null || val === undefined || val === "") return "—";
   return String(val);
 }
+
+function formatPensionadoValue(key: string, val: unknown): string {
+  if (val === null || val === undefined || val === "") return "—";
+  if (key === "fec_alta" || key === "fec_modificacion" || key === "fec_inicio_prestamo" || key === "fec_term_prestamo") {
+    try {
+      return new Date(String(val)).toLocaleDateString("es-MX");
+    } catch {
+      return String(val);
+    }
+  }
+  if (key === "imp_prestamo" || key === "imp_real_prestamo" || key === "imp_mensual" || key === "imp_saldo_pendiente") {
+    const num = Number(val);
+    if (!isNaN(num)) return `$${num.toLocaleString("es-MX", { minimumFractionDigits: 2 })}`;
+  }
+  if (key === "num_tasa_int_anual" || key === "cat_prestamo" || key === "tasa_efectiva" || key === "tasa_efec_redondeada") {
+    const num = Number(val);
+    if (!isNaN(num)) return `${num}%`;
+  }
+  return String(val);
+}
+
+const PENSIONADO_CALIFICAR_FIELDS: { key: string; label: string }[] = [
+  { key: "nombre", label: "Nombre" },
+  { key: "a_paterno", label: "Apellido Paterno" },
+  { key: "a_materno", label: "Apellido Materno" },
+  { key: "curp", label: "CURP" },
+  { key: "nss", label: "NSS" },
+  { key: "zona", label: "Zona" },
+  { key: "imp_real_prestamo", label: "Imp. Real Préstamo" },
+  { key: "imp_mensual", label: "Imp. Mensual" },
+  { key: "cat_prestamo", label: "CAT Préstamo" },
+  { key: "num_tasa_int_anual", label: "Tasa Int. Anual" },
+  { key: "fec_inicio_prestamo", label: "Fecha Inicio Préstamo" },
+];
 
 const IEPPO_DETAIL_FIELDS: { key: string; label: string }[] = [
   { key: "nombres", label: "Nombres" },
