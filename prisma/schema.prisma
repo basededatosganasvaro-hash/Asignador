@@ -1096,6 +1096,7 @@ model calificaciones_promotor {
   calificado           Boolean  @default(false)
   telefono             String?  @db.VarChar(20)
   capacidad            String?  @db.VarChar(50)
+  curp                 String?  @db.VarChar(20)
   retroalimentacion_id Int?
   ronda                Int      @default(1)
   created_at           DateTime @default(now())

@@ -6,6 +6,7 @@ import { z } from "zod";
 const calificarSchema = z.object({
   telefono: z.string().min(7, "Mínimo 7 dígitos").optional().or(z.literal("")).or(z.literal("Sin registro")),
   capacidad: z.string().min(1, "Capacidad requerida"),
+  curp: z.string().optional().nullable(),
   retroalimentacion_id: z.number().int().positive("Selecciona retroalimentación"),
 });
 
@@ -31,7 +32,7 @@ export async function PUT(
     );
   }
 
-  const { telefono, capacidad, retroalimentacion_id } = parsed.data;
+  const { telefono, capacidad, curp, retroalimentacion_id } = parsed.data;
   const userId = Number(session.user.id);
 
   // Verificar que el promotor es dueño del registro
@@ -46,6 +47,11 @@ export async function PUT(
 
   if (calificacion.lote.estado === "DEVUELTO") {
     return NextResponse.json({ error: "El lote ya fue devuelto" }, { status: 400 });
+  }
+
+  // CURP es obligatorio para CDMX
+  if (calificacion.tipo === "CDMX" && (!curp || !curp.trim())) {
+    return NextResponse.json({ error: "CURP es requerido para CDMX" }, { status: 400 });
   }
 
   // Verificar que la retroalimentación existe
@@ -64,6 +70,7 @@ export async function PUT(
         calificado: true,
         telefono: telefono || null,
         capacidad,
+        curp: curp?.trim() ? curp.trim().toUpperCase() : null,
         retroalimentacion_id,
       },
     });

@@ -26,6 +26,7 @@ interface CalificacionItem {
   calificado: boolean;
   telefono: string | null;
   capacidad: string | null;
+  curp: string | null;
   retroalimentacion: string | null;
   retroalimentacion_id: number | null;
   cliente: Record<string, unknown> | null;
@@ -490,6 +491,7 @@ function CalificarDialog({
 }) {
   const [telefono, setTelefono] = useState(item.telefono ?? "");
   const [capacidad, setCapacidad] = useState(item.capacidad ?? "");
+  const [curp, setCurp] = useState(item.curp ?? "");
   const [retroId, setRetroId] = useState(item.retroalimentacion_id?.toString() ?? "");
   const [saving, setSaving] = useState(false);
   const [showSinRegistro, setShowSinRegistro] = useState(false);
@@ -501,7 +503,7 @@ function CalificarDialog({
     ? `${c?.nombre ?? ""} ${c?.a_paterno ?? ""} ${c?.a_materno ?? ""}`.trim() || "Sin nombre"
     : String(c?.nombre ?? "Sin nombre");
 
-  const doSave = async (tel: string, cap: string, retro: number) => {
+  const doSave = async (tel: string, cap: string, retro: number, curpVal: string) => {
     setSaving(true);
     try {
       const res = await fetch(`/api/promotor/calificacion/${item.id}`, {
@@ -510,6 +512,7 @@ function CalificarDialog({
         body: JSON.stringify({
           telefono: tel,
           capacidad: cap,
+          curp: curpVal || null,
           retroalimentacion_id: retro,
         }),
       });
@@ -533,6 +536,11 @@ function CalificarDialog({
       return;
     }
 
+    if (tipo === "CDMX" && !curp.trim()) {
+      toast("El CURP es requerido para CDMX", "error");
+      return;
+    }
+
     // Si no hay telefono, preguntar si no encontro el dato
     if (!telefono.trim()) {
       setShowSinRegistro(true);
@@ -544,7 +552,7 @@ function CalificarDialog({
       return;
     }
 
-    await doSave(telefono, capacidad, Number(retroId));
+    await doSave(telefono, capacidad, Number(retroId), curp.trim().toUpperCase());
   };
 
   const handleSinRegistro = async () => {
@@ -556,7 +564,7 @@ function CalificarDialog({
       setShowSinRegistro(false);
       return;
     }
-    await doSave("Sin registro", capacidad.trim() || "Sin registro", retro);
+    await doSave("Sin registro", capacidad.trim() || "Sin registro", retro, curp.trim().toUpperCase());
   };
 
   // Sub-dialog: sin registro
@@ -591,18 +599,22 @@ function CalificarDialog({
   }
 
   return (
-    <Dialog open onClose={onClose} maxWidth={tipo === "CDMX" ? "lg" : undefined}>
+    <Dialog open onClose={onClose} maxWidth={tipo === "CDMX" || tipo === "IEPPO" ? "lg" : undefined}>
       <DialogHeader>Calificar — {clienteNombre}</DialogHeader>
       <DialogBody>
         {/* Datos del cliente (solo lectura) */}
         <div className="bg-slate-800/40 rounded-lg p-3 mb-4 text-sm text-slate-300 space-y-1">
           {tipo === "IEPPO" ? (
-            <>
-              <p><span className="text-slate-500">CURP:</span> {String((item.cliente as Record<string, unknown>)?.curp ?? "—")}</p>
-              <p><span className="text-slate-500">Convenio:</span> {String((item.cliente as Record<string, unknown>)?.convenio ?? "—")}</p>
-              <p><span className="text-slate-500">Estado:</span> {String((item.cliente as Record<string, unknown>)?.estado ?? "—")}</p>
-              <p><span className="text-slate-500">Capacidad original:</span> {String((item.cliente as Record<string, unknown>)?.capacidad ?? "—")}</p>
-            </>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2">
+              {IEPPO_DETAIL_FIELDS.map(({ key, label }) => (
+                <div key={key} className="py-1 border-b border-slate-800/30">
+                  <span className="text-xs text-slate-500 uppercase tracking-wider">{label}</span>
+                  <p className="text-sm text-slate-200 mt-0.5 break-words">
+                    {formatIeppoValue((item.cliente as Record<string, unknown>)?.[key])}
+                  </p>
+                </div>
+              ))}
+            </div>
           ) : tipo === "CDMX" ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2">
               {DETAIL_FIELDS.map(({ key, label }) => (
@@ -640,6 +652,16 @@ function CalificarDialog({
             value={capacidad}
             onChange={(e) => setCapacidad(e.target.value)}
           />
+          {tipo === "CDMX" && (
+            <Input
+              label="CURP"
+              type="text"
+              placeholder="Ej: XXXX000000XXXXXX00"
+              value={curp}
+              onChange={(e) => setCurp(e.target.value.toUpperCase())}
+              maxLength={18}
+            />
+          )}
           <Select
             label="Retroalimentacion"
             value={retroId}
@@ -2176,6 +2198,103 @@ function formatCdmxValue(key: string, val: unknown): string {
   }
   return String(val);
 }
+
+function formatIeppoValue(val: unknown): string {
+  if (val === null || val === undefined || val === "") return "—";
+  return String(val);
+}
+
+const IEPPO_DETAIL_FIELDS: { key: string; label: string }[] = [
+  // Identificación
+  { key: "nombres", label: "Nombres" },
+  { key: "a_paterno", label: "Apellido Paterno" },
+  { key: "a_materno", label: "Apellido Materno" },
+  { key: "curp", label: "CURP" },
+  { key: "rfc", label: "RFC" },
+  { key: "nss", label: "NSS" },
+  { key: "filiacion", label: "Filiación" },
+  { key: "num_empleado", label: "No. Empleado" },
+  // Datos personales
+  { key: "edad", label: "Edad" },
+  { key: "genero", label: "Género" },
+  // Contacto
+  { key: "tel_1", label: "Teléfono 1" },
+  { key: "tipo_1", label: "Tipo Tel 1" },
+  { key: "tel_2", label: "Teléfono 2" },
+  { key: "tipo_2", label: "Tipo Tel 2" },
+  { key: "tel_3", label: "Teléfono 3" },
+  { key: "tipo_3", label: "Tipo Tel 3" },
+  { key: "tel_4", label: "Teléfono 4" },
+  { key: "tipo_4", label: "Tipo Tel 4" },
+  { key: "tel_5", label: "Teléfono 5" },
+  { key: "tipo_5", label: "Tipo Tel 5" },
+  { key: "direccion_email", label: "Email" },
+  // Ubicación
+  { key: "region", label: "Región" },
+  { key: "estado", label: "Estado" },
+  { key: "municipio", label: "Municipio" },
+  { key: "cp", label: "CP" },
+  { key: "colonia", label: "Colonia" },
+  { key: "calle_num", label: "Calle y Núm." },
+  { key: "calle", label: "Calle" },
+  { key: "num_ext", label: "Núm. Exterior" },
+  { key: "num_int", label: "Núm. Interior" },
+  { key: "entidad_personal", label: "Entidad Personal" },
+  { key: "municipio_personal", label: "Municipio Personal" },
+  // Laboral
+  { key: "convenio", label: "Convenio" },
+  { key: "dependencia", label: "Dependencia" },
+  { key: "tipo_empleado", label: "Tipo Empleado" },
+  { key: "antiguedad", label: "Antigüedad" },
+  { key: "tipo_nomina", label: "Tipo Nómina" },
+  { key: "nivel_salarial", label: "Nivel Salarial" },
+  { key: "puesto", label: "Puesto" },
+  { key: "universo", label: "Universo" },
+  { key: "unidad_adm", label: "Unidad Adm." },
+  { key: "nomb_unidad_adm", label: "Nombre Unidad Adm." },
+  // Centro educativo
+  { key: "clave_cct", label: "Clave CCT" },
+  { key: "centro_educativo", label: "Centro Educativo" },
+  { key: "domicilio", label: "Domicilio CE" },
+  { key: "num_exterior_ce", label: "Núm. Ext. CE" },
+  { key: "localidad", label: "Localidad" },
+  { key: "municipio_centro_educativo", label: "Municipio CE" },
+  { key: "entidad_centro_educativo", label: "Entidad CE" },
+  { key: "cp_centro_educativo", label: "CP CE" },
+  // Financieras
+  { key: "capacidad", label: "Capacidad Original" },
+  { key: "percepciones_fijas", label: "Percepciones Fijas" },
+  { key: "descuentos_terceros", label: "Descuentos Terceros" },
+  { key: "creditos_actuales", label: "Créditos Actuales" },
+  { key: "descuento_actual", label: "Descuento Actual" },
+  { key: "descuento", label: "Descuento" },
+  { key: "monto_solicitado", label: "Monto Solicitado" },
+  { key: "oferta", label: "Oferta" },
+  { key: "oferta_neta", label: "Oferta Neta" },
+  { key: "plazo_oferta", label: "Plazo Oferta" },
+  { key: "plazo", label: "Plazo" },
+  { key: "plazo_transcurrido", label: "Plazo Transcurrido" },
+  { key: "plazo_restante", label: "Plazo Restante" },
+  { key: "tasa", label: "Tasa" },
+  { key: "tasa_actual", label: "Tasa Actual" },
+  { key: "cat", label: "CAT" },
+  { key: "cat_actual", label: "CAT Actual" },
+  { key: "financiera", label: "Financiera" },
+  { key: "cotizador", label: "Cotizador" },
+  { key: "tipo_mercado", label: "Tipo Mercado" },
+  { key: "tipo_cliente_original", label: "Tipo Cliente Original" },
+  { key: "tipo_cliente_csp", label: "Tipo Cliente CSP" },
+  { key: "monto_comisionable", label: "Monto Comisionable" },
+  { key: "monto", label: "Monto" },
+  { key: "estatus", label: "Estatus" },
+  { key: "oportunidad_total", label: "Oportunidad Total" },
+  { key: "oportunidad_real", label: "Oportunidad Real" },
+  // Pensión
+  { key: "tipo_pension", label: "Tipo Pensión" },
+  { key: "mes_pension", label: "Mes Pensión" },
+  { key: "anio_pension", label: "Año Pensión" },
+  { key: "umf_delegacion", label: "UMF / Delegación" },
+];
 
 const DETAIL_FIELDS: { key: keyof CdmxClienteDetalle; label: string }[] = [
   { key: "nombre", label: "Nombre" },

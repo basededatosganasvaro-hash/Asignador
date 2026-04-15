@@ -38,25 +38,9 @@ export async function GET() {
     let clientesData: Record<number, Record<string, unknown>> = {};
 
     if (lote.tipo === "IEPPO" && clienteIds.length > 0) {
-      // Obtener datos de BD Clientes
+      // Obtener datos de BD Clientes (todos los campos)
       const clientes = await prismaClientes.clientes.findMany({
         where: { id: { in: clienteIds } },
-        select: {
-          id: true,
-          curp: true,
-          nombres: true,
-          a_paterno: true,
-          a_materno: true,
-          tel_1: true,
-          capacidad: true,
-          convenio: true,
-          estado: true,
-          municipio: true,
-          tipo_cliente: true,
-          percepciones_fijas: true,
-          descuentos_terceros: true,
-          filiacion: true,
-        },
       });
 
       // Merge datos_contacto editados
@@ -121,6 +105,7 @@ export async function GET() {
       calificado: cal.calificado,
       telefono: cal.telefono,
       capacidad: cal.capacidad,
+      curp: cal.curp,
       retroalimentacion: cal.retroalimentacion?.nombre ?? null,
       retroalimentacion_id: cal.retroalimentacion_id,
       cliente: clientesData[cal.cliente_id] || null,
