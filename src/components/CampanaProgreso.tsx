@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
-import { Pause, Play, XCircle, ChevronDown, ChevronUp, CheckCircle, AlertCircle } from "lucide-react";
+import { Pause, Play, XCircle, ChevronDown, ChevronUp, CheckCircle, AlertCircle, Clock } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { LinearProgress } from "@/components/ui/LinearProgress";
@@ -17,14 +17,39 @@ interface Campana {
   created_at: string;
 }
 
-const ESTADO_BADGE: Record<string, "slate" | "orange" | "blue" | "red" | "green" | "amber"> = {
+const ESTADO_BADGE: Record<string, "slate" | "orange" | "blue" | "red" | "green" | "amber" | "purple" | "teal"> = {
   CREADA: "slate",
   EN_COLA: "orange",
   ENVIANDO: "blue",
-  PAUSADA: "amber",
+  PAUSADA_MANUAL: "amber",
+  ESPERA_VENTANA: "purple",
+  LIMITE_DIARIO: "teal",
+  SIN_SESION: "red",
+  ERRORES_CONSECUTIVOS: "red",
+  INTERRUMPIDA: "amber",
   COMPLETADA: "green",
   CANCELADA: "red",
+  // Retrocompat con registros no migrados
+  PAUSADA: "amber",
 };
+
+const ESTADO_LABEL: Record<string, string> = {
+  CREADA: "Borrador",
+  EN_COLA: "En cola",
+  ENVIANDO: "Enviando",
+  PAUSADA_MANUAL: "Pausada",
+  ESPERA_VENTANA: "Esperando horario",
+  LIMITE_DIARIO: "Cupo diario alcanzado",
+  SIN_SESION: "Sesión desconectada",
+  ERRORES_CONSECUTIVOS: "Errores seguidos — revisar",
+  INTERRUMPIDA: "Reanudando…",
+  COMPLETADA: "Completada",
+  CANCELADA: "Cancelada",
+  PAUSADA: "Pausada",
+};
+
+const ESTADOS_AUTO_REANUDABLES = ["ESPERA_VENTANA", "LIMITE_DIARIO", "SIN_SESION", "INTERRUMPIDA"];
+const ESTADOS_REANUDABLES_MANUAL = ["PAUSADA_MANUAL", "ERRORES_CONSECUTIVOS", "PAUSADA"];
 
 export default function CampanaProgreso() {
   const [campanas, setCampanas] = useState<Campana[]>([]);
@@ -70,7 +95,7 @@ export default function CampanaProgreso() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-semibold text-slate-200 truncate flex-1">{c.nombre}</span>
-                    <Badge color={ESTADO_BADGE[c.estado] ?? "slate"}>{c.estado}</Badge>
+                    <Badge color={ESTADO_BADGE[c.estado] ?? "slate"}>{ESTADO_LABEL[c.estado] ?? c.estado}</Badge>
                   </div>
                   <div className="mt-1">
                     <LinearProgress value={pct} color={isActive ? "green" : "blue"} />
@@ -101,11 +126,18 @@ export default function CampanaProgreso() {
                       </button>
                     </Tooltip>
                   )}
-                  {c.estado === "PAUSADA" && (
+                  {ESTADOS_REANUDABLES_MANUAL.includes(c.estado) && (
                     <Tooltip content="Reanudar">
                       <button onClick={() => handleAction(c.id, "resume")} className="p-1.5 text-slate-400 hover:text-green-400 hover:bg-green-500/10 rounded-lg transition-colors">
                         <Play className="w-4 h-4" />
                       </button>
+                    </Tooltip>
+                  )}
+                  {ESTADOS_AUTO_REANUDABLES.includes(c.estado) && (
+                    <Tooltip content="Se reanuda automáticamente">
+                      <span className="p-1.5 text-slate-500">
+                        <Clock className="w-4 h-4 animate-pulse" />
+                      </span>
                     </Tooltip>
                   )}
                   {isActive && (

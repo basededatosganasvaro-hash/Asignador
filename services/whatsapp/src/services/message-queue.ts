@@ -8,6 +8,27 @@ interface QueueItem {
   userId: number;
 }
 
+/**
+ * Estados en los que una campaña está pausada por cualquier motivo.
+ * Los estados "AUTO" los reanuda autoResume() cuando se resuelve la causa;
+ * los "MANUAL" requieren acción explícita del usuario.
+ */
+const PAUSED_STATES = [
+  "PAUSADA_MANUAL",
+  "ESPERA_VENTANA",
+  "LIMITE_DIARIO",
+  "SIN_SESION",
+  "ERRORES_CONSECUTIVOS",
+  "INTERRUMPIDA",
+] as const;
+
+const AUTO_RESUMABLE_STATES = [
+  "ESPERA_VENTANA",
+  "LIMITE_DIARIO",
+  "SIN_SESION",
+  "INTERRUMPIDA",
+] as const;
+
 class MessageQueue {
   private queues: Map<number, QueueItem[]> = new Map();
   private processing: Set<number> = new Set();
@@ -29,13 +50,13 @@ class MessageQueue {
   async pause(campanaId: number): Promise<void> {
     await prisma.wa_campanas.update({
       where: { id: campanaId },
-      data: { estado: "PAUSADA" },
+      data: { estado: "PAUSADA_MANUAL" },
     });
   }
 
   async resume(campanaId: number): Promise<void> {
     const campana = await prisma.wa_campanas.findUnique({ where: { id: campanaId } });
-    if (!campana || campana.estado !== "PAUSADA") return;
+    if (!campana || !(PAUSED_STATES as readonly string[]).includes(campana.estado)) return;
     await prisma.wa_campanas.update({
       where: { id: campanaId },
       data: { estado: "EN_COLA" },
@@ -65,13 +86,13 @@ class MessageQueue {
         const enviandoIds = enviando.map((c: { id: number }) => c.id);
         await prisma.wa_campanas.updateMany({
           where: { id: { in: enviandoIds } },
-          data: { estado: "PAUSADA" },
+          data: { estado: "INTERRUMPIDA" },
         });
         await prisma.wa_mensajes.updateMany({
           where: { campana_id: { in: enviandoIds }, estado: "ENVIANDO" },
           data: { estado: "PENDIENTE" },
         });
-        console.log(`[MessageQueue] Recovered ${enviando.length} orphaned ENVIANDO campaigns → PAUSADA`);
+        console.log(`[MessageQueue] Recovered ${enviando.length} orphaned ENVIANDO campaigns → INTERRUMPIDA`);
       }
 
       const enCola = await prisma.wa_campanas.findMany({
@@ -87,7 +108,7 @@ class MessageQueue {
         } else {
           await prisma.wa_campanas.update({
             where: { id: campana.id },
-            data: { estado: "PAUSADA" },
+            data: { estado: "SIN_SESION" },
           });
         }
       }
@@ -97,6 +118,59 @@ class MessageQueue {
       }
     } catch (err) {
       console.error("[MessageQueue] Error recovering orphaned campaigns:", err);
+    }
+  }
+
+  /**
+   * Reanuda automáticamente campañas que están pausadas por motivos recuperables:
+   * - ESPERA_VENTANA: si la ventana horaria ya está abierta
+   * - LIMITE_DIARIO: si cambió el día (contador diario de ese user != hoy o 0)
+   * - SIN_SESION / INTERRUMPIDA: si el socket del usuario está conectado
+   * PAUSADA_MANUAL y ERRORES_CONSECUTIVOS nunca se auto-reanudan.
+   */
+  async autoResume(): Promise<void> {
+    try {
+      const candidatas = await prisma.wa_campanas.findMany({
+        where: { estado: { in: [...AUTO_RESUMABLE_STATES] } },
+        select: { id: true, usuario_id: true, estado: true },
+      });
+      if (candidatas.length === 0) return;
+
+      const cfg = await loadAntiSpamConfig();
+      const ventanaAbierta = this.isWithinSendingWindow(cfg);
+      const today = this.todayStr();
+      let reanudadas = 0;
+
+      for (const c of candidatas) {
+        let elegible = false;
+
+        if (c.estado === "ESPERA_VENTANA") {
+          elegible = ventanaAbierta;
+        } else if (c.estado === "LIMITE_DIARIO") {
+          // Reanudable si la ventana está abierta Y el contador en memoria
+          // es de otro día (o aún no existe, = nuevo día).
+          const cached = this.dailyCounters.get(c.usuario_id);
+          const esNuevoDia = !cached || cached.fecha !== today;
+          elegible = ventanaAbierta && esNuevoDia;
+        } else if (c.estado === "SIN_SESION" || c.estado === "INTERRUMPIDA") {
+          elegible = ventanaAbierta && sessionManager.isConnected(c.usuario_id);
+        }
+
+        if (elegible) {
+          await prisma.wa_campanas.update({
+            where: { id: c.id },
+            data: { estado: "EN_COLA" },
+          });
+          await this.enqueue(c.id, c.usuario_id);
+          reanudadas++;
+        }
+      }
+
+      if (reanudadas > 0) {
+        console.log(`[MessageQueue] autoResume: ${reanudadas}/${candidatas.length} campañas reanudadas`);
+      }
+    } catch (err) {
+      console.error("[MessageQueue] Error en autoResume:", err);
     }
   }
 
@@ -338,19 +412,19 @@ class MessageQueue {
     if (!sock) {
       await prisma.wa_campanas.update({
         where: { id: campanaId },
-        data: { estado: "PAUSADA" },
+        data: { estado: "SIN_SESION" },
       });
-      console.log(`[MessageQueue] No socket for user ${userId}, campaign ${campanaId} paused`);
+      console.log(`[MessageQueue] No socket for user ${userId}, campaign ${campanaId} → SIN_SESION`);
       return;
     }
 
-    // Fuera de ventana horaria → pausar y esperar próxima ventana
+    // Fuera de ventana horaria → esperar próxima ventana (auto-reanuda)
     if (!this.isWithinSendingWindow(antiSpam)) {
       const waitMs = this.msUntilNextWindow(antiSpam);
-      console.log(`[MessageQueue] Fuera de ventana horaria para user ${userId}, pausando campaña ${campanaId} por ${Math.round(waitMs / 60000)}min`);
+      console.log(`[MessageQueue] Fuera de ventana horaria para user ${userId}, campaña ${campanaId} → ESPERA_VENTANA (${Math.round(waitMs / 60000)}min)`);
       await prisma.wa_campanas.update({
         where: { id: campanaId },
-        data: { estado: "PAUSADA" },
+        data: { estado: "ESPERA_VENTANA" },
       });
       return;
     }
@@ -377,9 +451,9 @@ class MessageQueue {
     if (enviadosHoy >= effectiveLimit) {
       await prisma.wa_campanas.update({
         where: { id: campanaId },
-        data: { estado: "PAUSADA" },
+        data: { estado: "LIMITE_DIARIO" },
       });
-      console.log(`[MessageQueue] Daily limit (warmup-aware) reached for user ${userId} (${enviadosHoy}/${effectiveLimit})`);
+      console.log(`[MessageQueue] Daily limit (warmup-aware) reached for user ${userId} (${enviadosHoy}/${effectiveLimit}) → LIMITE_DIARIO`);
       return;
     }
 
@@ -405,10 +479,10 @@ class MessageQueue {
 
       // Re-check ventana horaria cada 5 (campañas largas pueden cruzar el corte)
       if (msgIndex % 5 === 0 && !this.isWithinSendingWindow(antiSpam)) {
-        console.log(`[MessageQueue] Ventana cerró durante envío, pausando user ${userId}`);
+        console.log(`[MessageQueue] Ventana cerró durante envío user ${userId} → ESPERA_VENTANA`);
         await prisma.wa_campanas.update({
           where: { id: campanaId },
-          data: { estado: "PAUSADA" },
+          data: { estado: "ESPERA_VENTANA" },
         });
         break;
       }
@@ -418,18 +492,18 @@ class MessageQueue {
       if (currentDaily >= effectiveLimit) {
         await prisma.wa_campanas.update({
           where: { id: campanaId },
-          data: { estado: "PAUSADA" },
+          data: { estado: "LIMITE_DIARIO" },
         });
-        console.log(`[MessageQueue] Daily limit reached mid-campaign for user ${userId} (${currentDaily}/${effectiveLimit})`);
+        console.log(`[MessageQueue] Daily limit reached mid-campaign user ${userId} (${currentDaily}/${effectiveLimit}) → LIMITE_DIARIO`);
         break;
       }
 
       if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
         await prisma.wa_campanas.update({
           where: { id: campanaId },
-          data: { estado: "PAUSADA" },
+          data: { estado: "ERRORES_CONSECUTIVOS" },
         });
-        console.log(`[MessageQueue] ${MAX_CONSECUTIVE_ERRORS} errores consecutivos user=${userId}, pausando campaña ${campanaId}`);
+        console.log(`[MessageQueue] ${MAX_CONSECUTIVE_ERRORS} errores consecutivos user=${userId}, campaña ${campanaId} → ERRORES_CONSECUTIVOS`);
         break;
       }
 
@@ -569,7 +643,7 @@ class MessageQueue {
       });
       await prisma.wa_campanas.update({
         where: { id: campanaId },
-        data: { estado: pendientes > 0 ? "PAUSADA" : "COMPLETADA" },
+        data: { estado: pendientes > 0 ? "PAUSADA_MANUAL" : "COMPLETADA" },
       });
     }
   }

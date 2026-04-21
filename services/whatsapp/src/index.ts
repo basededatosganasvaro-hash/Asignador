@@ -29,4 +29,13 @@ app.listen(config.port, () => {
       console.error("[WA Service] Failed to recover orphaned campaigns:", err);
     });
   }, 5000);
+
+  // Auto-reanudación periódica de campañas pausadas por motivos recuperables
+  // (ESPERA_VENTANA, LIMITE_DIARIO, SIN_SESION, INTERRUMPIDA)
+  const AUTO_RESUME_INTERVAL_MS = 5 * 60 * 1000;
+  setInterval(() => {
+    messageQueue.autoResume().catch((err) => {
+      console.error("[WA Service] autoResume tick failed:", err);
+    });
+  }, AUTO_RESUME_INTERVAL_MS);
 });

@@ -60,9 +60,30 @@ const ESTADO_CAMPANA_BADGE: Record<string, BadgeColor> = {
   CREADA: "slate",
   EN_COLA: "orange",
   ENVIANDO: "blue",
-  PAUSADA: "amber",
+  PAUSADA_MANUAL: "amber",
+  ESPERA_VENTANA: "purple",
+  LIMITE_DIARIO: "teal",
+  SIN_SESION: "red",
+  ERRORES_CONSECUTIVOS: "red",
+  INTERRUMPIDA: "amber",
   COMPLETADA: "green",
   CANCELADA: "red",
+  PAUSADA: "amber",
+};
+
+const ESTADO_CAMPANA_LABEL: Record<string, string> = {
+  CREADA: "Borrador",
+  EN_COLA: "En cola",
+  ENVIANDO: "Enviando",
+  PAUSADA_MANUAL: "Pausada",
+  ESPERA_VENTANA: "Esperando horario",
+  LIMITE_DIARIO: "Cupo diario",
+  SIN_SESION: "Sesión desconectada",
+  ERRORES_CONSECUTIVOS: "Errores seguidos",
+  INTERRUMPIDA: "Reanudando…",
+  COMPLETADA: "Completada",
+  CANCELADA: "Cancelada",
+  PAUSADA: "Pausada",
 };
 
 const ESTADOS = ["PENDIENTE", "ENVIANDO", "ENVIADO", "ENTREGADO", "LEIDO", "FALLIDO"];
@@ -231,7 +252,7 @@ export default function AnaliticaWhatsAppPage() {
                           </td>
                           <td className="text-center px-3 py-2">
                             <Badge color={ESTADO_CAMPANA_BADGE[c.estado] || "slate"}>
-                              {c.estado}
+                              {ESTADO_CAMPANA_LABEL[c.estado] || c.estado}
                             </Badge>
                           </td>
                           <td className="text-center px-3 py-2 text-xs text-slate-300">

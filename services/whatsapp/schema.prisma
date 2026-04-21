@@ -389,8 +389,11 @@ model wa_campanas {
   mensaje_base   String
   variaciones    Json?    // string[] de variaciones generadas por IA
   etapa_filtro   String?  @db.VarChar(50)
-  estado         String   @default("CREADA") @db.VarChar(20)
-  // CREADA | EN_COLA | ENVIANDO | PAUSADA | COMPLETADA | CANCELADA
+  estado         String   @default("CREADA") @db.VarChar(30)
+  // CREADA | EN_COLA | ENVIANDO |
+  // PAUSADA_MANUAL | ESPERA_VENTANA | LIMITE_DIARIO |
+  // SIN_SESION | ERRORES_CONSECUTIVOS | INTERRUMPIDA |
+  // COMPLETADA | CANCELADA
   total_mensajes Int      @default(0)
   enviados       Int      @default(0)
   entregados     Int      @default(0)
