@@ -3,9 +3,10 @@ import { prisma } from "@/lib/prisma";
 import { prismaClientes } from "@/lib/prisma-clientes";
 import { requirePromotor } from "@/lib/auth-utils";
 import { generateExcelBuffer } from "@/lib/excel";
+import { logAccessWithSession } from "@/lib/access-log";
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { session, error } = await requirePromotor();
@@ -74,6 +75,12 @@ export async function GET(
   // 5. Generar Excel
   const buffer = await generateExcelBuffer(registros, loteId);
   const fecha = lote.fecha.toISOString().split("T")[0];
+
+  logAccessWithSession(session, "export_excel", {
+    recurso_id: loteId,
+    metadata: { total: registros.length, tipo: "lote_asignacion" },
+    req: request,
+  });
 
   return new NextResponse(new Uint8Array(buffer), {
     headers: {

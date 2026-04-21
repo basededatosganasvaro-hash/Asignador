@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { prismaClientes } from "@/lib/prisma-clientes";
 import { requireAuth } from "@/lib/auth-utils";
+import { logAccessWithSession } from "@/lib/access-log";
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { session, error } = await requireAuth();
@@ -83,6 +84,12 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       include: { etapa_destino: { select: { id: true, nombre: true, color: true, tipo: true } } },
     });
   }
+
+  logAccessWithSession(session, "view_oportunidad", {
+    recurso_id: op.id,
+    metadata: { cliente_id: op.cliente_id, etapa_id: op.etapa_id },
+    req,
+  });
 
   return NextResponse.json({
     ...op,

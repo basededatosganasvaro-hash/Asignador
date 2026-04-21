@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { prismaClientes } from "@/lib/prisma-clientes";
 import { requireAuth } from "@/lib/auth-utils";
 import { updateClienteSchema } from "@/lib/validators";
+import { logAccessWithSession } from "@/lib/access-log";
 
 export async function PATCH(
   request: Request,
@@ -111,6 +112,12 @@ export async function PATCH(
   for (const e of nuevasEdiciones) {
     todasEdiciones.set(e.campo, e.valor);
   }
+
+  logAccessWithSession(session, "editar_cliente", {
+    recurso_id: clienteId,
+    metadata: { campos: nuevasEdiciones.map((e) => e.campo) },
+    req: request,
+  });
 
   return NextResponse.json({
     id: cliente.id,

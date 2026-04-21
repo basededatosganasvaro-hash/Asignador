@@ -2,6 +2,19 @@ import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { prisma } from "./prisma";
+import { logAccess } from "./access-log";
+
+function reqFromNextAuth(req: unknown): Request | null {
+  if (!req || typeof req !== "object") return null;
+  const r = req as { headers?: Record<string, string | string[] | undefined> };
+  if (!r.headers) return null;
+  const h = new Headers();
+  for (const [k, v] of Object.entries(r.headers)) {
+    if (typeof v === "string") h.set(k, v);
+    else if (Array.isArray(v)) h.set(k, v.join(","));
+  }
+  return new Request("http://internal", { headers: h });
+}
 
 const MAX_INTENTOS = 5;
 const BLOQUEO_MINUTOS = 15;
@@ -14,8 +27,10 @@ export const authOptions: NextAuthOptions = {
         username: { label: "Usuario", type: "text" },
         password: { label: "Contraseña", type: "password" },
       },
-      async authorize(credentials) {
+      async authorize(credentials, req) {
+        const reqObj = reqFromNextAuth(req);
         if (!credentials?.username || !credentials?.password) {
+          logAccess({ accion: "login_fallido", metadata: { motivo: "faltan_credenciales", username: credentials?.username ?? null }, req: reqObj });
           throw new Error("Usuario y contraseña son requeridos");
         }
 
@@ -24,15 +39,18 @@ export const authOptions: NextAuthOptions = {
         });
 
         if (!user) {
+          logAccess({ accion: "login_fallido", username: credentials.username, metadata: { motivo: "usuario_no_existe" }, req: reqObj });
           throw new Error("Credenciales inválidas");
         }
 
         if (!user.activo) {
+          logAccess({ accion: "login_fallido", usuario_id: user.id, username: user.username, rol: user.rol, metadata: { motivo: "inactivo" }, req: reqObj });
           throw new Error("Credenciales inválidas");
         }
 
         // Verificar bloqueo temporal
         if (user.bloqueado_hasta && user.bloqueado_hasta > new Date()) {
+          logAccess({ accion: "login_fallido", usuario_id: user.id, username: user.username, rol: user.rol, metadata: { motivo: "bloqueado" }, req: reqObj });
           throw new Error("Cuenta bloqueada temporalmente");
         }
 
@@ -57,6 +75,8 @@ export const authOptions: NextAuthOptions = {
             },
           });
 
+          logAccess({ accion: "login_fallido", usuario_id: user.id, username: user.username, rol: user.rol, metadata: { motivo: "password_incorrecto", intentos: nuevosIntentos, bloqueado: !!bloqueado }, req: reqObj });
+
           if (bloqueado) {
             throw new Error("Cuenta bloqueada temporalmente");
           }
@@ -72,6 +92,8 @@ export const authOptions: NextAuthOptions = {
             bloqueado_hasta: null,
           },
         });
+
+        logAccess({ accion: "login", usuario_id: user.id, username: user.username, rol: user.rol, req: reqObj });
 
         return {
           id: String(user.id),

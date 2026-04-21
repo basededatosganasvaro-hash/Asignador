@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Plus_Jakarta_Sans, Inter, JetBrains_Mono } from "next/font/google";
 import ThemeProvider from "@/components/providers/ThemeProvider";
 import SessionProvider from "@/components/providers/SessionProvider";
+import CopyGuard from "@/components/providers/CopyGuard";
 import "./globals.css";
 
 const plusJakarta = Plus_Jakarta_Sans({
@@ -42,6 +43,7 @@ export default function RootLayout({
     >
       <body>
         <SessionProvider>
+          <CopyGuard />
           <ThemeProvider>{children}</ThemeProvider>
         </SessionProvider>
       </body>

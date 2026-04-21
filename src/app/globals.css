@@ -22,6 +22,23 @@ body {
 /* Text selection */
 ::selection { background: rgba(245, 158, 11, 0.25); color: #f1f5f9; }
 
+/* Bloqueo de copia/selección para usuarios no-admin (activado por CopyGuard) */
+body.no-copy,
+body.no-copy * {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
+  -webkit-touch-callout: none !important;
+}
+/* Permitir que inputs y textareas sigan funcionando para escribir */
+body.no-copy input,
+body.no-copy textarea,
+body.no-copy [contenteditable="true"] {
+  user-select: text !important;
+  -webkit-user-select: text !important;
+}
+
 /* Card glow effect */
 .card-glow {
   position: relative;

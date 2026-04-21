@@ -5,6 +5,7 @@ import { requirePromotor } from "@/lib/auth-utils";
 import { verificarHorarioConConfig, calcularTimerVenceConConfig } from "@/lib/horario";
 import { getConfig } from "@/lib/config-cache";
 import { Prisma } from "@prisma/client";
+import { logAccessWithSession } from "@/lib/access-log";
 
 async function withRetry<T>(fn: () => Promise<T>, maxRetries = 3): Promise<T> {
   for (let i = 0; i < maxRetries; i++) {
@@ -353,6 +354,20 @@ export async function POST(request: Request) {
         timeout: 30000,
       }
     ));
+
+    logAccessWithSession(session, "solicitar_asignacion", {
+      recurso_id: result.lote.id,
+      metadata: {
+        cantidad: result.cantidadReal,
+        tipo_cliente: tipo_cliente ?? null,
+        convenio: convenio ?? null,
+        estado: estado ?? null,
+        municipio: municipio ?? null,
+        rango_oferta: rango_oferta ?? null,
+        tiene_telefono: tiene_telefono ?? false,
+      },
+      req: request,
+    });
 
     return NextResponse.json(
       {
