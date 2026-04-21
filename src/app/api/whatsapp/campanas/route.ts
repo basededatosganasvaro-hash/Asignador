@@ -9,8 +9,10 @@ export async function GET() {
   try {
     const result = await waFetch(`/campaigns?usuario_id=${session!.user.id}`);
     return NextResponse.json(result);
-  } catch {
-    return NextResponse.json({ error: "Error al obtener campañas" }, { status: 500 });
+  } catch (err) {
+    console.error("[GET /api/whatsapp/campanas] error:", err);
+    const msg = err instanceof Error ? err.message : "Error al obtener campañas";
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
 
@@ -53,7 +55,9 @@ export async function POST(req: Request) {
       body: payload,
     });
     return NextResponse.json(result);
-  } catch {
-    return NextResponse.json({ error: "Error al crear campaña" }, { status: 500 });
+  } catch (err) {
+    console.error("[POST /api/whatsapp/campanas] usuario_id=", session!.user.id, "error:", err);
+    const msg = err instanceof Error ? err.message : "Error al crear campaña";
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
