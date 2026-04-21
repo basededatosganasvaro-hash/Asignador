@@ -52,7 +52,6 @@ interface CupoInfo {
 // ─── Tabs ───
 
 const TABS = [
-  { key: "IEPPO", label: "IEPPO", icon: <ClipboardCheck className="w-4 h-4" /> },
   { key: "CDMX", label: "CDMX", icon: <FileSpreadsheet className="w-4 h-4" /> },
   { key: "PENSIONADOS", label: "Pensionados", icon: <Users className="w-4 h-4" /> },
 ] as const;
@@ -66,7 +65,7 @@ export default function PromotorCalificacionPage() {
   const permisos = session?.user?.permisos_calificacion ?? [];
   const allowedTabs = useMemo(() => TABS.filter((t) => permisos.includes(t.key)), [permisos]);
 
-  const [tab, setTab] = useState<TabKey>("IEPPO");
+  const [tab, setTab] = useState<TabKey>("CDMX");
   const [lotes, setLotes] = useState<{ IEPPO: LoteData | null; CDMX: LoteData | null; PENSIONADOS: LoteData | null }>({
     IEPPO: null,
     CDMX: null,
