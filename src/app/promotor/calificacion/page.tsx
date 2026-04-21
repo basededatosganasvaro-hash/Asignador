@@ -231,41 +231,7 @@ function TabContent({
       },
     ];
 
-    if (tipo === "IEPPO") {
-      base.push(
-        {
-          header: "Nombre",
-          accessorFn: (row) => {
-            const c = row.cliente;
-            if (!c) return "—";
-            return `${c.nombres ?? ""} ${c.a_paterno ?? ""} ${c.a_materno ?? ""}`.trim();
-          },
-          cell: ({ row, getValue }) => (
-            <button
-              className="text-amber-400 hover:underline text-left"
-              onClick={() => setEditItem(row.original)}
-            >
-              {getValue() as string}
-            </button>
-          ),
-        },
-        {
-          header: "CURP",
-          accessorFn: (row) => (row.cliente as Record<string, unknown>)?.curp ?? "—",
-          size: 180,
-        },
-        {
-          header: "Convenio",
-          accessorFn: (row) => (row.cliente as Record<string, unknown>)?.convenio ?? "—",
-          size: 150,
-        },
-        {
-          header: "Estado",
-          accessorFn: (row) => (row.cliente as Record<string, unknown>)?.estado ?? "—",
-          size: 120,
-        }
-      );
-    } else if (tipo === "CDMX") {
+    if (tipo === "CDMX") {
       base.push(
         {
           header: "Nombre",
@@ -388,10 +354,7 @@ function TabContent({
     if (tipo === "CDMX") {
       return <CdmxSelector cupo={cupo} toast={toast} onRefresh={onRefresh} />;
     }
-    if (tipo === "PENSIONADOS") {
-      return <PensionadosSelector cupo={cupo} toast={toast} onRefresh={onRefresh} />;
-    }
-    return <IeppoSelector cupo={cupo} toast={toast} onRefresh={onRefresh} />;
+    return <PensionadosSelector cupo={cupo} toast={toast} onRefresh={onRefresh} />;
   }
 
   // Hay lote activo

@@ -44,8 +44,11 @@ export async function GET(req: Request) {
   `;
   const excludeArray = excludeRows.map((r) => r.cliente_id);
 
-  // Base where para excluir activos + cooldown
-  const baseExclude = excludeArray.length > 0 ? { id: { notIn: excludeArray } } : {};
+  // Base where para excluir activos + cooldown + IEPPO (se asigna vía módulo de analistas)
+  const baseExclude = {
+    ...(excludeArray.length > 0 ? { id: { notIn: excludeArray } } : {}),
+    NOT: { tipo_cliente: { contains: "IEPPO", mode: "insensitive" as const } },
+  };
 
   // Cupo restante del día (timezone Mexico)
   const nowMx = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Mexico_City" }));
@@ -94,6 +97,8 @@ export async function GET(req: Request) {
     countParams.push(excludeArray);
     countClauses.push(`id != ALL($${countParams.length})`);
   }
+  // Excluir IEPPO del conteo disponible (se asigna vía módulo de analistas)
+  countClauses.push(`(tipo_cliente IS NULL OR tipo_cliente NOT ILIKE '%IEPPO%')`);
   if (tipo_cliente) { countParams.push(tipo_cliente); countClauses.push(`tipo_cliente = $${countParams.length}`); }
   if (convenio)     { countParams.push(convenio);     countClauses.push(`convenio = $${countParams.length}`); }
   if (estado)       { countParams.push(estado);       countClauses.push(`estado = $${countParams.length}`); }
