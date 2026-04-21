@@ -34,7 +34,10 @@ export async function GET(req: Request) {
   const disponibles = await prismaClientes.clientes.count({
     where: {
       ...(excludeIds.length > 0 ? { id: { notIn: excludeIds } } : {}),
-      NOT: { tipo_cliente: { contains: "IEPPO", mode: "insensitive" } },
+      AND: [
+        { NOT: { tipo_cliente: { contains: "IEPPO", mode: "insensitive" } } },
+        { NOT: { tipo_cliente: { contains: "IEEPO", mode: "insensitive" } } },
+      ],
       ...(tipo_cliente ? { tipo_cliente } : {}),
       ...(convenio ? { convenio } : {}),
       ...(estado ? { estado } : {}),

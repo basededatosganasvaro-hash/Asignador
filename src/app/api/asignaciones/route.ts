@@ -200,8 +200,8 @@ export async function POST(request: Request) {
       params.push(excludeArray);
       clauses.push(`id != ALL($${params.length})`);
     }
-    // Excluir IEPPO del pool de asignación del promotor (se asigna vía módulo de analistas)
-    clauses.push(`(tipo_cliente IS NULL OR tipo_cliente NOT ILIKE '%IEPPO%')`);
+    // Excluir IEPPO/IEEPO del pool de asignación del promotor (se asigna vía módulo de analistas)
+    clauses.push(`(tipo_cliente IS NULL OR (tipo_cliente NOT ILIKE '%IEPPO%' AND tipo_cliente NOT ILIKE '%IEEPO%'))`);
     if (tipo_cliente) { params.push(tipo_cliente); clauses.push(`tipo_cliente = $${params.length}`); }
     if (convenio)     { params.push(convenio);     clauses.push(`convenio = $${params.length}`); }
     if (estado)       { params.push(estado);       clauses.push(`estado = $${params.length}`); }
