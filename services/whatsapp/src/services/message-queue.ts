@@ -1,7 +1,7 @@
 import { prisma } from "../lib/prisma.js";
 import { sessionManager } from "./session-manager.js";
 import { humanDelay, burstSize, burstPause, typingDelay, sleep, type AntiSpamOpts } from "../lib/anti-spam.js";
-import { loadAntiSpamConfig, ANTI_SPAM_DEFAULTS } from "../config.js";
+import { loadAntiSpamConfig, ANTI_SPAM_DEFAULTS, type AntiSpamConfig } from "../config.js";
 
 interface QueueItem {
   campanaId: number;
@@ -9,24 +9,16 @@ interface QueueItem {
 }
 
 class MessageQueue {
-  private queues: Map<number, QueueItem[]> = new Map(); // userId → queue
-  private processing: Set<number> = new Set(); // userIds currently processing
-  private activeCampaigns = 0; // global counter of campaigns currently sending
+  private queues: Map<number, QueueItem[]> = new Map();
+  private processing: Set<number> = new Set();
+  private activeCampaigns = 0;
 
-  // Contador diario en memoria: userId → { fecha ISO, sent }
   private dailyCounters: Map<number, { fecha: string; sent: number }> = new Map();
-
-  // Último envío por JID (para rate-limit por contacto): "userId:jid" → timestamp ms
   private lastSendByJid: Map<string, number> = new Map();
-
-  // Espera por cupo global: resolvers que se llaman cuando se libera un slot
   private slotWaiters: Array<() => void> = [];
 
-  /** Encolar una campaña para envío */
   async enqueue(campanaId: number, userId: number): Promise<void> {
-    if (!this.queues.has(userId)) {
-      this.queues.set(userId, []);
-    }
+    if (!this.queues.has(userId)) this.queues.set(userId, []);
     this.queues.get(userId)!.push({ campanaId, userId });
 
     if (!this.processing.has(userId)) {
@@ -34,7 +26,6 @@ class MessageQueue {
     }
   }
 
-  /** Pausar campaña */
   async pause(campanaId: number): Promise<void> {
     await prisma.wa_campanas.update({
       where: { id: campanaId },
@@ -42,40 +33,27 @@ class MessageQueue {
     });
   }
 
-  /** Reanudar campaña */
   async resume(campanaId: number): Promise<void> {
-    const campana = await prisma.wa_campanas.findUnique({
-      where: { id: campanaId },
-    });
+    const campana = await prisma.wa_campanas.findUnique({ where: { id: campanaId } });
     if (!campana || campana.estado !== "PAUSADA") return;
-
     await prisma.wa_campanas.update({
       where: { id: campanaId },
       data: { estado: "EN_COLA" },
     });
-
     this.enqueue(campanaId, campana.usuario_id);
   }
 
-  /** Cancelar campaña */
   async cancel(campanaId: number): Promise<void> {
     await prisma.wa_campanas.update({
       where: { id: campanaId },
       data: { estado: "CANCELADA" },
     });
-
     await prisma.wa_mensajes.updateMany({
-      where: {
-        campana_id: campanaId,
-        estado: { in: ["PENDIENTE", "ENVIANDO"] },
-      },
+      where: { campana_id: campanaId, estado: { in: ["PENDIENTE", "ENVIANDO"] } },
       data: { estado: "FALLIDO", error_detalle: "Campaña cancelada" },
     });
   }
 
-  /**
-   * Recuperar campañas huérfanas al iniciar el servicio.
-   */
   async recoverOrphanedCampaigns(): Promise<void> {
     try {
       const enviando = await prisma.wa_campanas.findMany({
@@ -89,15 +67,10 @@ class MessageQueue {
           where: { id: { in: enviandoIds } },
           data: { estado: "PAUSADA" },
         });
-
         await prisma.wa_mensajes.updateMany({
-          where: {
-            campana_id: { in: enviandoIds },
-            estado: "ENVIANDO",
-          },
+          where: { campana_id: { in: enviandoIds }, estado: "ENVIANDO" },
           data: { estado: "PENDIENTE" },
         });
-
         console.log(`[MessageQueue] Recovered ${enviando.length} orphaned ENVIANDO campaigns → PAUSADA`);
       }
 
@@ -127,11 +100,10 @@ class MessageQueue {
     }
   }
 
-  /** Estadísticas de la cola — expuesto por /health */
   getStats() {
     return {
       activeCampaigns: this.activeCampaigns,
-      maxConcurrent: ANTI_SPAM_DEFAULTS.maxConcurrentCampaigns, // informativo; el real se lee dinámico
+      maxConcurrent: ANTI_SPAM_DEFAULTS.maxConcurrentCampaigns,
       processingUsers: this.processing.size,
       queuedItems: Array.from(this.queues.values()).reduce((sum, q) => sum + q.length, 0),
       waitingForSlot: this.slotWaiters.length,
@@ -139,34 +111,62 @@ class MessageQueue {
     };
   }
 
-  // ─── Slot global (notifier event-driven) ───
+  // ─── Slot global ───
 
   private async acquireSlot(maxConcurrent: number): Promise<void> {
     if (this.activeCampaigns < maxConcurrent) {
       this.activeCampaigns++;
       return;
     }
-    await new Promise<void>((resolve) => {
-      this.slotWaiters.push(resolve);
-    });
-    // al ser resuelto, el releaser ya incrementó activeCampaigns por nosotros
+    await new Promise<void>((resolve) => this.slotWaiters.push(resolve));
   }
 
   private releaseSlot(): void {
     const next = this.slotWaiters.shift();
-    if (next) {
-      // transferimos el slot directamente al waiter (sin decrementar/incrementar)
-      next();
-    } else {
-      this.activeCampaigns--;
-    }
+    if (next) next();
+    else this.activeCampaigns--;
   }
 
-  // ─── Contador diario en memoria ───
+  // ─── Contador diario ───
 
   private todayStr(): string {
     const d = new Date();
     return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+  }
+
+  /** Expone info de warmup/ventana/daily para UI */
+  async getLimitInfoFor(userId: number) {
+    const cfg = await loadAntiSpamConfig();
+    const effectiveLimit = await this.getEffectiveDailyLimit(userId, cfg);
+    const sent = await this.getDailySent(userId);
+    const sesion = await prisma.wa_sesiones.findUnique({
+      where: { usuario_id: userId },
+      select: { primer_envio_at: true },
+    });
+    const diasTranscurridos = sesion?.primer_envio_at
+      ? Math.floor((Date.now() - sesion.primer_envio_at.getTime()) / (24 * 60 * 60 * 1000))
+      : null;
+
+    const enWarmup = !sesion?.primer_envio_at || (diasTranscurridos !== null && diasTranscurridos < 3);
+    const ventanaAbierta = this.isWithinSendingWindow(cfg);
+    const msHastaProximaVentana = ventanaAbierta ? 0 : this.msUntilNextWindow(cfg);
+
+    return {
+      warmup: {
+        enWarmup,
+        primerEnvioAt: sesion?.primer_envio_at ?? null,
+        diasTranscurridos,
+        limiteEfectivo: effectiveLimit,
+        enviadosHoy: sent,
+        limiteDiarioMaduro: cfg.dailyLimit,
+      },
+      ventana: {
+        abierta: ventanaAbierta,
+        horaInicio: cfg.ventanaHoraInicio,
+        horaFin: cfg.ventanaHoraFin,
+        proximaAperturaEnMs: msHastaProximaVentana,
+      },
+    };
   }
 
   private async getDailySent(userId: number): Promise<number> {
@@ -174,7 +174,6 @@ class MessageQueue {
     const cached = this.dailyCounters.get(userId);
     if (cached && cached.fecha === today) return cached.sent;
 
-    // Hidrata desde BD (al arrancar o nuevo día)
     const hoy = new Date();
     hoy.setHours(0, 0, 0, 0);
     const sent = await prisma.wa_mensajes.count({
@@ -202,15 +201,12 @@ class MessageQueue {
   // ─── Rate-limit por JID ───
 
   private canSendToJid(userId: number, jid: string, cooldownMs: number): boolean {
-    const key = `${userId}:${jid}`;
-    const last = this.lastSendByJid.get(key);
-    if (!last) return true;
-    return Date.now() - last >= cooldownMs;
+    const last = this.lastSendByJid.get(`${userId}:${jid}`);
+    return !last || Date.now() - last >= cooldownMs;
   }
 
   private markJidSent(userId: number, jid: string): void {
     this.lastSendByJid.set(`${userId}:${jid}`, Date.now());
-    // Poda cada ~500 inserts para evitar crecer indefinido
     if (this.lastSendByJid.size > 5000) {
       const cutoff = Date.now() - 24 * 60 * 60 * 1000;
       for (const [k, t] of this.lastSendByJid) {
@@ -219,7 +215,100 @@ class MessageQueue {
     }
   }
 
-  /** Procesar cola de un usuario */
+  // ─── Warmup: límite diario escalado en cuentas nuevas ───
+
+  /**
+   * Calcula el límite diario efectivo según los días desde primer_envio_at.
+   * Día 1: warmupDia1 (30 por defecto)
+   * Día 2: warmupDia2 (60)
+   * Día 3: warmupDia3 (120)
+   * Día 4+: dailyLimit (180 — cuenta madura)
+   */
+  private async getEffectiveDailyLimit(userId: number, cfg: AntiSpamConfig): Promise<number> {
+    const sesion = await prisma.wa_sesiones.findUnique({
+      where: { usuario_id: userId },
+      select: { primer_envio_at: true },
+    });
+    if (!sesion?.primer_envio_at) return cfg.warmupDia1;
+
+    const diasTranscurridos = Math.floor(
+      (Date.now() - sesion.primer_envio_at.getTime()) / (24 * 60 * 60 * 1000)
+    );
+    if (diasTranscurridos < 1) return cfg.warmupDia1;
+    if (diasTranscurridos < 2) return cfg.warmupDia2;
+    if (diasTranscurridos < 3) return cfg.warmupDia3;
+    return cfg.dailyLimit;
+  }
+
+  private async markFirstSend(userId: number): Promise<void> {
+    const sesion = await prisma.wa_sesiones.findUnique({
+      where: { usuario_id: userId },
+      select: { primer_envio_at: true },
+    });
+    if (!sesion?.primer_envio_at) {
+      await prisma.wa_sesiones.update({
+        where: { usuario_id: userId },
+        data: { primer_envio_at: new Date() },
+      });
+    }
+  }
+
+  // ─── Ventana horaria ───
+
+  private isWithinSendingWindow(cfg: AntiSpamConfig): boolean {
+    const hour = new Date().getHours();
+    return hour >= cfg.ventanaHoraInicio && hour < cfg.ventanaHoraFin;
+  }
+
+  private msUntilNextWindow(cfg: AntiSpamConfig): number {
+    const now = new Date();
+    const target = new Date(now);
+    target.setHours(cfg.ventanaHoraInicio, 0, 0, 0);
+    if (target.getTime() <= now.getTime()) target.setDate(target.getDate() + 1);
+    return target.getTime() - now.getTime();
+  }
+
+  // ─── Contactos bloqueados ───
+
+  /**
+   * Carga el set de números bloqueados (global + del usuario) al inicio de
+   * la campaña. Se recarga por campaña, no por mensaje, para no martillar BD.
+   */
+  private async loadBlockedNumbers(userId: number): Promise<Set<string>> {
+    try {
+      const rows = await prisma.wa_contactos_bloqueados.findMany({
+        where: { OR: [{ usuario_id: userId }, { usuario_id: null }] },
+        select: { numero: true },
+      });
+      return new Set(rows.map((r: { numero: string }) => r.numero));
+    } catch (err) {
+      console.error("[MessageQueue] Error loading blocked numbers:", err);
+      return new Set();
+    }
+  }
+
+  private async blockContact(userId: number | null, numero: string, motivo: string, origen: string): Promise<void> {
+    try {
+      const existing = await prisma.wa_contactos_bloqueados.findFirst({
+        where: { numero, usuario_id: userId },
+      });
+      if (existing) {
+        await prisma.wa_contactos_bloqueados.update({
+          where: { id: existing.id },
+          data: { motivo, origen, bloqueado_at: new Date() },
+        });
+      } else {
+        await prisma.wa_contactos_bloqueados.create({
+          data: { usuario_id: userId, numero, motivo, origen },
+        });
+      }
+    } catch (err) {
+      console.error("[MessageQueue] Error blocking contact:", err);
+    }
+  }
+
+  // ─── Proceso principal ───
+
   private async processCampaign(userId: number): Promise<void> {
     this.processing.add(userId);
 
@@ -241,8 +330,7 @@ class MessageQueue {
     }
   }
 
-  /** Enviar todos los mensajes de una campaña */
-  private async sendCampaign(item: QueueItem, antiSpam: Awaited<ReturnType<typeof loadAntiSpamConfig>>): Promise<void> {
+  private async sendCampaign(item: QueueItem, antiSpam: AntiSpamConfig): Promise<void> {
     const { campanaId, userId } = item;
     const spamOpts: AntiSpamOpts = antiSpam;
 
@@ -256,27 +344,47 @@ class MessageQueue {
       return;
     }
 
+    // Fuera de ventana horaria → pausar y esperar próxima ventana
+    if (!this.isWithinSendingWindow(antiSpam)) {
+      const waitMs = this.msUntilNextWindow(antiSpam);
+      console.log(`[MessageQueue] Fuera de ventana horaria para user ${userId}, pausando campaña ${campanaId} por ${Math.round(waitMs / 60000)}min`);
+      await prisma.wa_campanas.update({
+        where: { id: campanaId },
+        data: { estado: "PAUSADA" },
+      });
+      return;
+    }
+
     await prisma.wa_campanas.update({
       where: { id: campanaId },
       data: { estado: "ENVIANDO" },
     });
+
+    // Pre-warm de presencia: parecer online antes del primer envío, no al momento
+    try {
+      await sock.sendPresenceUpdate("available");
+    } catch { /* non-critical */ }
 
     const mensajes = await prisma.wa_mensajes.findMany({
       where: { campana_id: campanaId, estado: "PENDIENTE" },
       orderBy: { id: "asc" },
     });
 
-    // Verificar límite diario (usando contador en memoria, fuente de verdad ante concurrencia)
+    // Límite diario efectivo (incluye warmup)
+    const effectiveLimit = await this.getEffectiveDailyLimit(userId, antiSpam);
     const enviadosHoy = await this.getDailySent(userId);
 
-    if (enviadosHoy >= antiSpam.dailyLimit) {
+    if (enviadosHoy >= effectiveLimit) {
       await prisma.wa_campanas.update({
         where: { id: campanaId },
         data: { estado: "PAUSADA" },
       });
-      console.log(`[MessageQueue] Daily limit reached for user ${userId} (${enviadosHoy}/${antiSpam.dailyLimit})`);
+      console.log(`[MessageQueue] Daily limit (warmup-aware) reached for user ${userId} (${enviadosHoy}/${effectiveLimit})`);
       return;
     }
+
+    // Cargar bloqueados una vez por campaña
+    const blockedNumbers = await this.loadBlockedNumbers(userId);
 
     let burstCount = 0;
     let currentBurstSize = burstSize(spamOpts);
@@ -285,26 +393,34 @@ class MessageQueue {
     const MAX_CONSECUTIVE_ERRORS = 5;
 
     for (const msg of mensajes) {
-      // Check campaña still active (every 5 messages)
+      // Check estado cada 5
       if (msgIndex % 5 === 0) {
         const campana = await prisma.wa_campanas.findUnique({
           where: { id: campanaId },
           select: { estado: true },
         });
-        if (!campana || !["ENVIANDO", "EN_COLA"].includes(campana.estado)) {
-          break;
-        }
+        if (!campana || !["ENVIANDO", "EN_COLA"].includes(campana.estado)) break;
       }
       msgIndex++;
 
-      // Check daily limit contra contador en memoria
-      const currentDaily = await this.getDailySent(userId);
-      if (currentDaily >= antiSpam.dailyLimit) {
+      // Re-check ventana horaria cada 5 (campañas largas pueden cruzar el corte)
+      if (msgIndex % 5 === 0 && !this.isWithinSendingWindow(antiSpam)) {
+        console.log(`[MessageQueue] Ventana cerró durante envío, pausando user ${userId}`);
         await prisma.wa_campanas.update({
           where: { id: campanaId },
           data: { estado: "PAUSADA" },
         });
-        console.log(`[MessageQueue] Daily limit reached mid-campaign for user ${userId}`);
+        break;
+      }
+
+      // Daily limit (warmup)
+      const currentDaily = await this.getDailySent(userId);
+      if (currentDaily >= effectiveLimit) {
+        await prisma.wa_campanas.update({
+          where: { id: campanaId },
+          data: { estado: "PAUSADA" },
+        });
+        console.log(`[MessageQueue] Daily limit reached mid-campaign for user ${userId} (${currentDaily}/${effectiveLimit})`);
         break;
       }
 
@@ -313,8 +429,21 @@ class MessageQueue {
           where: { id: campanaId },
           data: { estado: "PAUSADA" },
         });
-        console.log(`[MessageQueue] ${MAX_CONSECUTIVE_ERRORS} consecutive errors for user ${userId}, pausing campaign ${campanaId}`);
+        console.log(`[MessageQueue] ${MAX_CONSECUTIVE_ERRORS} errores consecutivos user=${userId}, pausando campaña ${campanaId}`);
         break;
+      }
+
+      // Contacto bloqueado (opt-out / ban / no existe)
+      if (blockedNumbers.has(msg.numero_destino)) {
+        await prisma.wa_mensajes.update({
+          where: { id: msg.id },
+          data: { estado: "FALLIDO", error_detalle: "Contacto bloqueado / opt-out" },
+        });
+        await prisma.wa_campanas.update({
+          where: { id: campanaId },
+          data: { fallidos: { increment: 1 } },
+        });
+        continue;
       }
 
       // Burst control
@@ -328,7 +457,7 @@ class MessageQueue {
 
       const jid = `${msg.numero_destino}@s.whatsapp.net`;
 
-      // Rate-limit por JID — evita re-enviar al mismo número dentro del cooldown
+      // Rate-limit por JID
       if (!this.canSendToJid(userId, jid, antiSpam.perJidCooldownMs)) {
         await prisma.wa_mensajes.update({
           where: { id: msg.id },
@@ -344,13 +473,36 @@ class MessageQueue {
         continue;
       }
 
+      // Validar que el número existe en WA antes de gastar envío.
+      // Números inexistentes cuentan en el algoritmo anti-spam de WA.
+      try {
+        const check = await sock.onWhatsApp(msg.numero_destino);
+        const exists = Array.isArray(check) && check.length > 0 && check[0]?.exists;
+        if (!exists) {
+          await prisma.wa_mensajes.update({
+            where: { id: msg.id },
+            data: { estado: "FALLIDO", error_detalle: "Número no existe en WhatsApp" },
+          });
+          await prisma.wa_campanas.update({
+            where: { id: campanaId },
+            data: { fallidos: { increment: 1 } },
+          });
+          // Bloquear global para no reintentar en futuras campañas
+          await this.blockContact(null, msg.numero_destino, "No existe en WhatsApp", "NO_EXISTE");
+          blockedNumbers.add(msg.numero_destino);
+          continue;
+        }
+      } catch (checkErr) {
+        // Si el check falla, no bloqueamos — seguimos con el envío
+        console.warn(`[MessageQueue] onWhatsApp check falló para ${msg.numero_destino}, continuando`);
+      }
+
       try {
         await prisma.wa_mensajes.update({
           where: { id: msg.id },
           data: { estado: "ENVIANDO" },
         });
 
-        // Simulate typing (non-critical)
         try {
           await sock.presenceSubscribe(jid);
           await sleep(1000);
@@ -358,7 +510,7 @@ class MessageQueue {
           await sleep(typingDelay(msg.mensaje_texto.length));
           await sock.sendPresenceUpdate("paused", jid);
         } catch (presenceErr) {
-          console.warn(`[MessageQueue] Presence simulation failed for ${msg.numero_destino}, proceeding with send`);
+          console.warn(`[MessageQueue] Presence simulation failed for ${msg.numero_destino}`);
         }
 
         const sent = await sock.sendMessage(jid, { text: msg.mensaje_texto });
@@ -377,6 +529,9 @@ class MessageQueue {
           data: { enviados: { increment: 1 } },
         });
 
+        // Marcar primer_envio_at si es la primera vez (warmup)
+        await this.markFirstSend(userId);
+
         this.incrementDailySent(userId);
         this.markJidSent(userId, jid);
         sessionManager.resetIdleTimer(userId);
@@ -394,10 +549,7 @@ class MessageQueue {
 
         await prisma.wa_mensajes.update({
           where: { id: msg.id },
-          data: {
-            estado: "FALLIDO",
-            error_detalle: errorMsg.slice(0, 500),
-          },
+          data: { estado: "FALLIDO", error_detalle: errorMsg.slice(0, 500) },
         });
 
         await prisma.wa_campanas.update({
@@ -407,7 +559,6 @@ class MessageQueue {
       }
     }
 
-    // Finalize
     const campana = await prisma.wa_campanas.findUnique({
       where: { id: campanaId },
       select: { estado: true },

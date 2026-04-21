@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/Input";
 import { Spinner } from "@/components/ui/Spinner";
 import { Tooltip } from "@/components/ui/Tooltip";
 import StatCard from "@/components/ui/StatCard";
+import WhatsAppBloqueadosPanel from "@/components/admin/WhatsAppBloqueadosPanel";
 import {
   Send,
   CheckCheck,
@@ -251,6 +252,9 @@ export default function WhatsAppAdminPage() {
           </div>
         </div>
       </div>
+
+      {/* Contactos bloqueados */}
+      <WhatsAppBloqueadosPanel />
 
       {/* --- Detalle de Mensajes --- */}
       <div className="bg-surface rounded-xl border border-slate-800/60 p-5">

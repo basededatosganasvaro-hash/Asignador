@@ -363,6 +363,7 @@ model wa_sesiones {
   creds_json String?  // Baileys auth state encriptado
   keys_json  String?  // Baileys signal keys encriptado (JSON de archivos pre-key, session, sender-key)
   ultimo_uso DateTime @default(now())
+  primer_envio_at              DateTime?
   ultima_desconexion_at        DateTime?
   ultima_desconexion_codigo    Int?
   ultima_desconexion_motivo    String?  @db.VarChar(200)
@@ -436,4 +437,16 @@ model wa_mensajes {
   @@index([wa_message_id])
   @@index([estado])
   @@index([enviado_at])
+}
+
+model wa_contactos_bloqueados {
+  id             Int      @id @default(autoincrement())
+  usuario_id     Int?
+  numero         String   @db.VarChar(30)
+  motivo         String?  @db.VarChar(200)
+  origen         String   @default("MANUAL") @db.VarChar(20)
+  bloqueado_at   DateTime @default(now())
+
+  @@unique([usuario_id, numero])
+  @@index([numero])
 }

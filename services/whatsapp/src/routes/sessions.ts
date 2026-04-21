@@ -1,5 +1,6 @@
 import { Router, Request, Response } from "express";
 import { sessionManager } from "../services/session-manager.js";
+import { messageQueue } from "../services/message-queue.js";
 
 const router = Router();
 
@@ -47,8 +48,11 @@ router.get("/:userId/status", async (req: Request, res: Response) => {
   }
 
   try {
-    const status = await sessionManager.getStatus(userId);
-    res.json(status);
+    const [status, limits] = await Promise.all([
+      sessionManager.getStatus(userId),
+      messageQueue.getLimitInfoFor(userId),
+    ]);
+    res.json({ ...status, ...limits });
   } catch (err) {
     console.error(`[Sessions] Error getting status for user ${userId}:`, err);
     res.status(500).json({ error: "Error al obtener estado" });

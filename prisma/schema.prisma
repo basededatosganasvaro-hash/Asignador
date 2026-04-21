@@ -410,6 +410,7 @@ model wa_sesiones {
   creds_json String?  @db.Text // Baileys auth state encriptado
   keys_json  String?  @db.Text // Baileys signal keys encriptado (JSON de archivos pre-key, session, sender-key)
   ultimo_uso DateTime @default(now())
+  primer_envio_at               DateTime?
   ultima_desconexion_at         DateTime?
   ultima_desconexion_codigo     Int?
   ultima_desconexion_motivo     String?   @db.VarChar(200)
@@ -486,6 +487,24 @@ model wa_mensajes {
   @@index([estado])
   @@index([enviado_at])
   @@index([campana_id, estado])
+}
+
+// =============================================
+// WHATSAPP MASIVO — CONTACTOS BLOQUEADOS
+// =============================================
+
+model wa_contactos_bloqueados {
+  id             Int      @id @default(autoincrement())
+  usuario_id     Int?
+  // NULL = bloqueado globalmente para todos los promotores
+  numero         String   @db.VarChar(30)
+  motivo         String?  @db.VarChar(200)
+  // BLOQUEADO | OPT_OUT | NO_EXISTE | BOUNCE | MANUAL
+  origen         String   @default("MANUAL") @db.VarChar(20)
+  bloqueado_at   DateTime @default(now())
+
+  @@unique([usuario_id, numero])
+  @@index([numero])
 }
 
 // =============================================

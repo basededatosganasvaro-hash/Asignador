@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
-import { Smartphone, HelpCircle, Unplug } from "lucide-react";
+import { Smartphone, HelpCircle, Unplug, Clock, Flame } from "lucide-react";
 import { Alert } from "@/components/ui/Alert";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -22,6 +22,28 @@ interface WaStatus {
   numero_wa: string | null;
   ultimo_uso: string | null;
   activo_en_memoria: boolean;
+  warmup?: {
+    enWarmup: boolean;
+    primerEnvioAt: string | null;
+    diasTranscurridos: number | null;
+    limiteEfectivo: number;
+    enviadosHoy: number;
+    limiteDiarioMaduro: number;
+  };
+  ventana?: {
+    abierta: boolean;
+    horaInicio: number;
+    horaFin: number;
+    proximaAperturaEnMs: number;
+  };
+}
+
+function formatMsToHuman(ms: number): string {
+  const totalMin = Math.round(ms / 60000);
+  if (totalMin < 60) return `${totalMin} min`;
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  return m > 0 ? `${h}h ${m}min` : `${h}h`;
 }
 
 export default function WhatsAppPage() {
@@ -136,6 +158,52 @@ export default function WhatsAppPage() {
           Conecta tu WhatsApp para poder enviar mensajes masivos. Ve a &quot;Mi Asignacion&quot;,
           selecciona clientes y usa el boton &quot;Enviar WhatsApp Masivo&quot;.
         </Alert>
+      )}
+
+      {/* Banner warmup: periodo de calentamiento de cuenta nueva */}
+      {isConnected && status?.warmup?.enWarmup && (
+        <Alert variant="warning" className="mb-4" icon={<Flame className="w-4 h-4" />}>
+          <div>
+            <div className="font-semibold mb-1">Periodo de calentamiento</div>
+            <div className="text-xs space-y-0.5">
+              <div>
+                Hoy: <span className="font-bold">{status.warmup.enviadosHoy}</span>
+                {" / "}
+                <span className="font-bold">{status.warmup.limiteEfectivo}</span>
+                {" mensajes permitidos"}
+              </div>
+              <div className="text-amber-300/80">
+                Los primeros días enviamos pocos mensajes para que WhatsApp no bloquee tu número.
+                El límite sube a {status.warmup.limiteDiarioMaduro} cuando la cuenta madura (~3 días).
+              </div>
+            </div>
+          </div>
+        </Alert>
+      )}
+
+      {/* Banner ventana horaria cerrada */}
+      {isConnected && status?.ventana && !status.ventana.abierta && (
+        <Alert variant="info" className="mb-4" icon={<Clock className="w-4 h-4" />}>
+          <div>
+            <div className="font-semibold mb-1">Envíos pausados fuera de horario</div>
+            <div className="text-xs">
+              Las campañas solo envían entre las {String(status.ventana.horaInicio).padStart(2, "0")}:00
+              y las {String(status.ventana.horaFin).padStart(2, "0")}:00.
+              {status.ventana.proximaAperturaEnMs > 0 && (
+                <> Próxima apertura en <span className="font-bold">{formatMsToHuman(status.ventana.proximaAperturaEnMs)}</span>.</>
+              )}
+            </div>
+          </div>
+        </Alert>
+      )}
+
+      {/* Contador de envíos del día (cuenta madura) */}
+      {isConnected && status?.warmup && !status.warmup.enWarmup && (
+        <div className="mb-4 text-xs text-slate-500">
+          Enviados hoy: <span className="text-slate-300 font-medium">{status.warmup.enviadosHoy}</span>
+          {" / "}
+          <span className="text-slate-300 font-medium">{status.warmup.limiteEfectivo}</span>
+        </div>
       )}
 
       {/* Campanas activas */}

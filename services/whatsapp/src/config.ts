@@ -7,9 +7,16 @@ export const ANTI_SPAM_DEFAULTS = {
   burstMax: 12,          // máximo mensajes por ráfaga
   burstPauseMin: 120000, // 2 min pausa entre ráfagas
   burstPauseMax: 420000, // 7 min pausa
-  dailyLimit: 180,       // límite diario por número
+  dailyLimit: 180,       // límite diario por número (cuenta madura)
   maxConcurrentCampaigns: 30, // campañas enviando simultáneamente (global)
   perJidCooldownMs: 5 * 60 * 1000, // 5 min mínimo entre mensajes al mismo destino
+  // Warmup de cuentas nuevas: límite diario escalado por día desde primer envío
+  warmupDia1: 30,
+  warmupDia2: 60,
+  warmupDia3: 120,
+  // Ventana horaria de envío (hora local del servidor, Mexico)
+  ventanaHoraInicio: 9,  // envío permitido desde las 09:00
+  ventanaHoraFin: 20,    // envío bloqueado a partir de las 20:00
 };
 
 export type AntiSpamConfig = typeof ANTI_SPAM_DEFAULTS;
@@ -24,6 +31,11 @@ const KEY_MAP: Record<string, keyof AntiSpamConfig> = {
   wa_daily_limit: "dailyLimit",
   wa_max_campanas_concurrentes: "maxConcurrentCampaigns",
   wa_per_jid_cooldown_ms: "perJidCooldownMs",
+  wa_warmup_dia1: "warmupDia1",
+  wa_warmup_dia2: "warmupDia2",
+  wa_warmup_dia3: "warmupDia3",
+  wa_ventana_hora_inicio: "ventanaHoraInicio",
+  wa_ventana_hora_fin: "ventanaHoraFin",
 };
 
 /** Lee config anti-spam de BD, con fallback a defaults */
