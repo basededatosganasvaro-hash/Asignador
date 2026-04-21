@@ -8,6 +8,8 @@ export const ANTI_SPAM_DEFAULTS = {
   burstPauseMin: 120000, // 2 min pausa entre ráfagas
   burstPauseMax: 420000, // 7 min pausa
   dailyLimit: 180,       // límite diario por número
+  maxConcurrentCampaigns: 30, // campañas enviando simultáneamente (global)
+  perJidCooldownMs: 5 * 60 * 1000, // 5 min mínimo entre mensajes al mismo destino
 };
 
 export type AntiSpamConfig = typeof ANTI_SPAM_DEFAULTS;
@@ -20,6 +22,8 @@ const KEY_MAP: Record<string, keyof AntiSpamConfig> = {
   wa_burst_pause_min: "burstPauseMin",
   wa_burst_pause_max: "burstPauseMax",
   wa_daily_limit: "dailyLimit",
+  wa_max_campanas_concurrentes: "maxConcurrentCampaigns",
+  wa_per_jid_cooldown_ms: "perJidCooldownMs",
 };
 
 /** Lee config anti-spam de BD, con fallback a defaults */

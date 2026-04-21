@@ -1,21 +1,26 @@
 import { prisma } from "../lib/prisma.js";
 import { sessionManager } from "./session-manager.js";
 import { humanDelay, burstSize, burstPause, typingDelay, sleep, type AntiSpamOpts } from "../lib/anti-spam.js";
-import { loadAntiSpamConfig } from "../config.js";
-import { proto } from "@whiskeysockets/baileys";
+import { loadAntiSpamConfig, ANTI_SPAM_DEFAULTS } from "../config.js";
 
 interface QueueItem {
   campanaId: number;
   userId: number;
 }
 
-// Límite global de campañas enviando simultáneamente (para 60 promotores)
-const MAX_CONCURRENT_CAMPAIGNS = 30;
-
 class MessageQueue {
   private queues: Map<number, QueueItem[]> = new Map(); // userId → queue
   private processing: Set<number> = new Set(); // userIds currently processing
   private activeCampaigns = 0; // global counter of campaigns currently sending
+
+  // Contador diario en memoria: userId → { fecha ISO, sent }
+  private dailyCounters: Map<number, { fecha: string; sent: number }> = new Map();
+
+  // Último envío por JID (para rate-limit por contacto): "userId:jid" → timestamp ms
+  private lastSendByJid: Map<string, number> = new Map();
+
+  // Espera por cupo global: resolvers que se llaman cuando se libera un slot
+  private slotWaiters: Array<() => void> = [];
 
   /** Encolar una campaña para envío */
   async enqueue(campanaId: number, userId: number): Promise<void> {
@@ -24,7 +29,6 @@ class MessageQueue {
     }
     this.queues.get(userId)!.push({ campanaId, userId });
 
-    // Si no está procesando, arrancar
     if (!this.processing.has(userId)) {
       this.processCampaign(userId);
     }
@@ -60,7 +64,6 @@ class MessageQueue {
       data: { estado: "CANCELADA" },
     });
 
-    // Marcar mensajes pendientes como cancelados
     await prisma.wa_mensajes.updateMany({
       where: {
         campana_id: campanaId,
@@ -72,12 +75,9 @@ class MessageQueue {
 
   /**
    * Recuperar campañas huérfanas al iniciar el servicio.
-   * Campañas en estado ENVIANDO o EN_COLA que quedaron sin procesar
-   * cuando el servicio se reinició.
    */
   async recoverOrphanedCampaigns(): Promise<void> {
     try {
-      // Campañas ENVIANDO → marcar como pausadas (ya no se están enviando)
       const enviando = await prisma.wa_campanas.findMany({
         where: { estado: "ENVIANDO" },
         select: { id: true, usuario_id: true },
@@ -90,7 +90,6 @@ class MessageQueue {
           data: { estado: "PAUSADA" },
         });
 
-        // Revertir mensajes que quedaron en ENVIANDO a PENDIENTE
         await prisma.wa_mensajes.updateMany({
           where: {
             campana_id: { in: enviandoIds },
@@ -102,7 +101,6 @@ class MessageQueue {
         console.log(`[MessageQueue] Recovered ${enviando.length} orphaned ENVIANDO campaigns → PAUSADA`);
       }
 
-      // Campañas EN_COLA → intentar re-encolar si el usuario tiene sesión activa
       const enCola = await prisma.wa_campanas.findMany({
         where: { estado: "EN_COLA" },
         select: { id: true, usuario_id: true },
@@ -114,7 +112,6 @@ class MessageQueue {
           await this.enqueue(campana.id, campana.usuario_id);
           reEnqueued++;
         } else {
-          // No hay sesión → pausar
           await prisma.wa_campanas.update({
             where: { id: campana.id },
             data: { estado: "PAUSADA" },
@@ -130,14 +127,96 @@ class MessageQueue {
     }
   }
 
-  /** Obtener estadísticas de la cola */
+  /** Estadísticas de la cola — expuesto por /health */
   getStats() {
     return {
       activeCampaigns: this.activeCampaigns,
-      maxConcurrent: MAX_CONCURRENT_CAMPAIGNS,
+      maxConcurrent: ANTI_SPAM_DEFAULTS.maxConcurrentCampaigns, // informativo; el real se lee dinámico
       processingUsers: this.processing.size,
       queuedItems: Array.from(this.queues.values()).reduce((sum, q) => sum + q.length, 0),
+      waitingForSlot: this.slotWaiters.length,
+      dailyCounters: this.dailyCounters.size,
     };
+  }
+
+  // ─── Slot global (notifier event-driven) ───
+
+  private async acquireSlot(maxConcurrent: number): Promise<void> {
+    if (this.activeCampaigns < maxConcurrent) {
+      this.activeCampaigns++;
+      return;
+    }
+    await new Promise<void>((resolve) => {
+      this.slotWaiters.push(resolve);
+    });
+    // al ser resuelto, el releaser ya incrementó activeCampaigns por nosotros
+  }
+
+  private releaseSlot(): void {
+    const next = this.slotWaiters.shift();
+    if (next) {
+      // transferimos el slot directamente al waiter (sin decrementar/incrementar)
+      next();
+    } else {
+      this.activeCampaigns--;
+    }
+  }
+
+  // ─── Contador diario en memoria ───
+
+  private todayStr(): string {
+    const d = new Date();
+    return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+  }
+
+  private async getDailySent(userId: number): Promise<number> {
+    const today = this.todayStr();
+    const cached = this.dailyCounters.get(userId);
+    if (cached && cached.fecha === today) return cached.sent;
+
+    // Hidrata desde BD (al arrancar o nuevo día)
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    const sent = await prisma.wa_mensajes.count({
+      where: {
+        campana: { usuario_id: userId },
+        estado: { in: ["ENVIADO", "ENTREGADO", "LEIDO"] },
+        enviado_at: { gte: hoy },
+      },
+    });
+    this.dailyCounters.set(userId, { fecha: today, sent });
+    return sent;
+  }
+
+  private incrementDailySent(userId: number): number {
+    const today = this.todayStr();
+    const cached = this.dailyCounters.get(userId);
+    if (!cached || cached.fecha !== today) {
+      this.dailyCounters.set(userId, { fecha: today, sent: 1 });
+      return 1;
+    }
+    cached.sent++;
+    return cached.sent;
+  }
+
+  // ─── Rate-limit por JID ───
+
+  private canSendToJid(userId: number, jid: string, cooldownMs: number): boolean {
+    const key = `${userId}:${jid}`;
+    const last = this.lastSendByJid.get(key);
+    if (!last) return true;
+    return Date.now() - last >= cooldownMs;
+  }
+
+  private markJidSent(userId: number, jid: string): void {
+    this.lastSendByJid.set(`${userId}:${jid}`, Date.now());
+    // Poda cada ~500 inserts para evitar crecer indefinido
+    if (this.lastSendByJid.size > 5000) {
+      const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+      for (const [k, t] of this.lastSendByJid) {
+        if (t < cutoff) this.lastSendByJid.delete(k);
+      }
+    }
   }
 
   /** Procesar cola de un usuario */
@@ -146,18 +225,14 @@ class MessageQueue {
 
     try {
       while (this.queues.get(userId)?.length) {
-        // Esperar si se alcanzó el límite global de concurrencia
-        while (this.activeCampaigns >= MAX_CONCURRENT_CAMPAIGNS) {
-          console.log(`[MessageQueue] Global limit reached (${this.activeCampaigns}/${MAX_CONCURRENT_CAMPAIGNS}), user ${userId} waiting...`);
-          await sleep(5000);
-        }
+        const antiSpam = await loadAntiSpamConfig();
+        await this.acquireSlot(antiSpam.maxConcurrentCampaigns);
 
         const item = this.queues.get(userId)!.shift()!;
-        this.activeCampaigns++;
         try {
-          await this.sendCampaign(item);
+          await this.sendCampaign(item, antiSpam);
         } finally {
-          this.activeCampaigns--;
+          this.releaseSlot();
         }
       }
     } finally {
@@ -167,14 +242,10 @@ class MessageQueue {
   }
 
   /** Enviar todos los mensajes de una campaña */
-  private async sendCampaign(item: QueueItem): Promise<void> {
+  private async sendCampaign(item: QueueItem, antiSpam: Awaited<ReturnType<typeof loadAntiSpamConfig>>): Promise<void> {
     const { campanaId, userId } = item;
-
-    // Cargar config anti-spam dinámica de BD
-    const antiSpam = await loadAntiSpamConfig();
     const spamOpts: AntiSpamOpts = antiSpam;
 
-    // Verificar socket activo
     const sock = sessionManager.getSocket(userId);
     if (!sock) {
       await prisma.wa_campanas.update({
@@ -185,41 +256,28 @@ class MessageQueue {
       return;
     }
 
-    // Actualizar estado de campaña
     await prisma.wa_campanas.update({
       where: { id: campanaId },
       data: { estado: "ENVIANDO" },
     });
 
-    // Obtener mensajes pendientes
     const mensajes = await prisma.wa_mensajes.findMany({
       where: { campana_id: campanaId, estado: "PENDIENTE" },
       orderBy: { id: "asc" },
     });
 
-    // Verificar límite diario
-    const hoy = new Date();
-    hoy.setHours(0, 0, 0, 0);
-    const enviadosHoy = await prisma.wa_mensajes.count({
-      where: {
-        campana: { usuario_id: userId },
-        OR: [
-          { enviado_at: { gte: hoy }, estado: { in: ["ENVIADO", "ENTREGADO", "LEIDO"] } },
-          { estado: { in: ["PENDIENTE", "ENVIANDO"] }, created_at: { gte: hoy } },
-        ],
-      },
-    });
+    // Verificar límite diario (usando contador en memoria, fuente de verdad ante concurrencia)
+    const enviadosHoy = await this.getDailySent(userId);
 
     if (enviadosHoy >= antiSpam.dailyLimit) {
       await prisma.wa_campanas.update({
         where: { id: campanaId },
         data: { estado: "PAUSADA" },
       });
-      console.log(`[MessageQueue] Daily limit reached for user ${userId}`);
+      console.log(`[MessageQueue] Daily limit reached for user ${userId} (${enviadosHoy}/${antiSpam.dailyLimit})`);
       return;
     }
 
-    let remaining = antiSpam.dailyLimit - enviadosHoy;
     let burstCount = 0;
     let currentBurstSize = burstSize(spamOpts);
     let msgIndex = 0;
@@ -227,7 +285,7 @@ class MessageQueue {
     const MAX_CONSECUTIVE_ERRORS = 5;
 
     for (const msg of mensajes) {
-      // Check campaña still active (every 5 messages to reduce DB queries)
+      // Check campaña still active (every 5 messages)
       if (msgIndex % 5 === 0) {
         const campana = await prisma.wa_campanas.findUnique({
           where: { id: campanaId },
@@ -239,8 +297,9 @@ class MessageQueue {
       }
       msgIndex++;
 
-      // Check daily limit
-      if (remaining <= 0) {
+      // Check daily limit contra contador en memoria
+      const currentDaily = await this.getDailySent(userId);
+      if (currentDaily >= antiSpam.dailyLimit) {
         await prisma.wa_campanas.update({
           where: { id: campanaId },
           data: { estado: "PAUSADA" },
@@ -249,7 +308,6 @@ class MessageQueue {
         break;
       }
 
-      // Detener si hay muchos errores consecutivos (posible ban/desconexión)
       if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
         await prisma.wa_campanas.update({
           where: { id: campanaId },
@@ -268,17 +326,31 @@ class MessageQueue {
         currentBurstSize = burstSize(spamOpts);
       }
 
-      // Send message
+      const jid = `${msg.numero_destino}@s.whatsapp.net`;
+
+      // Rate-limit por JID — evita re-enviar al mismo número dentro del cooldown
+      if (!this.canSendToJid(userId, jid, antiSpam.perJidCooldownMs)) {
+        await prisma.wa_mensajes.update({
+          where: { id: msg.id },
+          data: {
+            estado: "FALLIDO",
+            error_detalle: `Rate-limit por JID: último envío dentro de ${Math.round(antiSpam.perJidCooldownMs / 60000)}min`,
+          },
+        });
+        await prisma.wa_campanas.update({
+          where: { id: campanaId },
+          data: { fallidos: { increment: 1 } },
+        });
+        continue;
+      }
+
       try {
         await prisma.wa_mensajes.update({
           where: { id: msg.id },
           data: { estado: "ENVIANDO" },
         });
 
-        // Format phone for WhatsApp
-        const jid = `${msg.numero_destino}@s.whatsapp.net`;
-
-        // Simulate typing (non-critical — don't block send on failure)
+        // Simulate typing (non-critical)
         try {
           await sock.presenceSubscribe(jid);
           await sleep(1000);
@@ -289,7 +361,6 @@ class MessageQueue {
           console.warn(`[MessageQueue] Presence simulation failed for ${msg.numero_destino}, proceeding with send`);
         }
 
-        // Send
         const sent = await sock.sendMessage(jid, { text: msg.mensaje_texto });
 
         await prisma.wa_mensajes.update({
@@ -301,20 +372,18 @@ class MessageQueue {
           },
         });
 
-        // Update campaign counters
         await prisma.wa_campanas.update({
           where: { id: campanaId },
           data: { enviados: { increment: 1 } },
         });
 
-        // Reset idle timer
+        this.incrementDailySent(userId);
+        this.markJidSent(userId, jid);
         sessionManager.resetIdleTimer(userId);
 
-        remaining--;
         burstCount++;
-        consecutiveErrors = 0; // Reset on success
+        consecutiveErrors = 0;
 
-        // Human delay before next message
         const delay = humanDelay(msg.mensaje_texto.length, spamOpts);
         console.log(`[MessageQueue] Sent to ${msg.numero_destino}, next in ${Math.round(delay / 1000)}s`);
         await sleep(delay);
@@ -338,13 +407,12 @@ class MessageQueue {
       }
     }
 
-    // Finalize campaign
+    // Finalize
     const campana = await prisma.wa_campanas.findUnique({
       where: { id: campanaId },
       select: { estado: true },
     });
     if (campana?.estado === "ENVIANDO") {
-      // Verificar si hay mensajes pendientes restantes
       const pendientes = await prisma.wa_mensajes.count({
         where: { campana_id: campanaId, estado: "PENDIENTE" },
       });

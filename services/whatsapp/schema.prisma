@@ -361,8 +361,12 @@ model wa_sesiones {
   // DESCONECTADO | CONECTANDO | CONECTADO | QR_PENDIENTE
   numero_wa  String?  @db.VarChar(30)
   creds_json String?  // Baileys auth state encriptado
-  keys_json  String?  // Baileys signal keys encriptado
+  keys_json  String?  // Baileys signal keys encriptado (JSON de archivos pre-key, session, sender-key)
   ultimo_uso DateTime @default(now())
+  ultima_desconexion_at        DateTime?
+  ultima_desconexion_codigo    Int?
+  ultima_desconexion_motivo    String?  @db.VarChar(200)
+  desconexiones_sospechosas_24h Int     @default(0)
   created_at DateTime @default(now())
   updated_at DateTime @default(now()) @updatedAt
 
