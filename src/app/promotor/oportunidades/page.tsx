@@ -976,7 +976,7 @@ function OportunidadesContent() {
   ];
 
   return (
-    <div className="flex flex-col" style={{ height: "calc(100vh - 64px)" }}>
+    <div className="flex flex-col">
       {confetti && <ConfettiEffect onDone={() => setConfetti(false)} />}
 
       {/* Header */}
@@ -1093,7 +1093,7 @@ function OportunidadesContent() {
       )}
 
       {/* ═══════ FILTROS + GRID ═══════ */}
-      <div className="bg-surface rounded-xl border border-slate-800/60 overflow-hidden flex-1 flex flex-col min-h-0">
+      <div className="bg-surface rounded-xl border border-slate-800/60 overflow-hidden flex flex-col">
         {/* Barra superior: busqueda + acciones */}
         <div className="flex items-center gap-3 px-4 py-2 bg-slate-800/30 border-b border-slate-800/40 shrink-0">
           <div className="relative flex-1 max-w-sm">
@@ -1137,21 +1137,19 @@ function OportunidadesContent() {
             <p>Sin oportunidades en esta vista</p>
           </div>
         ) : (
-          <div className="flex-1 min-h-0">
-            <DataTable
-              data={filtered}
-              columns={columns}
-              pageSize={25}
-              pageSizeOptions={[25, 50, 100]}
-              enableRowSelection={true}
-              rowSelection={rowSelection}
-              onRowSelectionChange={setRowSelection}
-              columnVisibility={columnVisibility}
-              onColumnVisibilityChange={handleColumnVisibilityChange}
-              getRowId={(row) => String(row.id)}
-              className="border-0 rounded-none h-full"
-            />
-          </div>
+          <DataTable
+            data={filtered}
+            columns={columns}
+            pageSize={25}
+            pageSizeOptions={[25, 50, 100]}
+            enableRowSelection={true}
+            rowSelection={rowSelection}
+            onRowSelectionChange={setRowSelection}
+            columnVisibility={columnVisibility}
+            onColumnVisibilityChange={handleColumnVisibilityChange}
+            getRowId={(row) => String(row.id)}
+            className="border-0 rounded-none"
+          />
         )}
       </div>
 
