@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Database, ClipboardList, CheckCircle, Users } from "lucide-react";
 import { ColumnDef } from "@tanstack/react-table";
 import StatCard from "@/components/ui/StatCard";
@@ -7,42 +7,29 @@ import { DataTable } from "@/components/ui/DataTable";
 import { Spinner } from "@/components/ui/Spinner";
 import { Alert } from "@/components/ui/Alert";
 
+interface Etapa {
+  id: number;
+  nombre: string;
+  orden: number;
+  color: string;
+}
+
+interface EquipoRow {
+  id: number;
+  nombre: string;
+  total: number;
+  etapas: Record<number, number>;
+}
+
 interface DashboardData {
   totalClientes: number;
   clientesAsignados: number;
   clientesDisponibles: number;
   totalPromotores: number;
   lotesHoy: number;
-  porPromotor: {
-    id: number;
-    nombre: string;
-    total_lotes: number;
-    total_asignados: number;
-    oportunidades_activas: number;
-  }[];
+  etapas: Etapa[];
+  porEquipo: EquipoRow[];
 }
-
-type PromotorRow = DashboardData["porPromotor"][number];
-
-const columns: ColumnDef<PromotorRow, unknown>[] = [
-  { accessorKey: "nombre", header: "Promotor" },
-  {
-    accessorKey: "total_lotes",
-    header: "Lotes",
-    cell: ({ getValue }) => <span className="text-center block">{getValue() as number}</span>,
-    meta: { align: "center" },
-  },
-  {
-    accessorKey: "total_asignados",
-    header: "Asignados",
-    cell: ({ getValue }) => <span className="text-center block">{getValue() as number}</span>,
-  },
-  {
-    accessorKey: "oportunidades_activas",
-    header: "Activas",
-    cell: ({ getValue }) => <span className="text-center block">{getValue() as number}</span>,
-  },
-];
 
 export default function AdminDashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
@@ -64,6 +51,35 @@ export default function AdminDashboard() {
         setLoading(false);
       });
   }, []);
+
+  const columns = useMemo<ColumnDef<EquipoRow, unknown>[]>(() => {
+    if (!data) return [];
+    const etapaCols: ColumnDef<EquipoRow, unknown>[] = data.etapas.map((e) => ({
+      id: `etapa_${e.id}`,
+      header: e.nombre,
+      accessorFn: (row) => row.etapas[e.id] ?? 0,
+      cell: ({ getValue }) => (
+        <span className="text-center block" style={{ color: e.color }}>
+          {getValue() as number}
+        </span>
+      ),
+      meta: { align: "center" },
+    }));
+    return [
+      { accessorKey: "nombre", header: "Equipo" },
+      ...etapaCols,
+      {
+        accessorKey: "total",
+        header: "Total",
+        cell: ({ getValue }) => (
+          <span className="text-center block font-semibold text-slate-100">
+            {getValue() as number}
+          </span>
+        ),
+        meta: { align: "center" },
+      },
+    ];
+  }, [data]);
 
   if (loading) {
     return (
@@ -121,10 +137,10 @@ export default function AdminDashboard() {
       </div>
 
       <h2 className="text-lg font-semibold text-slate-100 mb-3">
-        Resumen por Promotor
+        Datos trabajados hoy por equipo
       </h2>
       <DataTable
-        data={data?.porPromotor ?? []}
+        data={data?.porEquipo ?? []}
         columns={columns}
         pageSize={10}
         pageSizeOptions={[10, 25]}
