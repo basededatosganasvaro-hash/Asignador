@@ -34,11 +34,20 @@ export async function GET() {
       select: { id: true, nombre: true, orden: true, color: true },
     }),
 
-    // Oportunidades con movimiento hoy, agrupadas por equipo y etapa actual
+    // Oportunidades con movimiento hoy, agrupadas por equipo, integrante y etapa actual
     prisma.$queryRaw<
-      { equipo_id: number; equipo_nombre: string; etapa_id: number; total: bigint }[]
+      {
+        equipo_id: number;
+        equipo_nombre: string;
+        usuario_id: number;
+        usuario_nombre: string;
+        etapa_id: number;
+        total: bigint;
+      }[]
     >`
-      SELECT e.id AS equipo_id, e.nombre AS equipo_nombre, o.etapa_id, COUNT(DISTINCT o.id) AS total
+      SELECT e.id AS equipo_id, e.nombre AS equipo_nombre,
+             u.id AS usuario_id, u.nombre AS usuario_nombre,
+             o.etapa_id, COUNT(DISTINCT o.id) AS total
       FROM oportunidades o
       JOIN usuarios u ON u.id = o.usuario_id
       JOIN equipos e ON e.id = u.equipo_id
@@ -51,22 +60,42 @@ export async function GET() {
             AND h.created_at >= ${startMx}
             AND h.created_at < ${endMx}
         )
-      GROUP BY e.id, e.nombre, o.etapa_id
+      GROUP BY e.id, e.nombre, u.id, u.nombre, o.etapa_id
     `,
   ]);
 
-  const porEquipoMap = new Map<number, { id: number; nombre: string; total: number; etapas: Record<number, number> }>();
+  type Integrante = { id: number; nombre: string; total: number; etapas: Record<number, number> };
+  type Equipo = { id: number; nombre: string; total: number; etapas: Record<number, number>; integrantes: Integrante[] };
+
+  const porEquipoMap = new Map<number, Equipo>();
+  const integrantesMap = new Map<string, Integrante>();
+
   for (const row of porEquipoRaw) {
     const n = Number(row.total);
-    const current = porEquipoMap.get(row.equipo_id) ?? {
+    const equipo = porEquipoMap.get(row.equipo_id) ?? {
       id: row.equipo_id,
       nombre: row.equipo_nombre,
       total: 0,
       etapas: {},
+      integrantes: [],
     };
-    current.etapas[row.etapa_id] = (current.etapas[row.etapa_id] ?? 0) + n;
-    current.total += n;
-    porEquipoMap.set(row.equipo_id, current);
+    equipo.etapas[row.etapa_id] = (equipo.etapas[row.etapa_id] ?? 0) + n;
+    equipo.total += n;
+    porEquipoMap.set(row.equipo_id, equipo);
+
+    const key = `${row.equipo_id}:${row.usuario_id}`;
+    let integrante = integrantesMap.get(key);
+    if (!integrante) {
+      integrante = { id: row.usuario_id, nombre: row.usuario_nombre, total: 0, etapas: {} };
+      integrantesMap.set(key, integrante);
+      equipo.integrantes.push(integrante);
+    }
+    integrante.etapas[row.etapa_id] = (integrante.etapas[row.etapa_id] ?? 0) + n;
+    integrante.total += n;
+  }
+
+  for (const eq of porEquipoMap.values()) {
+    eq.integrantes.sort((a, b) => b.total - a.total);
   }
   const porEquipo = Array.from(porEquipoMap.values()).sort((a, b) => b.total - a.total);
 

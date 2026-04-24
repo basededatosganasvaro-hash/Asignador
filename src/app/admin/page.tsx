@@ -1,9 +1,7 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
-import { Database, ClipboardList, CheckCircle, Users } from "lucide-react";
-import { ColumnDef } from "@tanstack/react-table";
+import { Fragment, useEffect, useState } from "react";
+import { Database, ClipboardList, CheckCircle, Users, ChevronRight, ChevronDown } from "lucide-react";
 import StatCard from "@/components/ui/StatCard";
-import { DataTable } from "@/components/ui/DataTable";
 import { Spinner } from "@/components/ui/Spinner";
 import { Alert } from "@/components/ui/Alert";
 
@@ -14,11 +12,19 @@ interface Etapa {
   color: string;
 }
 
+interface Integrante {
+  id: number;
+  nombre: string;
+  total: number;
+  etapas: Record<number, number>;
+}
+
 interface EquipoRow {
   id: number;
   nombre: string;
   total: number;
   etapas: Record<number, number>;
+  integrantes: Integrante[];
 }
 
 interface DashboardData {
@@ -35,6 +41,7 @@ export default function AdminDashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     fetch("/api/admin/dashboard")
@@ -52,34 +59,14 @@ export default function AdminDashboard() {
       });
   }, []);
 
-  const columns = useMemo<ColumnDef<EquipoRow, unknown>[]>(() => {
-    if (!data) return [];
-    const etapaCols: ColumnDef<EquipoRow, unknown>[] = data.etapas.map((e) => ({
-      id: `etapa_${e.id}`,
-      header: e.nombre,
-      accessorFn: (row) => row.etapas[e.id] ?? 0,
-      cell: ({ getValue }) => (
-        <span className="text-center block" style={{ color: e.color }}>
-          {getValue() as number}
-        </span>
-      ),
-      meta: { align: "center" },
-    }));
-    return [
-      { accessorKey: "nombre", header: "Equipo" },
-      ...etapaCols,
-      {
-        accessorKey: "total",
-        header: "Total",
-        cell: ({ getValue }) => (
-          <span className="text-center block font-semibold text-slate-100">
-            {getValue() as number}
-          </span>
-        ),
-        meta: { align: "center" },
-      },
-    ];
-  }, [data]);
+  const toggle = (id: number) => {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   if (loading) {
     return (
@@ -97,6 +84,9 @@ export default function AdminDashboard() {
     );
   }
 
+  const etapas = data?.etapas ?? [];
+  const equipos = data?.porEquipo ?? [];
+
   return (
     <div>
       <h1 className="font-display text-xl font-bold text-slate-100 mb-6">
@@ -104,48 +94,88 @@ export default function AdminDashboard() {
       </h1>
 
       <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 mb-6">
-        <StatCard
-          title="Total Clientes"
-          value={data?.totalClientes.toLocaleString() ?? 0}
-          icon={<Database className="w-5 h-5" />}
-          color="blue"
-        />
-        <StatCard
-          title="Asignados"
-          value={data?.clientesAsignados.toLocaleString() ?? 0}
-          icon={<ClipboardList className="w-5 h-5" />}
-          color="green"
-        />
-        <StatCard
-          title="Disponibles"
-          value={data?.clientesDisponibles.toLocaleString() ?? 0}
-          icon={<CheckCircle className="w-5 h-5" />}
-          color="orange"
-        />
-        <StatCard
-          title="Promotores Activos"
-          value={data?.totalPromotores ?? 0}
-          icon={<Users className="w-5 h-5" />}
-          color="purple"
-        />
-        <StatCard
-          title="Lotes Hoy"
-          value={data?.lotesHoy ?? 0}
-          icon={<ClipboardList className="w-5 h-5" />}
-          color="blue"
-        />
+        <StatCard title="Total Clientes" value={data?.totalClientes.toLocaleString() ?? 0} icon={<Database className="w-5 h-5" />} color="blue" />
+        <StatCard title="Asignados" value={data?.clientesAsignados.toLocaleString() ?? 0} icon={<ClipboardList className="w-5 h-5" />} color="green" />
+        <StatCard title="Disponibles" value={data?.clientesDisponibles.toLocaleString() ?? 0} icon={<CheckCircle className="w-5 h-5" />} color="orange" />
+        <StatCard title="Promotores Activos" value={data?.totalPromotores ?? 0} icon={<Users className="w-5 h-5" />} color="purple" />
+        <StatCard title="Lotes Hoy" value={data?.lotesHoy ?? 0} icon={<ClipboardList className="w-5 h-5" />} color="blue" />
       </div>
 
       <h2 className="text-lg font-semibold text-slate-100 mb-3">
         Datos trabajados hoy por equipo
       </h2>
-      <DataTable
-        data={data?.porEquipo ?? []}
-        columns={columns}
-        pageSize={10}
-        pageSizeOptions={[10, 25]}
-        getRowId={(row) => String(row.id)}
-      />
+
+      <div className="bg-surface rounded-xl border border-slate-800/60 overflow-hidden">
+        <div className="overflow-auto scrollbar-thin">
+          <table className="w-full text-sm">
+            <thead className="bg-slate-800/40 border-b border-slate-800/40">
+              <tr>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider w-8"></th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Equipo</th>
+                {etapas.map((e) => (
+                  <th key={e.id} className="px-4 py-3 text-center text-xs font-semibold text-slate-400 uppercase tracking-wider whitespace-nowrap">
+                    {e.nombre}
+                  </th>
+                ))}
+                <th className="px-4 py-3 text-center text-xs font-semibold text-slate-400 uppercase tracking-wider">Total</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-800/40">
+              {equipos.length === 0 ? (
+                <tr>
+                  <td colSpan={etapas.length + 3} className="py-16 text-center text-slate-500">
+                    Sin movimiento hoy
+                  </td>
+                </tr>
+              ) : (
+                equipos.map((eq) => {
+                  const isOpen = expanded.has(eq.id);
+                  return (
+                    <Fragment key={`eq-${eq.id}`}>
+                      <tr
+                        className="hover:bg-surface-hover transition-colors cursor-pointer"
+                        onClick={() => toggle(eq.id)}
+                      >
+                        <td className="px-4 py-3 text-slate-400">
+                          {isOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                        </td>
+                        <td className="px-4 py-3 text-slate-100 font-medium">{eq.nombre}</td>
+                        {etapas.map((e) => (
+                          <td key={e.id} className="px-4 py-3 text-center" style={{ color: e.color }}>
+                            {eq.etapas[e.id] ?? 0}
+                          </td>
+                        ))}
+                        <td className="px-4 py-3 text-center font-semibold text-slate-100">{eq.total}</td>
+                      </tr>
+                      {isOpen &&
+                        (eq.integrantes.length === 0 ? (
+                          <tr className="bg-slate-900/30">
+                            <td colSpan={etapas.length + 3} className="px-4 py-3 text-center text-xs text-slate-500">
+                              Sin integrantes con movimiento
+                            </td>
+                          </tr>
+                        ) : (
+                          eq.integrantes.map((it) => (
+                            <tr key={`u-${it.id}`} className="bg-slate-900/30">
+                              <td></td>
+                              <td className="px-4 py-2 pl-10 text-slate-300 text-xs">{it.nombre}</td>
+                              {etapas.map((e) => (
+                                <td key={e.id} className="px-4 py-2 text-center text-xs" style={{ color: e.color }}>
+                                  {it.etapas[e.id] ?? 0}
+                                </td>
+                              ))}
+                              <td className="px-4 py-2 text-center text-xs font-medium text-slate-200">{it.total}</td>
+                            </tr>
+                          ))
+                        ))}
+                    </Fragment>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
 }
