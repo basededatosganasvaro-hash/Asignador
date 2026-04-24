@@ -204,8 +204,29 @@ class MessageQueue {
   // ─── Contador diario ───
 
   private todayStr(): string {
-    const d = new Date();
-    return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+    // Siempre en zona México, independiente de la TZ del contenedor.
+    const parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "America/Mexico_City",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).formatToParts(new Date());
+    const y = parts.find((p) => p.type === "year")?.value;
+    const m = parts.find((p) => p.type === "month")?.value;
+    const d = parts.find((p) => p.type === "day")?.value;
+    return `${y}-${m}-${d}`;
+  }
+
+  /** Hora actual (0-23) en zona México, sin depender de la TZ del contenedor. */
+  private mxHour(): number {
+    const h = new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/Mexico_City",
+      hour: "2-digit",
+      hour12: false,
+    }).format(new Date());
+    // "en-US" con hour12:false puede devolver "24" a medianoche; normalizar a 0.
+    const n = parseInt(h, 10);
+    return n === 24 ? 0 : n;
   }
 
   /** Expone info de warmup/ventana/daily para UI */
@@ -330,16 +351,30 @@ class MessageQueue {
   // ─── Ventana horaria ───
 
   private isWithinSendingWindow(cfg: AntiSpamConfig): boolean {
-    const hour = new Date().getHours();
+    const hour = this.mxHour();
     return hour >= cfg.ventanaHoraInicio && hour < cfg.ventanaHoraFin;
   }
 
   private msUntilNextWindow(cfg: AntiSpamConfig): number {
+    // Minutos desde medianoche en hora México.
     const now = new Date();
-    const target = new Date(now);
-    target.setHours(cfg.ventanaHoraInicio, 0, 0, 0);
-    if (target.getTime() <= now.getTime()) target.setDate(target.getDate() + 1);
-    return target.getTime() - now.getTime();
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/Mexico_City",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+    }).formatToParts(now);
+    const hRaw = parseInt(parts.find((p) => p.type === "hour")?.value ?? "0", 10);
+    const h = hRaw === 24 ? 0 : hRaw;
+    const m = parseInt(parts.find((p) => p.type === "minute")?.value ?? "0", 10);
+    const s = parseInt(parts.find((p) => p.type === "second")?.value ?? "0", 10);
+    const msDesdeMedianocheMx = ((h * 60 + m) * 60 + s) * 1000;
+    const msInicioVentana = cfg.ventanaHoraInicio * 60 * 60 * 1000;
+    const DIA = 24 * 60 * 60 * 1000;
+    let diff = msInicioVentana - msDesdeMedianocheMx;
+    if (diff <= 0) diff += DIA;
+    return diff;
   }
 
   // ─── Contactos bloqueados ───
