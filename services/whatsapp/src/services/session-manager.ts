@@ -125,6 +125,7 @@ class SessionManager {
 
           const noReconnectCodes = [
             DisconnectReason.loggedOut,     // 401
+            DisconnectReason.forbidden,     // 403 — creds rechazadas por WA
             DisconnectReason.timedOut,      // 408
             409,                            // Conflict
           ];
@@ -137,7 +138,10 @@ class SessionManager {
             setTimeout(() => this.connect(userId), 5000 + jitter);
           } else {
             await this.upsertSession(userId, "DESCONECTADO");
-            if (statusCode === DisconnectReason.loggedOut) {
+            if (
+              statusCode === DisconnectReason.loggedOut ||
+              statusCode === DisconnectReason.forbidden
+            ) {
               await this.clearCreds(userId, sessionDir);
             }
           }
