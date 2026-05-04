@@ -6,6 +6,20 @@ import sessionsRouter from "./routes/sessions.js";
 import campaignsRouter from "./routes/campaigns.js";
 import { messageQueue } from "./services/message-queue.js";
 
+// Handlers globales: una promesa colgada de Baileys (típicamente Boom 408
+// "Timed Out" desde getUSyncDevices después de un disconnect) NO debe matar
+// al servicio entero, que atiende a todos los usuarios.
+process.on("unhandledRejection", (reason) => {
+  const err = reason as { message?: string; output?: { statusCode?: number } } | undefined;
+  console.error(
+    `[WA Service] unhandledRejection: code=${err?.output?.statusCode ?? "?"} msg=${err?.message ?? String(reason)}`,
+  );
+});
+
+process.on("uncaughtException", (err) => {
+  console.error("[WA Service] uncaughtException:", err?.message ?? err);
+});
+
 const app = express();
 
 app.use(express.json());

@@ -124,10 +124,11 @@ class SessionManager {
           this.interceptedUsers.delete(userId);
 
           const noReconnectCodes = [
-            DisconnectReason.loggedOut,     // 401
-            DisconnectReason.forbidden,     // 403 — creds rechazadas por WA
-            DisconnectReason.timedOut,      // 408
-            409,                            // Conflict
+            DisconnectReason.loggedOut,            // 401
+            DisconnectReason.forbidden,            // 403 — creds rechazadas por WA
+            DisconnectReason.timedOut,             // 408
+            409,                                   // Conflict
+            DisconnectReason.connectionReplaced,   // 440 — otra sesión tomó el slot
           ];
           const shouldReconnect = statusCode === undefined
             || !noReconnectCodes.includes(statusCode);
@@ -143,6 +144,16 @@ class SessionManager {
               statusCode === DisconnectReason.forbidden
             ) {
               await this.clearCreds(userId, sessionDir);
+            }
+            // 440: hay otra sesión activa con las mismas creds (WA Web/Desktop
+            // del usuario, u otra instancia del servicio). Reconectar en loop
+            // solo lo vuelve a expulsar — el usuario debe cerrar la otra sesión
+            // y volver a conectar manualmente.
+            if (statusCode === DisconnectReason.connectionReplaced) {
+              console.warn(
+                `[SessionManager] user=${userId} 440 connectionReplaced — abortando reconexión. ` +
+                `Cerrar otras sesiones del número y reconectar manualmente.`,
+              );
             }
           }
         }
