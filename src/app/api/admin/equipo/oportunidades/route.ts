@@ -34,12 +34,12 @@ export async function GET() {
   if (oportunidades.length === 0) return NextResponse.json([]);
 
   const clienteIds = oportunidades.map((o) => o.cliente_id).filter((id): id is number => id !== null);
-  const clienteMap: Record<number, { id: number; nombres: string | null; convenio: string | null }> = {};
+  const clienteMap: Record<number, { id: number; nombres: string | null; nombre: string | null; convenio: string | null }> = {};
 
   if (clienteIds.length > 0) {
     const clientes = await prismaClientes.clientes.findMany({
       where: { id: { in: clienteIds } },
-      select: { id: true, nombres: true, convenio: true },
+      select: { id: true, nombres: true, nombre: true, convenio: true },
     });
     for (const c of clientes) clienteMap[c.id] = c;
   }
@@ -47,7 +47,7 @@ export async function GET() {
   const result = oportunidades.map((op) => {
     let nombres = "—", convenio = "—";
     if (op.cliente_id !== null) {
-      nombres = clienteMap[op.cliente_id]?.nombres ?? "—";
+      nombres = clienteMap[op.cliente_id]?.nombres ?? clienteMap[op.cliente_id]?.nombre ?? "—";
       convenio = clienteMap[op.cliente_id]?.convenio ?? "—";
     } else if (op.captacion) {
       const datos = op.captacion.datos_json as Record<string, string>;

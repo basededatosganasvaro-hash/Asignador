@@ -39,6 +39,7 @@ export async function GET() {
           id: true,
           curp: true,
           nombres: true,
+          nombre: true,
           a_paterno: true,
           a_materno: true,
           tel_1: true,
@@ -65,6 +66,9 @@ export async function GET() {
     if (cliente) {
       (cliente as Record<string, unknown>)[dc.campo] = dc.valor;
     }
+  }
+  for (const c of clientesMap.values()) {
+    if (!c.nombres && c.nombre) c.nombres = c.nombre;
   }
 
   // Combinar calificaciones con datos de cliente

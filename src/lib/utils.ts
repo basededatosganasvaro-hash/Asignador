@@ -15,3 +15,22 @@ export function serializeBigInt<T>(data: T): T {
   }
   return data;
 }
+
+/**
+ * Normaliza un row de BD Clientes: si `nombres` está vacío pero `nombre` (singular)
+ * tiene el nombre completo (caso del archivo "Banco reestructurado IMSS PENSIONDOS NUEVOS"),
+ * usa `nombre` como fallback. Idempotente: si ya hay `nombres`, no toca nada.
+ *
+ * Acepta cualquier objeto con campos opcionales `nombres` y `nombre`.
+ */
+export function normalizeCliente<T extends { nombres?: string | null; nombre?: string | null }>(
+  cliente: T
+): T {
+  if (!cliente) return cliente;
+  const nombres = cliente.nombres?.trim();
+  if (!nombres && cliente.nombre?.trim()) {
+    return { ...cliente, nombres: cliente.nombre };
+  }
+  return cliente;
+}
+

@@ -42,7 +42,7 @@ export async function PATCH(
   // 3. Obtener datos originales del cliente (BD Clientes - SOLO LECTURA)
   const cliente = await prismaClientes.clientes.findUnique({
     where: { id: clienteId },
-    select: { id: true, curp: true, rfc: true, nombres: true, tel_1: true,
+    select: { id: true, curp: true, rfc: true, nombres: true, nombre: true, tel_1: true,
               tel_2: true, tel_3: true, tel_4: true, tel_5: true,
               num_empleado: true, estado: true, municipio: true, convenio: true, oferta: true },
   });
@@ -121,7 +121,7 @@ export async function PATCH(
 
   return NextResponse.json({
     id: cliente.id,
-    nombres: cliente.nombres,
+    nombres: cliente.nombres ?? cliente.nombre,
     tel_1: todasEdiciones.get("tel_1") ?? cliente.tel_1,
     tel_2: cliente.tel_2,
     tel_3: cliente.tel_3,

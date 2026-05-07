@@ -53,6 +53,7 @@ export async function GET(
     select: {
       id: true,
       nombres: true,
+      nombre: true,
       tel_1: true,
       tel_2: true,
       tel_3: true,
@@ -101,7 +102,7 @@ export async function GET(
     const edits = edicionesMap.get(c.id) ?? {};
     return {
       id: c.id,
-      nombres: c.nombres,
+      nombres: c.nombres ?? c.nombre,
       tel_1: edits.tel_1 ?? c.tel_1,
       tel_2: c.tel_2,
       tel_3: c.tel_3,

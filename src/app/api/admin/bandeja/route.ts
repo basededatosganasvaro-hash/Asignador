@@ -52,12 +52,12 @@ export async function GET() {
 
   // Enriquecer con datos de BD Clientes (solo los que tienen cliente_id)
   const clienteIds = oportunidades.map((o) => o.cliente_id).filter((id): id is number => id !== null);
-  const clienteMap: Record<number, { id: number; nombres: string | null; convenio: string | null; estado: string | null; municipio: string | null }> = {};
+  const clienteMap: Record<number, { id: number; nombres: string | null; nombre: string | null; convenio: string | null; estado: string | null; municipio: string | null }> = {};
 
   if (clienteIds.length > 0) {
     const clientes = await prismaClientes.clientes.findMany({
       where: { id: { in: clienteIds } },
-      select: { id: true, nombres: true, convenio: true, estado: true, municipio: true },
+      select: { id: true, nombres: true, nombre: true, convenio: true, estado: true, municipio: true },
     });
     for (const c of clientes) clienteMap[c.id] = c;
   }
@@ -66,7 +66,7 @@ export async function GET() {
     let nombres = "—", convenio = "—", estado = "—", municipio = "—";
     if (op.cliente_id !== null) {
       const c = clienteMap[op.cliente_id];
-      nombres = c?.nombres ?? "—";
+      nombres = c?.nombres ?? c?.nombre ?? "—";
       convenio = c?.convenio ?? "—";
       estado = c?.estado ?? "—";
       municipio = c?.municipio ?? "—";

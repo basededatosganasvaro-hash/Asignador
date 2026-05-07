@@ -91,7 +91,7 @@ export async function POST(req: Request) {
     const clientes = await prismaClientes.clientes.findMany({
       where: { id: { in: clienteIds } },
       select: {
-        id: true, nombres: true, convenio: true, estado: true, municipio: true,
+        id: true, nombres: true, nombre: true, convenio: true, estado: true, municipio: true,
         tipo_cliente: true, tel_1: true, tipo_empleado: true, tipo_nomina: true,
         nivel_salarial: true, puesto: true, centro_educativo: true, clave_cct: true,
         oferta_neta: true, oportunidad_total: true, oportunidad_real: true,
@@ -131,7 +131,7 @@ export async function POST(req: Request) {
     if (op.cliente_id !== null) {
       const cliente = clienteMap[op.cliente_id] || {};
       return {
-        nombres: cliente.nombres ?? "—",
+        nombres: cliente.nombres ?? cliente.nombre ?? "—",
         convenio: cliente.convenio ?? "—",
         estado: cliente.estado ?? "—",
         municipio: cliente.municipio ?? "—",

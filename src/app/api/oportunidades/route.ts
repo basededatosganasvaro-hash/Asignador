@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { prismaClientes } from "@/lib/prisma-clientes";
 import { requireAuth } from "@/lib/auth-utils";
+import { normalizeCliente } from "@/lib/utils";
 
 export async function GET() {
   const { session, error } = await requireAuth();
@@ -86,7 +87,7 @@ export async function GET() {
       }),
     ]);
 
-    for (const c of clientes) clienteMap[c.id] = c as unknown as Record<string, unknown>;
+    for (const c of clientes) clienteMap[c.id] = normalizeCliente(c) as unknown as Record<string, unknown>;
     for (const edit of edits) {
       if (!editMap[edit.cliente_id]) editMap[edit.cliente_id] = {};
       if (!editMap[edit.cliente_id][edit.campo]) {

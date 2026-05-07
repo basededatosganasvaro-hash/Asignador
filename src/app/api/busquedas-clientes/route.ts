@@ -58,6 +58,7 @@ export async function POST(req: Request) {
     id: true,
     nss: true,
     nombres: true,
+    nombre: true,
     a_paterno: true,
     a_materno: true,
     curp: true,
@@ -131,6 +132,10 @@ export async function POST(req: Request) {
         const edits = editMap.get(c.id);
         if (edits) Object.assign(c, edits);
       }
+    }
+    // Fallback: si nombres está vacío pero nombre (singular) tiene el nombre completo
+    for (const c of clientes) {
+      if (!c.nombres && c.nombre) c.nombres = c.nombre;
     }
   }
 

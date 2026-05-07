@@ -44,7 +44,7 @@ export async function GET(
   // 2. Obtener datos originales (BD Clientes)
   const clientes = await prismaClientes.clientes.findMany({
     where: { id: { in: clienteIds } },
-    select: { id: true, nombres: true, tel_1: true },
+    select: { id: true, nombres: true, nombre: true, tel_1: true },
   });
 
   // 3. Obtener ediciones de tel_1 (BD Sistema)
@@ -56,7 +56,7 @@ export async function GET(
 
   // 4. Merge y validar completitud
   const registros = clientes.map((c) => ({
-    nombres: c.nombres,
+    nombres: c.nombres ?? c.nombre,
     tel_1: tel1EditMap.get(c.id) ?? c.tel_1,
   }));
 

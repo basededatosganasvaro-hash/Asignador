@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { prismaClientes } from "@/lib/prisma-clientes";
 import { requireAuth } from "@/lib/auth-utils";
 import { logAccessWithSession } from "@/lib/access-log";
+import { normalizeCliente } from "@/lib/utils";
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { session, error } = await requireAuth();
@@ -65,7 +66,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       if (!editMap[edit.campo]) editMap[edit.campo] = edit.valor;
     }
 
-    clienteMerged = { ...(cliente as object), ...editMap };
+    clienteMerged = { ...(normalizeCliente(cliente ?? {}) as object), ...editMap };
   } else if (op.captacion) {
     // Cliente captado — datos desde datos_json
     const datos = op.captacion.datos_json as Record<string, string>;

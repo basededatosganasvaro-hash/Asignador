@@ -57,6 +57,7 @@ export async function GET(req: NextRequest) {
       select: {
         id: true,
         nombres: true,
+        nombre: true,
         a_paterno: true,
         a_materno: true,
         curp: true,
@@ -69,6 +70,11 @@ export async function GET(req: NextRequest) {
     }),
     prismaClientes.clientes.count({ where }),
   ]);
+
+  // Fallback: si nombres está vacío pero nombre (singular) tiene el nombre completo
+  for (const c of clientes) {
+    if (!c.nombres && c.nombre) c.nombres = c.nombre;
+  }
 
   return NextResponse.json({
     clientes,

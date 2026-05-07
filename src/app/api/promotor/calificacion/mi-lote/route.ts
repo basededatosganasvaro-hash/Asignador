@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requirePromotor } from "@/lib/auth-utils";
 import { prisma } from "@/lib/prisma";
 import { prismaClientes } from "@/lib/prisma-clientes";
+import { normalizeCliente } from "@/lib/utils";
 
 export async function GET() {
   const { session, error } = await requirePromotor();
@@ -48,7 +49,7 @@ export async function GET() {
         where: { cliente_id: { in: clienteIds } },
       });
 
-      const map = new Map(clientes.map((c) => [c.id, { ...c }]));
+      const map = new Map(clientes.map((c) => [c.id, normalizeCliente({ ...c })]));
       for (const dc of datosContacto) {
         if (dc.campo === "id") continue;
         const cliente = map.get(dc.cliente_id);
